@@ -195,6 +195,7 @@ class App private constructor (val promptModel: PromptModel) {
             val initFuncs = listOf<Pair<suspend () -> Unit, String>>(
                 Pair(::platformInit, "platformInit"),
                 Pair(::settingsInit, "settingsInit"),
+                Pair(::platformCryptoInit, "platformCryptoInit"),
                 Pair(::documentTypeRepositoryInit, "documentTypeRepositoryInit"),
                 Pair(::documentStoreInit, "documentStoreInit"),
                 Pair(::documentModelInit, "documentModelInit"),
@@ -216,6 +217,10 @@ class App private constructor (val promptModel: PromptModel) {
             Logger.i(TAG, "Total application initialization time: ${(end - begin).inWholeMilliseconds} ms")
             initialized = true
         }
+    }
+
+    private suspend fun platformCryptoInit() {
+        platformCryptoInit(settingsModel)
     }
 
     private suspend fun settingsInit() {
@@ -657,7 +662,10 @@ class App private constructor (val promptModel: PromptModel) {
                         )
                     }
                     composable(route = SettingsDestination.route) {
-                        SettingsScreen(this@App)
+                        SettingsScreen(
+                            app = this@App,
+                            showToast = { message: String -> showToast(message) }
+                        )
                     }
                     composable(route = AboutDestination.route) {
                         AboutScreen()

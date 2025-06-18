@@ -10,8 +10,6 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.security.Security
 import kotlin.reflect.KClass
 
 open class BaseHttpServlet : HttpServlet() {
@@ -41,10 +39,6 @@ open class BaseHttpServlet : HttpServlet() {
         }
 
         fun environmentFor(clazz: KClass<*>): BackendEnvironment? = environmentMap[clazz]
-
-        init {
-            Security.addProvider(BouncyCastleProvider())
-        }
     }
 
     val environment get() = backendEnvironment

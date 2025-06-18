@@ -68,6 +68,14 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
         )
 
         companion object {
+            init {
+                // Load BouncyCastle for Brainpool curve support.
+                Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+                Security.insertProviderAt(BouncyCastleProvider(), 1)
+                println("Crypto.provider: ${Crypto.provider}")
+                println("Crypto.supportedCurves: ${Crypto.supportedCurves}")
+            }
+
             fun fromCbor(encodedCbor: ByteArray): KeyMaterial {
                 val array = Cbor.decode(encodedCbor).asArray
                 return KeyMaterial(
@@ -185,7 +193,6 @@ class CloudSecureAreaServlet : BaseHttpServlet() {
         }
 
         private fun createCloudSecureArea(serverEnvironment: BackendEnvironment): CloudSecureAreaServer {
-            Security.addProvider(BouncyCastleProvider())
             val settings = ProvisioningBackendSettings(serverEnvironment.getInterface(Configuration::class)!!)
             return CloudSecureAreaServer(
                 serverSecureAreaBoundKey = keyMaterial.serverSecureAreaBoundKey,

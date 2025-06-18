@@ -20,7 +20,6 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.toDataItem
-import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -30,6 +29,7 @@ import org.multipaz.mdoc.TestVectors
 import org.multipaz.util.fromHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.testUtilSetupCryptoProvider
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -38,6 +38,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DeviceRequestParserTest {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
+
     @Test
     fun testDeviceRequestParserWithVectors() {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.

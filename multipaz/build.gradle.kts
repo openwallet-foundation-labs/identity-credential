@@ -1,9 +1,7 @@
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.get
-import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
@@ -104,8 +102,6 @@ kotlin {
         val javaSharedMain by creating {
             dependsOn(commonMain)
             dependencies {
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
             }
         }
@@ -113,8 +109,6 @@ kotlin {
         val jvmMain by getting {
             dependsOn(javaSharedMain)
             dependencies {
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
                 implementation(libs.ktor.client.java)
             }
@@ -161,6 +155,8 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.ktor.client.mock)
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
                 implementation(project(":multipaz-csa"))
             }
         }

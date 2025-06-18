@@ -33,7 +33,6 @@ import androidx.test.filters.LargeTest;
 
 import org.multipaz.crypto.EcCurve;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,11 +70,7 @@ import co.nstant.in.cbor.CborException;
 public class DynamicAuthTest {
     private static final String TAG = "DynamicAuthTest";
 
-    @Before
-    public void setup() {
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
-        Security.addProvider(new BouncyCastleProvider());
-    }
+    // Do NOT add BouncyCastle at setup time - we want to run tests against the normal AndroidOpenSSL JCA provider
 
     @SuppressWarnings("deprecation")
     @Test

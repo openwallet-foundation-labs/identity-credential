@@ -1,15 +1,13 @@
 package org.multipaz.crypto
 
 import kotlinx.io.bytestring.ByteStringBuilder
-import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey
-import org.bouncycastle.jcajce.provider.asymmetric.edec.BCXDHPublicKey
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.util.BigIntegers
 import java.math.BigInteger
 import java.security.AlgorithmParameters
 import java.security.KeyFactory
 import java.security.PublicKey
 import java.security.interfaces.ECPublicKey
+import java.security.interfaces.EdECPublicKey
+import java.security.interfaces.XECPublicKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.ECParameterSpec
 import java.security.spec.ECPoint
@@ -18,19 +16,35 @@ import java.security.spec.X509EncodedKeySpec
 
 fun PublicKey.toEcPublicKey(curve: EcCurve): EcPublicKey =
     when (curve) {
-        EcCurve.X25519,
-        EcCurve.X448 -> {
+        EcCurve.X25519 -> {
+            val enc = this.encoded
             EcPublicKeyOkp(
                 curve,
-                (this as BCXDHPublicKey).uEncoding
+                enc.sliceArray(IntRange(X25519_X509_ENCODED_PREFIX.size, enc.size - 1))
             )
         }
 
-        EcCurve.ED25519,
-        EcCurve.ED448 -> {
+        EcCurve.X448 -> {
+            val enc = this.encoded
             EcPublicKeyOkp(
                 curve,
-                (this as BCEdDSAPublicKey).pointEncoding
+                enc.sliceArray(IntRange(X448_X509_ENCODED_PREFIX.size, enc.size - 1))
+            )
+        }
+
+        EcCurve.ED25519 -> {
+            val enc = this.encoded
+            EcPublicKeyOkp(
+                curve,
+                enc.sliceArray(IntRange(ED25519_X509_ENCODED_PREFIX.size, enc.size - 1))
+            )
+        }
+
+        EcCurve.ED448 -> {
+            val enc = this.encoded
+            EcPublicKeyOkp(
+                curve,
+                enc.sliceArray(IntRange(ED448_X509_ENCODED_PREFIX.size, enc.size - 1))
             )
         }
 
@@ -39,8 +53,8 @@ fun PublicKey.toEcPublicKey(curve: EcCurve): EcPublicKey =
             val keySizeOctets = (curve.bitSize + 7) / 8
             EcPublicKeyDoubleCoordinate(
                 curve,
-                BigIntegers.asUnsignedByteArray(keySizeOctets, this.w.affineX),
-                BigIntegers.asUnsignedByteArray(keySizeOctets, this.w.affineY)
+                BigIntegersAsUnsignedByteArray(keySizeOctets, this.w.affineX),
+                BigIntegersAsUnsignedByteArray(keySizeOctets, this.w.affineY)
             )
         }
     }
@@ -54,19 +68,31 @@ private val ED448_X509_ENCODED_PREFIX =
 private val X448_X509_ENCODED_PREFIX =
     byteArrayOf(0x30, 0x42, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6f, 0x03, 0x39, 0x00)
 
-val EcCurve.requireBouncyCastle: Boolean
-    get() = when (this) {
-        EcCurve.BRAINPOOLP256R1, EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP320R1, EcCurve.BRAINPOOLP512R1 -> true
-        else -> false
+/**
+ * Return the passed in value as an unsigned byte array of the specified length, padded with
+ * leading zeros as necessary.
+ *
+ * @param length the fixed length of the result
+ * @param value  the value to be converted.
+ * @return a byte array padded to a fixed length with leading zeros.
+ */
+internal fun BigIntegersAsUnsignedByteArray(length: Int, value: BigInteger): ByteArray {
+    val bytes = value.toByteArray()
+    if (bytes.size == length) {
+        return bytes
     }
 
-val EcCurve.javaKeyAlgorithm: String
-    get() = when(this) {
-        EcCurve.ED448, EcCurve.ED25519 -> "EdDSA"
-        EcCurve.X25519, EcCurve.X448 -> "XDH"
-        else -> "EC"
+    val start = if (bytes[0] == 0.toByte() && bytes.size != 1) 1 else 0
+    val count = bytes.size - start
+
+    if (count > length) {
+        throw IllegalArgumentException("Standard length exceeded for value");
     }
+
+    val tmp = ByteArray(length)
+    System.arraycopy(bytes, start, tmp, tmp.size - count, count);
+    return tmp;
+}
 
 val EcPublicKey.javaPublicKey: PublicKey
     get() = when (this) {
@@ -77,19 +103,12 @@ val EcPublicKey.javaPublicKey: PublicKey
             val bx = BigInteger(1, x)
             val by = BigInteger(1, y)
             try {
-                val params = AlgorithmParameters.getInstance(
-                    "EC",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                val params = AlgorithmParameters.getInstance("EC")
                 params.init(ECGenParameterSpec(curve.SECGName))
                 val ecParameters = params.getParameterSpec(ECParameterSpec::class.java)
                 val ecPoint = ECPoint(bx, by)
                 val keySpec = ECPublicKeySpec(ecPoint, ecParameters)
-                val kf = if (curve.requireBouncyCastle) {
-                    KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
-                } else {
-                    KeyFactory.getInstance("EC")
-                }
+                val kf = KeyFactory.getInstance("EC")
                 kf.generatePublic(keySpec)
             } catch (e: Exception) {
                 throw IllegalStateException("Unexpected error", e)
@@ -104,22 +123,22 @@ val EcPublicKey.javaPublicKey: PublicKey
                 val kf: KeyFactory
                 when (curve) {
                     EcCurve.ED448 -> {
-                        kf = KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                        kf = KeyFactory.getInstance("EdDSA")
                         prefix = ED448_X509_ENCODED_PREFIX
                     }
 
                     EcCurve.ED25519 -> {
-                        kf = KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                        kf = KeyFactory.getInstance("EdDSA")
                         prefix = ED25519_X509_ENCODED_PREFIX
                     }
 
                     EcCurve.X25519 -> {
-                        kf = KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                        kf = KeyFactory.getInstance("XDH")
                         prefix = X25519_X509_ENCODED_PREFIX
                     }
 
                     EcCurve.X448 -> {
-                        kf = KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                        kf = KeyFactory.getInstance("XDH")
                         prefix = X448_X509_ENCODED_PREFIX
                     }
 

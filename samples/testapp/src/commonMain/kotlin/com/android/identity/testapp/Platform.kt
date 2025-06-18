@@ -10,6 +10,7 @@ import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.DrawableResource
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.PromptModel
 
 enum class Platform(val displayName: String) {
     ANDROID("Android"),
@@ -24,6 +25,8 @@ expect val platform: Platform
 
 expect suspend fun platformInit()
 
+expect suspend fun platformCryptoInit(settingsModel: TestAppSettingsModel)
+
 expect fun getLocalIpAddress(): String
 
 expect val platformIsEmulator: Boolean
@@ -32,6 +35,7 @@ expect fun platformStorage(): Storage
 
 expect fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*>
 
+expect fun platformRestartApp()
 /**
  * Gets a provider for the preferred [SecureArea] implementation for the platform.
  */

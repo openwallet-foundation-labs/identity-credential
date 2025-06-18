@@ -7,14 +7,17 @@ import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.multipaz.testUtilSetupCryptoProvider
+import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
 
 class X509CertTests {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     // This is a key attestation recorded from an Android device and traces up to a Google CA.
     // It contains both EC and RSA keys of various sizes making it an useful test vector for

@@ -23,14 +23,19 @@ import org.multipaz.crypto.EcPrivateKeyDoubleCoordinate
 import org.multipaz.mdoc.TestVectors
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.testUtilSetupCryptoProvider
 import org.multipaz.util.Constants
 import org.multipaz.util.fromHex
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SessionEncryptionTest {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
+
     @Test
     fun testReaderAgainstVectors() {
         val eReaderKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(

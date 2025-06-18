@@ -47,10 +47,11 @@ import kotlin.time.Duration.Companion.minutes
 class CloudSecureAreaTest {
     @Before
     fun setup() {
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in Android.
+        // Load BouncyCastle to ensure we can test full curve support
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+        println("Crypto.provider: ${Crypto.provider}")
+        println("Crypto.supportedCurves: ${Crypto.supportedCurves}")
         initializeApplication(InstrumentationRegistry.getInstrumentation().context)
     }
 
@@ -183,6 +184,11 @@ class CloudSecureAreaTest {
         val validFrom = Instant.parse("2025-02-05T23:36:10Z")
         val validUntil = validFrom + 30.days
         for (algorithm in csa.supportedAlgorithms) {
+            if (!Crypto.supportedCurves.contains(algorithm.curve!!)) {
+                println("Curve ${algorithm.curve} not supported on platform")
+                continue
+            }
+
             val expectedKeyUsage = if (algorithm.isSigning) {
                 setOf(X509KeyUsage.DIGITAL_SIGNATURE)
             } else {

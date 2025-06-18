@@ -1,16 +1,20 @@
 package org.multipaz.crypto
 
+import org.multipaz.testUtilSetupCryptoProvider
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toHex
 import org.multipaz.util.fromHex
 import kotlin.experimental.xor
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class CryptoTests {
-    
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
+
     @Test
     fun digests() {
         assertEquals(

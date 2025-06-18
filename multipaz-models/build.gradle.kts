@@ -57,8 +57,6 @@ kotlin {
 
         val androidMain by getting {
             dependencies {
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
                 implementation(libs.accompanist.permissions)
                 implementation(libs.androidx.material)

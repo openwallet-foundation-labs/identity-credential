@@ -29,6 +29,8 @@ actual object Crypto {
         EcCurve.P521,
     )
 
+    actual val provider: String = "CryptoKit"
+
     actual fun digest(
         algorithm: Algorithm,
         message: ByteArray

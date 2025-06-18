@@ -8,7 +8,6 @@ import org.multipaz.crypto.javaPublicKey
 import org.multipaz.crypto.javaX509Certificate
 import com.android.mdl.appreader.readercertgen.CertificateGenerator.generateCertificate
 import org.bouncycastle.asn1.x509.KeyUsage
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.math.BigInteger
 import java.security.InvalidAlgorithmParameterException
 import java.security.KeyPair
@@ -29,14 +28,8 @@ import java.util.Optional
 object ReaderCertificateGenerator {
     fun generateECDSAKeyPair(curve: String): KeyPair {
         return try {
-            // NOTE older devices may not have the right BC installed for this to work
-            val kpg: KeyPairGenerator
-            if (listOf("Ed25519", "Ed448").any { it.equals(curve, ignoreCase = true) }) {
-                kpg = KeyPairGenerator.getInstance(curve, BouncyCastleProvider())
-            } else {
-                kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider())
-                kpg.initialize(ECGenParameterSpec(curve))
-            }
+            val kpg = KeyPairGenerator.getInstance("EC")
+            kpg.initialize(ECGenParameterSpec(curve))
             println(kpg.provider.info)
             kpg.generateKeyPair()
         } catch (e: NoSuchAlgorithmException) {

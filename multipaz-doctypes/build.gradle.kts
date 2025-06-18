@@ -51,16 +51,12 @@ kotlin {
 
         val jvmMain by getting {
             dependencies {
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.tink)
             }
         }
 
         val jvmTest by getting {
             dependencies {
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
             }
         }
     }

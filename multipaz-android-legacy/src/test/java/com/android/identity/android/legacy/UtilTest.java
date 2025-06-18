@@ -41,7 +41,6 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.ECNamedCurveTable;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -112,10 +111,7 @@ public class UtilTest {
 
     private static final String TAG = "UtilTest";
 
-    @Before
-    public void setUp() {
-        Security.insertProviderAt(new BouncyCastleProvider(), 1);
-    }
+    // Do NOT add BouncyCastle at setup time - we want to run tests against the normal AndroidOpenSSL JCA provider
 
     /**
      * Helper function to create a self-signed credential, including authentication keys and
@@ -603,16 +599,16 @@ public class UtilTest {
     }
 
     private KeyPair generateKeyPair() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         kpg.initialize(new ECGenParameterSpec("secp256r1"));
         return kpg.generateKeyPair();
     }
 
     @Test
     public void coseSignAndVerify_P256() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
-        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        ECGenParameterSpec ecgSpec = new ECGenParameterSpec("secp256r1");
+        kpg.initialize(ecgSpec);
         KeyPair keyPair = kpg.generateKeyPair();
 
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
@@ -626,11 +622,9 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerify_P384() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                "EC",
-                new BouncyCastleProvider());
-        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp384r1");
-        kpg.initialize(ecSpec);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        ECGenParameterSpec ecgSpec = new ECGenParameterSpec("secp384r1");
+        kpg.initialize(ecgSpec);
         KeyPair keyPair = kpg.generateKeyPair();
 
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
@@ -646,11 +640,9 @@ public class UtilTest {
     @Ignore
     @Test
     public void coseSignAndVerify_P521() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                "EC",
-                new BouncyCastleProvider());
-        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp521r1");
-        kpg.initialize(ecSpec);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        ECGenParameterSpec ecgSpec = new ECGenParameterSpec("secp521r1");
+        kpg.initialize(ecgSpec);
         KeyPair keyPair = kpg.generateKeyPair();
 
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
@@ -662,13 +654,11 @@ public class UtilTest {
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void coseSignAndVerify_brainpoolP256r1() throws Exception {
-        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
-
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                "EC",
-                bcProvider);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("brainpoolP256r1");
         kpg.initialize(ecSpec);
         KeyPair keyPair = kpg.generateKeyPair();
@@ -676,7 +666,7 @@ public class UtilTest {
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
         byte[] detachedContent = new byte[]{};
 
-        Signature s = Signature.getInstance("SHA256withECDSA", bcProvider);
+        Signature s = Signature.getInstance("SHA256withECDSA");
         s.initSign(keyPair.getPrivate());
 
         DataItem sig = Util.coseSign1Sign(s, data, detachedContent, null);
@@ -685,13 +675,11 @@ public class UtilTest {
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void coseSignAndVerify_brainpoolP384r1() throws Exception {
-        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
-
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                "EC",
-                bcProvider);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("brainpoolP384r1");
         kpg.initialize(ecSpec);
         KeyPair keyPair = kpg.generateKeyPair();
@@ -699,7 +687,7 @@ public class UtilTest {
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
         byte[] detachedContent = new byte[]{};
 
-        Signature s = Signature.getInstance("SHA384withECDSA", bcProvider);
+        Signature s = Signature.getInstance("SHA384withECDSA");
         s.initSign(keyPair.getPrivate());
 
         DataItem sig = Util.coseSign1Sign(s, data, detachedContent, null);
@@ -708,13 +696,11 @@ public class UtilTest {
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void coseSignAndVerify_brainpoolP512r1() throws Exception {
-        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
-
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                "EC",
-                bcProvider);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("brainpoolP512r1");
         kpg.initialize(ecSpec);
         KeyPair keyPair = kpg.generateKeyPair();
@@ -722,7 +708,7 @@ public class UtilTest {
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
         byte[] detachedContent = new byte[]{};
 
-        Signature s = Signature.getInstance("SHA512withECDSA", bcProvider);
+        Signature s = Signature.getInstance("SHA512withECDSA");
         s.initSign(keyPair.getPrivate());
 
         DataItem sig = Util.coseSign1Sign(s, data, detachedContent, null);
@@ -764,7 +750,6 @@ public class UtilTest {
                             .addExtension(Extension.basicConstraints, true, new BasicConstraints(true))
                             .build(signer);
             return new JcaX509CertificateConverter()
-                    .setProvider(new BouncyCastleProvider())
                     .getCertificate(certHolder);
         } catch (OperatorCreationException | CertIOException | CertificateException e) {
             throw new IllegalStateException("Error generating self-signed certificate", e);
@@ -1262,41 +1247,57 @@ public class UtilTest {
         testCoseKey(EcCurve.P521);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void testCoseKeyBrainpool256() {
         testCoseKey(EcCurve.BRAINPOOLP256R1);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void testCoseKeyBrainpool320() {
         testCoseKey(EcCurve.BRAINPOOLP320R1);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void testCoseKeyBrainpool384() {
         testCoseKey(EcCurve.BRAINPOOLP384R1);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider
+    @Ignore
     @Test
     public void testCoseKeyBrainpool521() {
         testCoseKey(EcCurve.BRAINPOOLP512R1);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider and this doesn't work there
+    @Ignore
     @Test
     public void testCoseKeyX25519() {
         testCoseKey(EcCurve.X25519);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider and this doesn't work there
+    @Ignore
     @Test
     public void testCoseKeyX448() {
         testCoseKey(EcCurve.X448);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider and this doesn't work there
+    @Ignore
     @Test
     public void testCoseKeyEd25519() {
         testCoseKey(EcCurve.ED25519);
     }
 
+    // Ignored out b/c we run tests against AndroidOpenSSL provider and this doesn't work there
+    @Ignore
     @Test
     public void testCoseKeyEd448() {
         testCoseKey(EcCurve.ED448);

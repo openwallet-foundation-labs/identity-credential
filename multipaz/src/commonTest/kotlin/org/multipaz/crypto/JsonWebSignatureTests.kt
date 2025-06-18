@@ -4,10 +4,14 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.multipaz.asn1.ASN1Integer
+import org.multipaz.testUtilSetupCryptoProvider
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.days
 
 class JsonWebSignatureTests {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     @Test fun roundTrip_P256() = roundtrip(EcCurve.P256)
     @Test fun roundTrip_P384() = roundtrip(EcCurve.P384)

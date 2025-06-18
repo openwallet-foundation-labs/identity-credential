@@ -18,7 +18,6 @@ import org.multipaz.trustmanagement.TrustPoint
 import com.android.mdl.appreader.settings.UserPreferences
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.color.DynamicColors
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
 import java.security.Security
 import java.security.cert.CertificateFactory
@@ -49,10 +48,7 @@ class VerifierApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in the OS itself.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
+        // Do NOT add BouncyCastle here - we want to use the normal AndroidOpenSSL JCA provider
         DynamicColors.applyToActivitiesIfAvailable(this)
         userPreferencesInstance = userPreferences
         Logger.isDebugEnabled = userPreferences.isDebugLoggingEnabled()
