@@ -1,9 +1,15 @@
 package org.multipaz.testapp
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
+import com.jakewharton.processphoenix.ProcessPhoenix
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.android.Android
-import org.multipaz.crypto.EcCurve
 import org.multipaz.context.applicationContext
 import org.multipaz.securearea.AndroidKeystoreCreateKeySettings
 import org.multipaz.securearea.AndroidKeystoreSecureArea
@@ -13,20 +19,22 @@ import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.app_icon
 import multipazproject.samples.testapp.generated.resources.app_icon_red
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.notifications.NotificationManagerAndroid
+import org.multipaz.context.getActivity
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.PromptModel
+import org.multipaz.util.Logger
 import java.io.File
 import java.net.NetworkInterface
 import java.security.Security
+
+private const val TAG = "PlatformAndroid"
 
 actual val platformAppName = applicationContext.getString(R.string.app_name)
 
@@ -38,24 +46,23 @@ actual val platformAppIcon = if (platformAppName.endsWith("(Red)")) {
 
 actual val platform = Platform.ANDROID
 
-private var platformInitialized = false
-private val platformInitLock = Mutex()
-
 actual suspend fun platformInit() {
-    platformInitLock.withLock {
-        if (platformInitialized) {
-            return
-        }
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in the OS itself.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
-        platformInitialized = true
-    }
     NotificationManagerAndroid.setSmallIcon(R.drawable.ic_stat_name)
     NotificationManagerAndroid.setChannelTitle(
         applicationContext.getString(R.string.notification_channel_title)
     )
+}
+
+actual suspend fun platformCryptoInit(settingsModel: TestAppSettingsModel) {
+    if (settingsModel.cryptoPreferBouncyCastle.value) {
+        Logger.i(TAG, "Forcing BouncyCastle to the top of the list")
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+}
+
+actual fun platformRestartApp() {
+    ProcessPhoenix.triggerRebirth(applicationContext)
 }
 
 actual fun getLocalIpAddress(): String {

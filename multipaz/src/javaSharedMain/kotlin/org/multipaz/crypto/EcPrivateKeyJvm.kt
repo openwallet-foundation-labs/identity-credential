@@ -1,17 +1,21 @@
 package org.multipaz.crypto
 
-import org.bouncycastle.asn1.DEROctetString
-import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier
-import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.spec.ECPrivateKeySpec
-import org.bouncycastle.util.BigIntegers
+import org.multipaz.asn1.OID
+import java.math.BigInteger
+import java.security.AlgorithmParameters
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.EdECPrivateKey
+import java.security.interfaces.XECPrivateKey
+import java.security.spec.ECGenParameterSpec
+import java.security.spec.ECParameterSpec
+import java.security.spec.ECPrivateKeySpec
+import java.security.spec.EdECPrivateKeySpec
+import java.security.spec.NamedParameterSpec
 import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.XECPrivateKeySpec
 
 fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKey =
     when (curve) {
@@ -28,13 +32,16 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
         }
 
         EcCurve.ED25519,
+        EcCurve.ED448 -> {
+            val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyOkp
+            val d = getDerEncodedPrivateKeyFromPrivateKeyInfo((this as EdECPrivateKey).encoded)
+            EcPrivateKeyOkp(curve, d, pub.x)
+        }
         EcCurve.X25519,
-        EcCurve.ED448,
         EcCurve.X448 -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyOkp
-            val privateKeyInfo = PrivateKeyInfo.getInstance(this.getEncoded())
-            val encoded = privateKeyInfo.parsePrivateKey().toASN1Primitive().encoded
-            EcPrivateKeyOkp(curve, encoded.sliceArray(IntRange(2, encoded.size - 1)), pub.x)
+            val d = getDerEncodedPrivateKeyFromPrivateKeyInfo((this as XECPrivateKey).encoded)
+            EcPrivateKeyOkp(curve, d, pub.x)
         }
     }
 
@@ -48,34 +55,27 @@ val EcPrivateKey.javaPrivateKey: PrivateKey
         EcCurve.BRAINPOOLP384R1,
         EcCurve.BRAINPOOLP512R1 -> {
             val keyFactory = KeyFactory.getInstance("EC")
-            keyFactory.generatePrivate(
-                ECPrivateKeySpec(
-                    BigIntegers.fromUnsignedByteArray(this.d),
-                    ECNamedCurveTable.getParameterSpec(this.curve.SECGName)
-                )
-            )
+            val paramSpec = AlgorithmParameters.getInstance("EC").apply {
+                init(ECGenParameterSpec(this@javaPrivateKey.curve.SECGName))
+            }.getParameterSpec(ECParameterSpec::class.java)
+            val spec = ECPrivateKeySpec(BigInteger(1, this.d), paramSpec)
+            keyFactory.generatePrivate(spec)
         }
-
-        EcCurve.ED25519,
-        EcCurve.X25519,
-        EcCurve.ED448,
+        EcCurve.ED25519 -> {
+            val spec = PKCS8EncodedKeySpec(generatePrivateKeyInfo(OID.ED25519.oid, this.d))
+            KeyFactory.getInstance("Ed25519").generatePrivate(spec)
+        }
+        EcCurve.X25519 -> {
+            val spec = PKCS8EncodedKeySpec(generatePrivateKeyInfo(OID.X25519.oid, this.d))
+            KeyFactory.getInstance("X25519").generatePrivate(spec)
+        }
+        EcCurve.ED448 -> {
+            val spec = PKCS8EncodedKeySpec(generatePrivateKeyInfo(OID.ED448.oid, this.d))
+            KeyFactory.getInstance("Ed448").generatePrivate(spec)
+        }
         EcCurve.X448 -> {
-            val ids = when (this.curve) {
-                EcCurve.ED25519 -> Pair("Ed25519", EdECObjectIdentifiers.id_Ed25519)
-                EcCurve.X25519 -> Pair("X25519", EdECObjectIdentifiers.id_X25519)
-                EcCurve.ED448 -> Pair("Ed448", EdECObjectIdentifiers.id_Ed448)
-                EcCurve.X448 -> Pair("X448", EdECObjectIdentifiers.id_X448)
-                else -> throw IllegalStateException()
-            }
-            val keyFactory = KeyFactory.getInstance(ids.first)
-            keyFactory.generatePrivate(
-                PKCS8EncodedKeySpec(
-                    PrivateKeyInfo(
-                        AlgorithmIdentifier(ids.second),
-                        DEROctetString(this.d)
-                    ).encoded
-                )
-            )
+            val spec = PKCS8EncodedKeySpec(generatePrivateKeyInfo(OID.X448.oid, this.d))
+            KeyFactory.getInstance("X448").generatePrivate(spec)
         }
     }
 

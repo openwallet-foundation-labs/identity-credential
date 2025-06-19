@@ -47,7 +47,6 @@ import org.bouncycastle.asn1.DERSequenceGenerator
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCXDHPublicKey
 import org.bouncycastle.jcajce.spec.XDHParameterSpec
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.BigIntegers
 import java.lang.StringBuilder
 import java.io.ByteArrayInputStream
@@ -1038,10 +1037,7 @@ object Util {
         val y = BigInteger(1, encodedY)
         return try {
             val params: AlgorithmParameters =
-                AlgorithmParameters.getInstance(
-                    "EC",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                AlgorithmParameters.getInstance("EC")
             params.init(ECGenParameterSpec(curveName))
             val ecParameters =
                 params.getParameterSpec(
@@ -1078,22 +1074,22 @@ object Util {
             val kf: KeyFactory
             when (crv) {
                 EcCurve.ED448 -> {
-                    kf = KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                    kf = KeyFactory.getInstance("EdDSA")
                     prefix = ED448_X509_ENCODED_PREFIX
                 }
 
                 EcCurve.ED25519 -> {
-                    kf = KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                    kf = KeyFactory.getInstance("EdDSA")
                     prefix = ED25519_X509_ENCODED_PREFIX
                 }
 
                 EcCurve.X25519 -> {
-                    kf = KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                    kf = KeyFactory.getInstance("XDH")
                     prefix = X25519_X509_ENCODED_PREFIX
                 }
 
                 EcCurve.X448 -> {
-                    kf = KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                    kf = KeyFactory.getInstance("XDH")
                     prefix = X448_X509_ENCODED_PREFIX
                 }
 
@@ -1889,32 +1885,17 @@ object Util {
         return try {
             val kpg: KeyPairGenerator
             if (stdName == "X25519") {
-                kpg = KeyPairGenerator.getInstance(
-                    "X25519",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg = KeyPairGenerator.getInstance("X25519")
                 kpg.initialize(XDHParameterSpec(XDHParameterSpec.X25519))
             } else if (stdName == "Ed25519") {
-                kpg = KeyPairGenerator.getInstance(
-                    "Ed25519",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg = KeyPairGenerator.getInstance("Ed25519")
             } else if (stdName == "X448") {
-                kpg = KeyPairGenerator.getInstance(
-                    "X448",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg = KeyPairGenerator.getInstance("X448")
                 kpg.initialize(XDHParameterSpec(XDHParameterSpec.X448))
             } else if (stdName == "Ed448") {
-                kpg = KeyPairGenerator.getInstance(
-                    "Ed448",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg = KeyPairGenerator.getInstance("Ed448")
             } else {
-                kpg = KeyPairGenerator.getInstance(
-                    "EC",
-                    BouncyCastleProvider.PROVIDER_NAME
-                )
+                kpg = KeyPairGenerator.getInstance("EC")
                 kpg.initialize(ECGenParameterSpec(stdName))
             }
             kpg.generateKeyPair()

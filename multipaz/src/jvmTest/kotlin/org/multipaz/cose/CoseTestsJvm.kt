@@ -6,7 +6,7 @@ import org.multipaz.cbor.toDataItem
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 
-import org.bouncycastle.util.BigIntegers
+import org.multipaz.crypto.BigIntegersAsUnsignedByteArray
 import java.math.BigInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -66,5 +66,5 @@ class CoseTestsJvm {
  * of SEC 1: Elliptic Curve Cryptography (https://www.secg.org/sec1-v2.pdf).
  */
 private fun BigInteger.sec1EncodeFieldElementAsOctetString(octetStringSize: Int): ByteArray {
-    return BigIntegers.asUnsignedByteArray(octetStringSize, this)
+    return BigIntegersAsUnsignedByteArray(octetStringSize, this)
 }

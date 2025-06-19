@@ -38,6 +38,9 @@ fun SoftwareSecureAreaScreen(
     LazyColumn(
         modifier = Modifier.padding(8.dp)
     ) {
+        item {
+            Text(text = "Implementation: ${Crypto.provider}")
+        }
         for (algorithm in softwareSecureArea.supportedAlgorithms) {
             for ((passphraseRequired, description) in arrayOf(
                 Pair(true, "- Passphrase"),

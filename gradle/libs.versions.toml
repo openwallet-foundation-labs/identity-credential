@@ -18,7 +18,7 @@ kotlinx-coroutines = "1.8.1"
 kotlinx-io = "0.4.0"
 kotlinx-datetime = "0.6.0"
 kotlinx-serialization = "1.7.0"
-bouncy-castle = "1.78.1"
+bouncy-castle = "1.81"
 tink = "1.13.0"
 ksp = "2.1.21-2.0.1"
 androidx-biometrics = "1.2.0-alpha05"
@@ -65,6 +65,7 @@ errorprone = "2.38.0"
 mlkit-barcode-scanning = "17.3.0"
 semver = "3.0.0"
 skie = "0.10.2"
+process-phoenix = "3.0.0"
 
 [libraries]
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
@@ -149,6 +150,7 @@ androidx-credentials-registry-provider = { module = "androidx.credentials.regist
 errorprone-annotations = { module = "com.google.errorprone:error_prone_annotations", version.ref="errorprone"}
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref="mlkit-barcode-scanning"}
 semver = { module = "io.github.z4kn4fein:semver", version.ref="semver" }
+process-phoenix = { module = "com.jakewharton:process-phoenix", version.ref="process-phoenix" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

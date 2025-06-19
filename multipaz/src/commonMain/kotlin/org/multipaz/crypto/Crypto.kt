@@ -3,8 +3,6 @@
 package org.multipaz.crypto
 
 import org.multipaz.util.UUID
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Cryptographic support routines.
@@ -18,6 +16,11 @@ expect object Crypto {
      * The Elliptic Curve Cryptography curves supported by the platform.
      */
     val supportedCurves: Set<EcCurve>
+
+    /**
+     * A human-readable description of the underlying library used.
+     */
+    val provider: String
 
     /**
      * Message digest function.

@@ -25,7 +25,6 @@ import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.UserNotAuthenticatedException
 import org.multipaz.R
-import org.multipaz.securearea.AndroidKeystoreSecureArea.Capabilities
 import org.multipaz.context.applicationContext
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcCurve
@@ -44,10 +43,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
-import org.bouncycastle.asn1.ASN1InputStream
-import org.bouncycastle.asn1.ASN1Integer
-import org.bouncycastle.asn1.ASN1Sequence
-import java.io.ByteArrayInputStream
+import org.multipaz.asn1.ASN1
+import org.multipaz.asn1.ASN1Integer
+import org.multipaz.asn1.ASN1Sequence
 import java.io.IOException
 import java.security.InvalidAlgorithmParameterException
 import java.security.KeyFactory
@@ -824,15 +822,9 @@ class AndroidKeystoreSecureArea private constructor(
         }
 
         internal fun signatureFromDer(curve: EcCurve, derEncodedSignature: ByteArray): EcSignature {
-            val asn1 = try {
-                ASN1InputStream(ByteArrayInputStream(derEncodedSignature)).readObject()
-            } catch (e: IOException) {
-                throw IllegalArgumentException("Error decoding DER signature", e)
-            }
-            val asn1Encodables = (asn1 as ASN1Sequence).toArray()
-            require(asn1Encodables.size == 2) { "Expected two items in sequence" }
-            val r = stripLeadingZeroes(((asn1Encodables[0].toASN1Primitive() as ASN1Integer).value).toByteArray())
-            val s = stripLeadingZeroes(((asn1Encodables[1].toASN1Primitive() as ASN1Integer).value).toByteArray())
+            val seq = ASN1.decode(derEncodedSignature) as ASN1Sequence
+            val r = stripLeadingZeroes((seq.elements[0] as ASN1Integer).value)
+            val s = stripLeadingZeroes((seq.elements[1] as ASN1Integer).value)
 
             val keySize = (curve.bitSize + 7)/8
             check(r.size <= keySize)

@@ -73,7 +73,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -110,10 +109,7 @@ class DeviceRetrievalHelperTest {
 
     @Before
     fun setUp() = runBlocking {
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in Android.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
+        // Do NOT add BouncyCastle at setup time - we want to run tests against the normal AndroidOpenSSL JCA provider
 
         initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
 

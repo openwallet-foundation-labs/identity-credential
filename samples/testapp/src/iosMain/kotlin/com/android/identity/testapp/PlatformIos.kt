@@ -39,6 +39,7 @@ import multipazproject.samples.testapp.generated.resources.app_icon
 import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.decodeImage
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.PromptModel
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -62,6 +63,15 @@ actual val platform = Platform.IOS
 
 actual suspend fun platformInit() {
     // Nothing to do
+}
+
+actual suspend fun platformCryptoInit(settingsModel: TestAppSettingsModel) {
+    // Nothing to do
+}
+
+actual fun platformRestartApp() {
+    // Currently only needed on Android
+    TODO()
 }
 
 @OptIn(ExperimentalForeignApi::class)

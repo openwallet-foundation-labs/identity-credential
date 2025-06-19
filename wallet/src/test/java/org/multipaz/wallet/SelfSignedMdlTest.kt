@@ -14,11 +14,6 @@ import org.junit.Test
 import java.security.Security
 
 class SelfSignedMdlTest {
-    @Before
-    fun setup() {
-        Security.insertProviderAt(BouncyCastleProvider(), 1)
-    }
-
     private fun getProofingQuestions() : List<org.multipaz.provisioning.evidence.EvidenceRequest> {
         return listOf<org.multipaz.provisioning.evidence.EvidenceRequest>(
             org.multipaz.provisioning.evidence.EvidenceRequestMessage(

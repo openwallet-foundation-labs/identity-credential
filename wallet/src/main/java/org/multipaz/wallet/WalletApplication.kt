@@ -67,7 +67,6 @@ import org.multipaz.wallet.dynamicregistration.PowerOffReceiver
 import org.multipaz.wallet.logging.EventLogger
 import org.multipaz.wallet.util.toByteArray
 import kotlinx.datetime.Clock
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.document.buildDocumentStore
 import java.io.File
 import java.net.URLDecoder
@@ -144,10 +143,7 @@ class WalletApplication : Application() {
         initializeApplication(applicationContext)
         //DirectAccess.warmupTransport()
 
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in the OS itself.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
+        // Do NOT add BouncyCastle here - we want to use the normal AndroidOpenSSL JCA provider
 
         // init documentTypeRepository
         documentTypeRepository = DocumentTypeRepository()

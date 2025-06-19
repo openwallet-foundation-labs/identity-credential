@@ -34,13 +34,14 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.io.bytestring)
-    implementation(libs.bouncy.castle.bcprov)
     implementation(libs.hsqldb)
     implementation(libs.zxing.core)
     implementation(libs.mysql)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.java)
     implementation(libs.nimbus.oauth2.oidc.sdk)
+    implementation(libs.bouncy.castle.bcprov)
+    implementation(libs.bouncy.castle.bcpkix)
 
     testImplementation(libs.junit)
 }

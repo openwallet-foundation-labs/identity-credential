@@ -45,9 +45,7 @@ import kotlin.random.Random
  * with 256-bit keys with the key derived from the passphrase using
  * [HKDF](https://en.wikipedia.org/wiki/HKDF).
  *
- * This is currently implemented using the
- * [Bouncy Castle](https://www.bouncycastle.org/) library but this implementation
- * detail may change in the future.
+ * On JVM and Android this is using [Crypto] and the algorithms and curves it implements.
  *
  * Use [SoftwareSecureArea.create] to create an instance of SoftwareSecureArea.
  */

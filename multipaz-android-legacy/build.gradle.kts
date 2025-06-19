@@ -46,7 +46,6 @@ android {
 dependencies {
     implementation(project(":multipaz"))
     implementation(libs.androidx.biometrics)
-    implementation(libs.bouncy.castle.bcprov)
     implementation(libs.bouncy.castle.bcpkix)
     implementation(libs.volley)
     implementation(libs.kotlinx.datetime)

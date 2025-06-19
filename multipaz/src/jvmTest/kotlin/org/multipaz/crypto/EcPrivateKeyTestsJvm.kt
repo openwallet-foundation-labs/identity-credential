@@ -1,11 +1,20 @@
 package org.multipaz.crypto
 
+import org.multipaz.testUtilSetupCryptoProvider
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class EcPrivateKeyTestsJvm {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     fun conversion(curve: EcCurve) {
+        // TODO: use assumeTrue() when available in kotlin-test
+        if (!Crypto.supportedCurves.contains(curve)) {
+            println("Curve $curve not supported on platform")
+            return
+        }
         val key = Crypto.createEcPrivateKey(curve)
         val javaPrivateKey = key.javaPrivateKey
         val keyFromJava = javaPrivateKey.toEcPrivateKey(key.publicKey.javaPublicKey, curve)

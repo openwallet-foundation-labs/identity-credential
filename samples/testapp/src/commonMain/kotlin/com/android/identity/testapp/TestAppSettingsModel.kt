@@ -1,7 +1,6 @@
 package org.multipaz.testapp
 
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.toDataItem
 import org.multipaz.crypto.EcCurve
@@ -151,6 +150,8 @@ class TestAppSettingsModel private constructor(
         bind(readerAllowMultipleRequests, "readerAllowMultipleRequests", false)
 
         bind(cloudSecureAreaUrl, "cloudSecureAreaUrl", CSA_URL_DEFAULT)
+
+        bind(cryptoPreferBouncyCastle, "cryptoForceBouncyCastle", false)
     }
 
     val presentmentBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)
@@ -173,6 +174,8 @@ class TestAppSettingsModel private constructor(
     val readerAllowMultipleRequests = MutableStateFlow<Boolean>(false)
 
     val cloudSecureAreaUrl = MutableStateFlow<String>(CSA_URL_DEFAULT)
+
+    val cryptoPreferBouncyCastle = MutableStateFlow<Boolean>(false)
 }
 
 // On the Android Emulator, 10.0.2.2 points to the host so this will work

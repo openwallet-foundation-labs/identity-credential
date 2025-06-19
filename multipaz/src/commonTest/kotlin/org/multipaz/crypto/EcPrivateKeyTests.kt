@@ -1,10 +1,14 @@
 package org.multipaz.crypto
 
+import org.multipaz.testUtilSetupCryptoProvider
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class EcPrivateKeyTests {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     fun createAndCheck(curve: EcCurve) {
         // TODO: use assumeTrue() when available in kotlin-test

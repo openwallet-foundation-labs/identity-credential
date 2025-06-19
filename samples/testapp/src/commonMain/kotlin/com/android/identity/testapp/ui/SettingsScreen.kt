@@ -20,16 +20,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
 import org.multipaz.crypto.EcCurve
 import org.multipaz.testapp.App
 import org.multipaz.testapp.Platform
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.testapp.platform
 import org.multipaz.compose.cards.WarningCard
+import org.multipaz.testapp.platformCryptoInit
+import org.multipaz.testapp.platformRestartApp
 
 @Composable
 fun SettingsScreen(
     app: App,
+    showToast: (message: String) -> Unit,
 ) {
     // NFC engagement as an mdoc is only supported on Android.
     //
@@ -39,6 +46,22 @@ fun SettingsScreen(
     LazyColumn(
         modifier = Modifier.padding(8.dp)
     ) {
+        item { SettingHeadline("Cryptography Library Settings") }
+        item {
+            SettingToggle(
+                title = "Prefer BouncyCastle to Conscrypt (restarts app)",
+                isChecked = app.settingsModel.cryptoPreferBouncyCastle.collectAsState().value,
+                onCheckedChange = {
+                    app.settingsModel.cryptoPreferBouncyCastle.value = it
+                    try {
+                        platformRestartApp()
+                    } catch (e: Throwable) {
+                        showToast("An error occurred: $e")
+                    }
+                },
+                enabled = (platform == Platform.ANDROID)
+            )
+        }
         item { SettingHeadline("ISO mdoc NFC Engagement Settings") }
         item {
             if (!nfcAvailable) {

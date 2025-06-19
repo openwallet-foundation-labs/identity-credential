@@ -30,7 +30,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.io.bytestring)
-    implementation(libs.bouncy.castle.bcprov)
     implementation(libs.zxing.core)
     implementation(libs.hsqldb)
     implementation(libs.mysql)

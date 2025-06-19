@@ -10,16 +10,19 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
+import org.multipaz.testUtilSetupCryptoProvider
 import org.multipaz.util.appendInt32
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import org.multipaz.util.toHex
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class JsonWebEncryptionTests {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     @Test fun roundTrip_P256_A128GCM() = roundtrip(EcCurve.P256, Algorithm.A128GCM, false)
     @Test fun roundTrip_P384_A128GCM() = roundtrip(EcCurve.P384, Algorithm.A128GCM, false)

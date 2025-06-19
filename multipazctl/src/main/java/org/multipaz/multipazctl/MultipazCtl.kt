@@ -16,7 +16,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.util.BigIntegers
 import org.multipaz.crypto.X509CertChain
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -87,7 +86,7 @@ object MultipazCtl {
             "https://github.com/openwallet-foundation-labs/identity-credential"
         )
 
-        val serial = ASN1Integer(BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray())
+        val serial = ASN1Integer.fromRandom(128)
 
         val iacaCertificate = MdocUtil.generateIacaCertificate(
             iacaKey,
@@ -148,7 +147,7 @@ object MultipazCtl {
 
         val dsKey = Crypto.createEcPrivateKey(curve)
 
-        val serial = ASN1Integer(BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray())
+        val serial = ASN1Integer.fromRandom(128)
 
         val dsCertificate = MdocUtil.generateDsCertificate(
             iacaCert,
@@ -192,7 +191,7 @@ object MultipazCtl {
         val curveName = getArg(args, "curve", "P-384")
         val curve = EcCurve.fromJwkName(curveName)
 
-        val serial = ASN1Integer(BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray())
+        val serial = ASN1Integer.fromRandom(128)
 
 
         println("Curve: $curve [$curveName]")
@@ -288,6 +287,7 @@ Generate an reader root and corresponding private key:
 
     @JvmStatic
     fun main(args: Array<String>) {
+        // Load BouncyCastle for Brainpool curve support
         Security.insertProviderAt(BouncyCastleProvider(), 1)
 
         if (args.size == 0) {

@@ -3,7 +3,6 @@ package org.multipaz.cose
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
@@ -14,7 +13,9 @@ import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.testUtilSetupCryptoProvider
 import org.multipaz.util.fromHex
+import kotlin.test.BeforeTest
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -22,6 +23,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CoseTests {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     @Test
     fun coseKeyDecode() {

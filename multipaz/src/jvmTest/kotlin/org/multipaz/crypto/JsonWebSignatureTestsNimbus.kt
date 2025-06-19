@@ -20,9 +20,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.asn1.ASN1Integer
+import org.multipaz.testUtilSetupCryptoProvider
 import org.multipaz.util.toBase64
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
@@ -31,6 +33,8 @@ import kotlin.time.Duration.Companion.days
 // Note: This checks the JsonWebSignature implementation against the https://connect2id.com/products/nimbus-jose-jwt
 // implementation
 class JsonWebSignatureTestsNimbus {
+    @BeforeTest
+    fun setup() = testUtilSetupCryptoProvider()
 
     // TODO: Check for other curves than just P-256.
 

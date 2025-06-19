@@ -82,7 +82,6 @@ import kotlinx.serialization.json.putJsonObject
 import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
 import net.minidev.json.JSONStyle
-import org.bouncycastle.util.BigIntegers
 import org.multipaz.asn1.ASN1
 import org.multipaz.asn1.ASN1Encoding
 import org.multipaz.asn1.ASN1Sequence
@@ -315,9 +314,7 @@ private suspend fun getReaderIdentity(): ServerIdentity =
 
         val validFrom = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
         val validUntil = validFrom.plus(DateTimePeriod(years = 5), TimeZone.currentSystemDefault())
-        val serial = ASN1Integer(
-            BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toByteArray()
-        )
+        val serial = ASN1Integer.fromRandom(128)
 
         val readerRootKey = Crypto.createEcPrivateKey(EcCurve.P384)
         val readerRootCertificate =

@@ -34,7 +34,6 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodWifiAware
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.util.UUID
 import org.multipaz.util.toHex
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -46,13 +45,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 class NfcEnagementHelperTest {
-    @Before
-    fun setup() {
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in Android.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
-    }
+    // Do NOT add BouncyCastle at setup time - we want to run tests against the normal AndroidOpenSSL JCA provider
 
     @Test
     @SmallTest

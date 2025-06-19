@@ -104,6 +104,7 @@ class NdefService: HostApduService() {
                 storage = platformStorage(),
                 readOnly = true
             )
+            platformCryptoInit(settingsModel)
             val t1 = Clock.System.now()
             Logger.i(TAG, "Settings loaded in ${(t1 - t0).inWholeMilliseconds} ms")
 

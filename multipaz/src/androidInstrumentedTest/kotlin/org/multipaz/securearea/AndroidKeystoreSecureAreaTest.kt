@@ -33,7 +33,6 @@ import org.multipaz.storage.android.AndroidStorage
 import org.multipaz.util.AndroidAttestationExtensionParser
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Assume
 import org.junit.Before
@@ -46,7 +45,6 @@ import java.security.KeyStore
 import java.security.KeyStoreException
 import java.security.NoSuchAlgorithmException
 import java.security.NoSuchProviderException
-import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
@@ -58,11 +56,6 @@ class AndroidKeystoreSecureAreaTest {
 
     @Before
     fun setup() {
-        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
-        // based implementation included in Android.
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-        Security.addProvider(BouncyCastleProvider())
-
         initializeApplication(InstrumentationRegistry.getInstrumentation().targetContext)
         val storage = AndroidStorage(databasePath = null, clock = Clock.System)
         secureAreaProvider = SecureAreaProvider {
