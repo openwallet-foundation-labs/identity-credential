@@ -35,6 +35,7 @@ import org.multipaz.openid4vci.util.authorizeWithDpop
 import org.multipaz.openid4vci.util.codeToId
 import org.multipaz.openid4vci.util.extractAccessToken
 import org.multipaz.openid4vci.util.validateJwt
+import org.multipaz.server.getBaseUrl
 import kotlin.random.Random
 
 /**
@@ -143,7 +144,7 @@ suspend fun credential(call: ApplicationCall) {
             if (factory.requireKeyAttestation) {
                 throw InvalidRequestException("jwt proof cannot be used for this credential")
             }
-            val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+            val baseUrl = BackendEnvironment.getBaseUrl()
             proofs.map { proof ->
                 val jwt = proof.jsonPrimitive.content
                 val parts = jwt.split(".")

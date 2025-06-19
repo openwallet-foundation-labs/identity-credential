@@ -5,6 +5,8 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.callloging.CallLogging
 import org.multipaz.server.ServerConfiguration
+import org.multipaz.server.serverHost
+import org.multipaz.server.serverPort
 import org.multipaz.util.Logger
 
 /**
@@ -19,7 +21,7 @@ class Main {
         @JvmStatic
         fun main(args: Array<String>) {
             val configuration = ServerConfiguration(args)
-            val jdbc = configuration.getValue("databaseConnection")
+            val jdbc = configuration.getValue("database_connection")
             if (jdbc != null) {
                 if (jdbc.startsWith("jdbc:mysql:")) {
                     Logger.i("Main", "SQL driver: ${com.mysql.cj.jdbc.Driver()}")
@@ -27,9 +29,8 @@ class Main {
                     Logger.i("Main", "SQL driver: ${org.postgresql.Driver()}")
                 }
             }
-            val port = (configuration.getValue("serverPort") ?: "8006").toInt()
-            val host = configuration.getValue("serverHost") ?: "0.0.0.0"
-            embeddedServer(Netty, port = port, host = host, module = {
+            val host = configuration.serverHost ?: "0.0.0.0"
+            embeddedServer(Netty, port = configuration.serverPort, host = host, module = {
                 install(CallLogging)
                 configureRouting(configuration)
             }).start(wait = true)

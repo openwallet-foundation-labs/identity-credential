@@ -1,7 +1,5 @@
 package org.multipaz.openid4vci.request
 
-import io.ktor.http.Url
-import io.ktor.http.authority
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respondText
@@ -15,8 +13,7 @@ import org.multipaz.openid4vci.util.AUTHZ_REQ
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.codeToId
-import org.multipaz.openid4vci.util.getBaseUrl
-import org.multipaz.openid4vci.util.getDomain
+import org.multipaz.server.getDomain
 import org.multipaz.openid4vci.util.getReaderIdentity
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment

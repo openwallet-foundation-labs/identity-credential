@@ -24,6 +24,7 @@ import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.rpc.handler.SimpleCipher
+import org.multipaz.server.getBaseUrl
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.time.Duration
@@ -170,7 +171,7 @@ suspend fun validateClientAttestationPoP(
     val popJwt = request.headers["OAuth-Client-Attestation-PoP"]
         ?: throw InvalidRequestException("OAuth-Client-Attestation-PoP header required")
 
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
     val serverUrl = Url(baseUrl).protocolWithAuthority
 
     validateJwt(

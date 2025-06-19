@@ -17,6 +17,7 @@ import org.multipaz.openid4vci.util.createSession
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Configuration
+import org.multipaz.server.getBaseUrl
 import java.net.URLEncoder
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -46,7 +47,7 @@ suspend fun authorizeChallenge(call: ApplicationCall) {
             null
         )
     }
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
     if (presentation == null) {
         val expirationSeconds = 600
         val code = idToCode(OpaqueIdType.PAR_CODE, id, expirationSeconds.seconds)

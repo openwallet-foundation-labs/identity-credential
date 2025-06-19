@@ -1,15 +1,11 @@
 package org.multipaz.openid4vci.request
 
 import io.ktor.http.ContentType
-import io.ktor.http.Url
-import io.ktor.http.authority
-import io.ktor.http.encodeURLParameter
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.Uint
@@ -23,8 +19,7 @@ import org.multipaz.openid4vci.util.OAUTH_REQUEST_URI_PREFIX
 import org.multipaz.openid4vci.util.OPENID4VP_REQUEST_URI_PREFIX
 import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.codeToId
-import org.multipaz.openid4vci.util.getBaseUrl
-import org.multipaz.openid4vci.util.getDomain
+import org.multipaz.server.getBaseUrl
 import org.multipaz.openid4vci.util.getReaderIdentity
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
@@ -96,7 +91,7 @@ suspend fun authorizePost(call: ApplicationCall)  {
     val data = NameSpacedData.Builder()
     val state = IssuanceState.getIssuanceState(id)
 
-    val baseUrl = BackendEnvironment.getInterface(Configuration::class)!!.getValue("base_url")!!
+    val baseUrl = BackendEnvironment.getBaseUrl()
     val pidData = parameters["pidData"]
     if (pidData != null) {
         val baseUri = URI(baseUrl)

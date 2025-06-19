@@ -1,5 +1,5 @@
 {
-  "base_url": "http://localhost:8008/",
+  "server_port": 8008,
   "developerMode": true,
   "waitForNotificationSupported": true,
   "androidRequireGmsAttestation": false,
