@@ -1,12 +1,11 @@
 package org.multipaz.testapp
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.credentials.DigitalCredential
 import androidx.credentials.ExperimentalDigitalCredentialApi
@@ -28,6 +27,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.json.JSONObject
 import org.multipaz.compose.prompt.PromptDialogs
+import androidx.core.graphics.drawable.toDrawable
 
 class CredmanPresentmentActivity: FragmentActivity() {
     companion object {
@@ -41,6 +41,11 @@ class CredmanPresentmentActivity: FragmentActivity() {
         super.onCreate(savedInstanceState)
         initializeApplication(this.applicationContext)
         enableEdgeToEdge()
+
+        window.setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            setTranslucent(true)
+        }
 
         CoroutineScope(Dispatchers.Main).launch {
             presentmentModel.setPromptModel(NdefService.promptModel)
@@ -108,19 +113,19 @@ class CredmanPresentmentActivity: FragmentActivity() {
 
         setContent {
             AppTheme {
-                Scaffold { innerPadding ->
-                    PromptDialogs(app.promptModel)
-                    Presentment(
-                        presentmentModel = presentmentModel,
-                        promptModel = app.promptModel,
-                        documentTypeRepository = app.documentTypeRepository,
-                        source = app.getPresentmentSource(),
-                        onPresentmentComplete = { finish() },
-                        appName = platformAppName,
-                        appIconPainter = painterResource(platformAppIcon),
-                        modifier = Modifier.consumeWindowInsets(innerPadding),
-                    )
-                }
+                PromptDialogs(app.promptModel)
+                Presentment(
+                    presentmentModel = presentmentModel,
+                    promptModel = app.promptModel,
+                    documentTypeRepository = app.documentTypeRepository,
+                    source = app.getPresentmentSource(),
+                    onPresentmentComplete = { finish() },
+                    appName = platformAppName,
+                    appIconPainter = painterResource(platformAppIcon),
+                    modifier = Modifier,
+                    onlyShowConsentPrompt = true,
+                    showCancelAsBack = true
+                )
             }
         }
     }

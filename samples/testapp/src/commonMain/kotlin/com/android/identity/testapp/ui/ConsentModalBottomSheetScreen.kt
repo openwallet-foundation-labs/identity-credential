@@ -9,8 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborMap
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509Cert
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -24,8 +24,49 @@ import multipazproject.samples.testapp.generated.resources.Res
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.jetbrains.compose.resources.painterResource
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.compose.consent.ConsentModalBottomSheet
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.request.MdocRequest
+import org.multipaz.testapp.platformAppIcon
+import org.multipaz.testapp.platformAppName
+
+private val READER_CERT_CHAIN = X509CertChain(listOf(
+    X509Cert.fromPem(
+        """
+            -----BEGIN CERTIFICATE-----
+            MIIB4jCCAWigAwIBAgIBATAKBggqhkjOPQQDAzAiMSAwHgYDVQQDDBdNdWx0aXBheiBURVNUIFJl
+            YWRlciBDQTAeFw0yNTA2MjAwMzEzMTFaFw0yNTA2MjAwMzMzMTFaMD0xOzA5BgNVBAMMMk9XRiBN
+            dWx0aXBheiBPbmxpbmUgVmVyaWZpZXIgU2luZ2xlLVVzZSBSZWFkZXIgS2V5MFkwEwYHKoZIzj0C
+            AQYIKoZIzj0DAQcDQgAEpGa4s0rKJPLytpIExbic+QlVIMf6g1oyj5lFjX5Wtb9SaGble2GwuJr0
+            rSbiy05qkv8UnviR7ziNvICWYBFy66N0MHIwHwYDVR0jBBgwFoAUlra41GmSXseiGQitI5x3d3ZZ
+            TFkwDgYDVR0PAQH/BAQDAgeAMCAGA1UdEQQZMBeCFXZlcmlmaWVyLm11bHRpcGF6Lm9yZzAdBgNV
+            HQ4EFgQUv92KXBPLy63mwj8Br8CrcEy8Z/4wCgYIKoZIzj0EAwMDaAAwZQIxAM6qJlyxgr2v7UDd
+            EGz9mpO+5HGl4JDVb1d7hE5ugTTA5oZsuo1zqQrzbaTnrPFvrgIwK/JHcFhJulEjmayD38IoNqBk
+            j6KNUIdq/fkbpAc2+HxFPNqcZYQ4C8ldhP9rAosM
+            -----END CERTIFICATE-----
+        """.trimIndent().trim()
+    ),
+    X509Cert.fromPem(
+        """
+            -----BEGIN CERTIFICATE-----
+            MIICPjCCAcWgAwIBAgIQtWTIXXBQcLMeTdCCAgpzADAKBggqhkjOPQQDAzAiMSAwHgYDVQQDDBdN
+            dWx0aXBheiBURVNUIFJlYWRlciBDQTAeFw0yNTA2MTkyMjI0MThaFw0zMDA2MTkyMjI0MThaMCIx
+            IDAeBgNVBAMMF011bHRpcGF6IFRFU1QgUmVhZGVyIENBMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE
+            w+bw6aoV0KZHllylRYD8YaguuspCPgzdnBu/oAiykfMNw7VhPBQkn4kzCACCcqf6c5KCrJqSkVB7
+            ihOz+NV5wzrQ0VxHFWKS5N6whTKyQiOL02EEmzl8Zd0fOOx6x2t4o4G/MIG8MA4GA1UdDwEB/wQE
+            AwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMFYGA1UdHwRPME0wS6BJoEeGRWh0dHBzOi8vZ2l0aHVi
+            LmNvbS9vcGVud2FsbGV0LWZvdW5kYXRpb24tbGFicy9pZGVudGl0eS1jcmVkZW50aWFsL2NybDAd
+            BgNVHQ4EFgQUlra41GmSXseiGQitI5x3d3ZZTFkwHwYDVR0jBBgwFoAUlra41GmSXseiGQitI5x3
+            d3ZZTFkwCgYIKoZIzj0EAwMDZwAwZAIwSJLRt+J8CR9443Yhs8k0AMNuITjwOoLA4hpkZ3iwLQZ/
+            Ettcd8aHm4l4SXO6ckEMAjB7EPfq66xBrJly02fDpAAxIlX3dCVCesuYmzLf9YdhdaQHJNftGHAE
+            79htTIjxB8c=
+            -----END CERTIFICATE-----
+        """.trimIndent().trim()
+    )
+    )
+)
 
 private const val IACA_CERT_PEM =
     """
@@ -76,11 +117,26 @@ fun ConsentModalBottomSheetScreen(
     }
 
     val (requester, trustPoint) = when (verifierType) {
-        VerifierType.KNOWN_VERIFIER -> {
+        VerifierType.KNOWN_VERIFIER_WITH_POLICY_PROXIMITY -> {
             Pair(
-                Requester(),
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                ),
                 TrustPoint(
-                    certificate = X509Cert.fromPem(IACA_CERT_PEM),
+                    certificate = READER_CERT_CHAIN.certificates.last(),
+                    displayName = "Utopia Brewery",
+                    displayIcon = relyingPartyDisplayIcon,
+                    privacyPolicyUrl = "https://apps.multipaz.org"
+                )
+            )
+        }
+        VerifierType.KNOWN_VERIFIER_PROXIMITY -> {
+            Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                ),
+                TrustPoint(
+                    certificate = READER_CERT_CHAIN.certificates.last(),
                     displayName = "Utopia Brewery",
                     displayIcon = relyingPartyDisplayIcon
                 )
@@ -88,15 +144,108 @@ fun ConsentModalBottomSheetScreen(
         }
         VerifierType.UNKNOWN_VERIFIER_PROXIMITY ->  {
             Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                ),
+                null
+            )
+        }
+        VerifierType.ANONYMOUS_VERIFIER_PROXIMITY ->  {
+            Pair(
                 Requester(),
                 null
+            )
+        }
+
+        VerifierType.KNOWN_VERIFIER_WITH_POLICY_WEBSITE -> {
+            Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                    appId = "com.android.chrome",
+                    websiteOrigin = "https://www.example.com",
+                ),
+                TrustPoint(
+                    certificate = READER_CERT_CHAIN.certificates.last(),
+                    displayName = "Utopia Brewery",
+                    displayIcon = relyingPartyDisplayIcon,
+                    privacyPolicyUrl = "https://apps.multipaz.org"
+                )
+            )
+        }
+        VerifierType.KNOWN_VERIFIER_WEBSITE -> {
+            Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                    appId = "com.android.chrome",
+                    websiteOrigin = "https://www.example.com"
+                ),
+                TrustPoint(
+                    certificate = READER_CERT_CHAIN.certificates.last(),
+                    displayName = "Utopia Brewery",
+                    displayIcon = relyingPartyDisplayIcon
+                )
             )
         }
         VerifierType.UNKNOWN_VERIFIER_WEBSITE ->  {
             Pair(
                 Requester(
-                    appId = "com.example.browserApp",
+                    certChain = READER_CERT_CHAIN,
+                    appId = "com.android.chrome",
                     websiteOrigin = "https://www.example.com"
+                ),
+                null
+            )
+        }
+        VerifierType.ANONYMOUS_VERIFIER_WEBSITE ->  {
+            Pair(
+                Requester(
+                    appId = "com.android.chrome",
+                    websiteOrigin = "https://www.example.com"
+                ),
+                null
+            )
+        }
+
+        VerifierType.KNOWN_VERIFIER_WITH_POLICY_APP -> {
+            Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                    appId = "com.google.android.apps.messaging",
+                ),
+                TrustPoint(
+                    certificate = READER_CERT_CHAIN.certificates.last(),
+                    displayName = "Utopia Brewery",
+                    displayIcon = relyingPartyDisplayIcon,
+                    privacyPolicyUrl = "https://apps.multipaz.org"
+                )
+            )
+        }
+        VerifierType.KNOWN_VERIFIER_APP -> {
+            Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                    appId = "com.google.android.apps.messaging",
+                ),
+                TrustPoint(
+                    certificate = READER_CERT_CHAIN.certificates.last(),
+                    displayName = "Utopia Brewery",
+                    displayIcon = relyingPartyDisplayIcon
+                )
+            )
+        }
+        VerifierType.UNKNOWN_VERIFIER_APP ->  {
+            Pair(
+                Requester(
+                    certChain = READER_CERT_CHAIN,
+                    appId = "com.google.android.apps.messaging",
+                ),
+                null
+            )
+        }
+        VerifierType.ANONYMOUS_VERIFIER_APP ->  {
+            Pair(
+                Requester(
+                    appId = "com.google.android.apps.messaging",
                 ),
                 null
             )
@@ -128,11 +277,16 @@ fun ConsentModalBottomSheetScreen(
 
         val docTypeRepo = DocumentTypeRepository()
         docTypeRepo.addDocumentType(DrivingLicense.getDocumentType())
-        deviceRequest.docRequests[0].toMdocRequest(
+        val mdocRequest = deviceRequest.docRequests[0].toMdocRequest(
             documentTypeRepository = docTypeRepo,
             mdocCredential = null,
             requesterAppId = requester.appId,
             requesterWebsiteOrigin = requester.websiteOrigin,
+        )
+        MdocRequest(
+            requester = requester,
+            requestedClaims = mdocRequest.requestedClaims,
+            docType = mdocRequest.docType
         )
     }
 
@@ -145,6 +299,8 @@ fun ConsentModalBottomSheetScreen(
             documentDescription = "Driving License",
             documentCardArt = cardArtImage,
             trustPoint = trustPoint,
+            appName = platformAppName,
+            appIconPainter = painterResource(platformAppIcon),
             onConfirm = {
                 scope.launch {
                     sheetState.hide()
@@ -157,7 +313,7 @@ fun ConsentModalBottomSheetScreen(
                     showToast("The sheet was dismissed")
                     onSheetDismissed()
                 }
-            }
+            },
         )
     }
 }

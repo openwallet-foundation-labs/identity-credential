@@ -38,6 +38,9 @@
     <!-- For posting notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- For displaying name/icon of application requesting credential -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
     <application
         tools:targetApi="31"
         android:allowBackup="true"
@@ -88,7 +91,7 @@
             android:name=".CredmanPresentmentActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
+            android:theme="@android:style/Theme.Translucent"
             android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="androidx.credentials.registry.provider.action.GET_CREDENTIAL" />

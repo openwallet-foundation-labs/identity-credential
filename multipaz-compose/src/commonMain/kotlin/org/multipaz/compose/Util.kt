@@ -4,6 +4,22 @@ import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.camera.CameraFrame
 
+data class ApplicationInfo(
+    val name: String,
+    val icon: ImageBitmap
+)
+
+/**
+ * Gets information about an application.
+ *
+ * This may throw if the application does not have permission to obtain this information or the application
+ * isn't installed.
+ *
+ * @param appId the application identifier.
+ * @return an `ApplicationInfo` instance
+ */
+expect fun getApplicationInfo(appId: String): ApplicationInfo
+
 /**
  * Decodes a bitmap image.
  *

@@ -15,9 +15,21 @@ import org.multipaz.documenttype.knowntypes.DrivingLicense
 enum class VerifierType(
     val description: String
 ) {
-    KNOWN_VERIFIER("Known Verifier"),
+
+    KNOWN_VERIFIER_WITH_POLICY_PROXIMITY("Known Verifier with policy (Proximity)"),
+    KNOWN_VERIFIER_PROXIMITY("Known Verifier (Proximity)"),
     UNKNOWN_VERIFIER_PROXIMITY("Unknown Verifier (Proximity)"),
+    ANONYMOUS_VERIFIER_PROXIMITY("Anonymous Verifier (Proximity)"),
+
+    KNOWN_VERIFIER_WITH_POLICY_WEBSITE("Known Verifier with policy (Website)"),
+    KNOWN_VERIFIER_WEBSITE("Known Verifier (Website)"),
     UNKNOWN_VERIFIER_WEBSITE("Unknown Verifier (Website)"),
+    ANONYMOUS_VERIFIER_WEBSITE("Anonymous Verifier (Website)"),
+
+    KNOWN_VERIFIER_WITH_POLICY_APP("Known Verifier with policy (App)"),
+    KNOWN_VERIFIER_APP("Known Verifier (App)"),
+    UNKNOWN_VERIFIER_APP("Unknown Verifier (App)"),
+    ANONYMOUS_VERIFIER_APP("Anonymous Verifier (App)"),
 }
 
 @Composable

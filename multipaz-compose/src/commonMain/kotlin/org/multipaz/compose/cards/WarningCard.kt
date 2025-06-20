@@ -31,7 +31,6 @@ fun WarningCard(
 ) {
     Column(
         modifier = modifier
-            .padding(8.dp)
             .fillMaxWidth()
             .clip(shape = RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.errorContainer),
