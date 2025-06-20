@@ -2,6 +2,8 @@ package org.multipaz.util
 
 import android.os.Build
 import org.multipaz.context.applicationContext
+import org.multipaz.prompt.AndroidPromptModel
+import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.AndroidKeystoreSecureArea
 import org.multipaz.securearea.SecureArea
 import org.multipaz.storage.Storage
@@ -10,6 +12,9 @@ import java.io.File
 
 actual object Platform {
     actual val name = "Android ${Build.VERSION.SDK_INT}"
+
+    actual val promptModel: PromptModel
+        get() = AndroidPromptModel()
 
     actual suspend fun getStorage(): Storage {
         return AndroidStorage(

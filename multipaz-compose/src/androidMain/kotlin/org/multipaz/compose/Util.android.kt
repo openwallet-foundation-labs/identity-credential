@@ -3,14 +3,27 @@ package org.multipaz.compose
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.drawable.toBitmapOrNull
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.camera.CameraFrame
+import org.multipaz.context.applicationContext
 import java.io.ByteArrayOutputStream
+
+actual fun getApplicationInfo(appId: String): ApplicationInfo {
+    val ai = applicationContext.packageManager.getApplicationInfo(appId, 0)
+    val icon = applicationContext.packageManager.getApplicationIcon(ai)
+    return ApplicationInfo(
+        name = applicationContext.packageManager.getApplicationLabel(ai).toString(),
+        icon = icon.toBitmap().asImageBitmap()
+    )
+}
 
 actual fun decodeImage(encodedData: ByteArray): ImageBitmap {
     return BitmapFactory.decodeByteArray(encodedData, 0, encodedData.size).asImageBitmap()
@@ -40,7 +53,7 @@ actual fun cropRotateScaleImage(
     val androidBitmap = frameData.cameraImage.imageProxy.toBitmap()
     val finalScale = targetWidth.toFloat() / outputWidth.toFloat()
     val finalOutputHeight = (outputHeight * finalScale).toInt()
-    val matrix = android.graphics.Matrix() // Use Android's Matrix
+    val matrix = Matrix() // Use Android's Matrix
 
     matrix.postTranslate(-cx.toFloat(), -cy.toFloat())
     matrix.postRotate(angleDegrees.toFloat())

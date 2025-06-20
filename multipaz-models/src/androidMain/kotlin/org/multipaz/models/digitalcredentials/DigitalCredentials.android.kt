@@ -155,27 +155,30 @@ private suspend fun exportMdocCredential(
     val credentialType = documentTypeRepository.getDocumentTypeForMdoc(credential.docType)
 
     val documentMetadata = document.metadata
-    val cardArt = documentMetadata.cardArt!!.toByteArray()
-    val displayName = documentMetadata.displayName!!
+    val cardArt = documentMetadata.cardArt?.toByteArray()
+    val displayName = documentMetadata.displayName ?: "Unnamed Credential"
 
-    val options = BitmapFactory.Options()
-    options.inMutable = true
-    val credBitmap = BitmapFactory.decodeByteArray(
-        cardArt,
-        0,
-        cardArt.size,
-        options
-    )
-    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 48, 48, true)
-    val stream = ByteArrayOutputStream()
-    scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
-    val cardArtResized = stream.toByteArray()
-    Logger.i(TAG, "Resized cardart to 48x48, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+    val cardArtResized = cardArt?.let {
+        val options = BitmapFactory.Options()
+        options.inMutable = true
+        val credBitmap = BitmapFactory.decodeByteArray(
+            cardArt,
+            0,
+            cardArt.size,
+            options
+        )
+        val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 48, 48, true)
+        val stream = ByteArrayOutputStream()
+        scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        val cardArtResized = stream.toByteArray()
+        Logger.i(TAG, "Resized cardart to 48x48, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+        cardArtResized
+    }
 
     return buildCborMap {
         put("title", displayName)
         put("subtitle", appName)
-        put("bitmap", cardArtResized)
+        put("bitmap", cardArtResized ?: byteArrayOf())
         putCborMap("mdoc") {
             put("id", document.identifier)
             put("docType", credential.docType)

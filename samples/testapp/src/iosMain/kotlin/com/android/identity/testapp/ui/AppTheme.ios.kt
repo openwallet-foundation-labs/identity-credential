@@ -1,4 +1,4 @@
-package com.android.identity.testapp.ui
+package org.multipaz.testapp.ui
 
 import androidx.compose.runtime.Composable
 

@@ -5,16 +5,26 @@
 
     <!-- ConsentModalBottomSheet -->
     <string name="consent_modal_bottom_sheet_button_cancel">Cancel</string>
+    <string name="consent_modal_bottom_sheet_button_back">Back</string>
     <string name="consent_modal_bottom_sheet_button_more">More</string>
     <string name="consent_modal_bottom_sheet_button_share">Share</string>
-    <string name="consent_modal_bottom_sheet_headline_share_with_known_requester">%1$s requests info from this document</string>
-    <string name="consent_modal_bottom_sheet_headline_share_with_unknown_requester">An unknown requester requests info from this document</string>
-    <string name="consent_modal_bottom_sheet_share_with_known_requester">According to %1$s, this info will be shared:</string>
-    <string name="consent_modal_bottom_sheet_share_with_unknown_requester">According to the requester, this info will be shared:</string>
-    <string name="consent_modal_bottom_sheet_share_and_stored_by_known_requester">According to %1$s, this info will be shared and stored:</string>
-    <string name="consent_modal_bottom_sheet_share_and_stored_by_unknown_requester">According to the requester, this info will be shared and stored:</string>
-    <string name="consent_modal_bottom_sheet_wallet_privacy_policy">The OWF Identity Credential Website describes how your data is being handled</string>
-    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list">The verifier requesting this data is not in a trust list. Make sure you are comfortable sharing this data with them.</string>
+    <string name="consent_modal_bottom_sheet_headline_share_with_known_requester">%1$s requests information</string>
+    <string name="consent_modal_bottom_sheet_headline_share_with_unknown_requester">An unknown requester requests information</string>
+    <string name="consent_modal_bottom_sheet_headline_share_with_anonymous_requester">An unknown requester requests information</string>
+    <string name="consent_modal_bottom_sheet_share_with_known_requester">This data will be shared with %1$s:</string>
+    <string name="consent_modal_bottom_sheet_share_with_unknown_requester">This data will be shared:</string>
+    <string name="consent_modal_bottom_sheet_share_and_stored_by_known_requester">This data will be shared with and stored by %1$s:</string>
+    <string name="consent_modal_bottom_sheet_share_and_stored_by_unknown_requester">This data will be shared with and stored:</string>
+    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list">The identity reader requesting this data is unknown so make sure you are comfortable sharing this data with them.</string>
+    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_anonymous">The identity reader requesting this data does not identify itself so make sure you are comfortable sharing this data with them.</string>
+    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_website">The website requesting this data is unknown so make sure you are comfortable sharing this data with them.</string>
+    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_app">The application requesting this data is unknown so make sure you are comfortable sharing this data with them.</string>
+    <string name="consent_modal_bottom_sheet_info_verifier_in_trust_list">The identity reader requesting this data has been identified and is trusted.</string>
+    <string name="consent_modal_bottom_sheet_info_verifier_in_trust_list_website">The website requesting this data has been identified and is trusted.</string>
+    <string name="consent_modal_bottom_sheet_info_verifier_in_trust_list_app">The application requesting this data has been identified and is trusted.</string>
+
+    <string name="consent_modal_bottom_sheet_privacy_policy">Review the [%1$s privacy policy](%2$s) to see how your data is being handled.</string>
+
     <string name="consent_modal_bottom_sheet_card_art_description">Card Art</string>
     <string name="consent_modal_bottom_sheet_verifier_icon_description">Verifier Icon</string>
     <string name="consent_modal_bottom_sheet_data_element_icon_description">Data Element Icon</string>

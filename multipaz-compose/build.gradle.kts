@@ -96,6 +96,9 @@ kotlin {
                 implementation(libs.androidx.camera.view)
                 implementation(libs.androidx.lifecycle.extensions)
                 implementation(libs.zxing.core)
+                implementation(libs.play.services.identity.credentials)
+                implementation(libs.androidx.credentials)
+                implementation(libs.androidx.credentials.registry.provider)
             }
         }
     }

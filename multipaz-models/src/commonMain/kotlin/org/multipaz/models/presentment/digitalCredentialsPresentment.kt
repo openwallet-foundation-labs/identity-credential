@@ -225,6 +225,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
         docType = docType
     )
     if (!showConsentPrompt(mdocCredential.document, request, null)) {
+        presentmentModel.setCompleted(error = PresentmentCanceled("The user did not consent"))
         return
     }
 
@@ -287,6 +288,9 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         check(info.x5c != null) { "x5c missing in JWS" }
         JsonWebSignature.verify(jws.jsonPrimitive.content, info.x5c!!.certificates.first().ecPublicKey)
         requesterCertChain = info.x5c
+        for (cert in requesterCertChain!!.certificates) {
+            println("cert: ${cert.toPem()}")
+        }
         info.claimsSet
     } else {
         preReq
@@ -581,6 +585,7 @@ private suspend fun openID4VPMsoMdoc(
     )
     val trustPoint = source.findTrustPoint(request)
     if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+        presentmentModel.setCompleted(error = PresentmentCanceled("The user did not consent"))
         return null
     }
 
@@ -659,6 +664,7 @@ private suspend fun openID4VPSdJwt(
     // Consent prompt..
     val trustPoint = source.findTrustPoint(request)
     if (!showConsentPrompt((sdjwtVcCredential as Credential).document, request, trustPoint)) {
+        presentmentModel.setCompleted(error = PresentmentCanceled("The user did not consent"))
         return null
     }
 
@@ -749,6 +755,7 @@ private suspend fun digitalCredentialsArfProtocol(
     )
     val trustPoint = source.findTrustPoint(request)
     if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+        presentmentModel.setCompleted(error = PresentmentCanceled("The user did not consent"))
         return
     }
 
@@ -856,6 +863,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
     )
     val trustPoint = source.findTrustPoint(request)
     if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+        presentmentModel.setCompleted(error = PresentmentCanceled("The user did not consent"))
         return
     }
 

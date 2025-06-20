@@ -79,26 +79,31 @@ private const val TAG = "Presentment"
  * verifier using [PresentmentMechanism] and [PresentmentModel] and gets application-specific data sources and
  * policy using [PresentmentSource].
  *
- * @param presentmentModel the [PresentmentModel] to use.
- * @param documentTypeRepository a [DocumentTypeRepository] used to find metadata about documents being requested.
- * @param source an object for application to provide data and policy.
- * @param onPresentmentComplete called when the presentment is complete.
+ * @param modifier a [Modifier].
  * @param appName the name of the application.
  * @param appIconPainter the icon for the application.
- * @param modifier a [Modifier].
+ * @param presentmentModel the [PresentmentModel] to use which must have a [PromptModel] associated with it.
+ * @param presentmentSource an object for application to provide data and policy.
+ * @param documentTypeRepository a [DocumentTypeRepository] used to find metadata about documents being requested.
+ * @param onPresentmentComplete called when the presentment is complete.
+ * @param onlyShowConsentPrompt if `true` only the consent prompt will be shown, never any other graphics. This is
+ *   useful if using a translucent activity.
+ * @param showCancelAsBack if `true` the cancel button will say "Back" instead of "Cancel".
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalCoroutinesApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun Presentment(
-    presentmentModel: PresentmentModel,
-    promptModel: PromptModel,
-    documentTypeRepository: DocumentTypeRepository,
-    source: PresentmentSource,
-    onPresentmentComplete: () -> Unit,
+    modifier: Modifier = Modifier,
     appName: String,
     appIconPainter: Painter,
-    modifier: Modifier = Modifier
+    presentmentModel: PresentmentModel,
+    presentmentSource: PresentmentSource,
+    documentTypeRepository: DocumentTypeRepository,
+    onPresentmentComplete: () -> Unit,
+    onlyShowConsentPrompt: Boolean = false,
+    showCancelAsBack: Boolean = false,
 ) {
+    val promptModel = remember { PromptModel.get(presentmentModel.presentmentScope.coroutineContext) }
     val coroutineScope = rememberCoroutineScope { promptModel }
 
     // Make sure we clean up the PresentmentModel when we're done. This is to ensure
@@ -116,134 +121,140 @@ fun Presentment(
         PresentmentModel.State.IDLE -> {}
         PresentmentModel.State.CONNECTING -> {}
         PresentmentModel.State.WAITING_FOR_SOURCE -> {
-            presentmentModel.setSource(source)
+            presentmentModel.setSource(presentmentSource)
         }
         PresentmentModel.State.PROCESSING -> {}
         PresentmentModel.State.WAITING_FOR_DOCUMENT_SELECTION -> {
             DocumentPickerDialog(coroutineScope, presentmentModel)
         }
         PresentmentModel.State.WAITING_FOR_CONSENT -> {
-            ConsentPrompt(coroutineScope, presentmentModel)
+            ConsentPrompt(coroutineScope, presentmentModel, appName, appIconPainter, showCancelAsBack)
         }
         PresentmentModel.State.COMPLETED -> {
-            // Delay for a short amount of time so the user has a chance to see the success/error indication
-            coroutineScope.launch {
-                delay(1.5.seconds)
+            if (onlyShowConsentPrompt) {
                 onPresentmentComplete()
+            } else {
+                // Delay for a short amount of time so the user has a chance to see the success/error indication
+                coroutineScope.launch {
+                    delay(1.5.seconds)
+                    onPresentmentComplete()
+                }
             }
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Spacer(modifier = Modifier.weight(0.15f))
+    if (!onlyShowConsentPrompt) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center
         ) {
-            val (appNameText, iconPainter, iconCaptionText) = when (state) {
-                PresentmentModel.State.IDLE,
-                PresentmentModel.State.CONNECTING -> {
-                    Triple(
-                        appName, appIconPainter,
-                        stringResource(Res.string.presentment_connecting_to_reader)
-                    )
-                }
-
-                PresentmentModel.State.WAITING_FOR_SOURCE,
-                PresentmentModel.State.WAITING_FOR_DOCUMENT_SELECTION,
-                PresentmentModel.State.WAITING_FOR_CONSENT,
-                PresentmentModel.State.PROCESSING -> {
-                    Triple(
-                        appName, appIconPainter,
-                        if (presentmentModel.numRequestsServed.collectAsState().value == 0) {
-                            ""
-                        } else {
-                            stringResource(Res.string.presentment_waiting_for_request)
-                        }
-                    )
-                }
-
-                PresentmentModel.State.COMPLETED -> {
-                    if (presentmentModel.error == null) {
+            Spacer(modifier = Modifier.weight(0.15f))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val (appNameText, iconPainter, iconCaptionText) = when (state) {
+                    PresentmentModel.State.IDLE,
+                    PresentmentModel.State.CONNECTING -> {
                         Triple(
-                            "", painterResource(Res.drawable.presentment_icon_success),
-                            stringResource(Res.string.presentment_success)
+                            appName, appIconPainter,
+                            stringResource(Res.string.presentment_connecting_to_reader)
                         )
-                    } else {
-                        if (presentmentModel.error is PresentmentCanceled) {
+                    }
+
+                    PresentmentModel.State.WAITING_FOR_SOURCE,
+                    PresentmentModel.State.WAITING_FOR_DOCUMENT_SELECTION,
+                    PresentmentModel.State.WAITING_FOR_CONSENT,
+                    PresentmentModel.State.PROCESSING -> {
+                        Triple(
+                            appName, appIconPainter,
+                            if (presentmentModel.numRequestsServed.collectAsState().value == 0) {
+                                ""
+                            } else {
+                                stringResource(Res.string.presentment_waiting_for_request)
+                            }
+                        )
+                    }
+
+                    PresentmentModel.State.COMPLETED -> {
+                        if (presentmentModel.error == null) {
                             Triple(
-                                appName, appIconPainter,
-                                stringResource(Res.string.presentment_canceled)
+                                "", painterResource(Res.drawable.presentment_icon_success),
+                                stringResource(Res.string.presentment_success)
                             )
-                        } else if (presentmentModel.error is PresentmentTimeout) {
+                        } else {
+                            if (presentmentModel.error is PresentmentCanceled) {
+                                Triple(
+                                    appName, appIconPainter,
+                                    stringResource(Res.string.presentment_canceled)
+                                )
+                            } else if (presentmentModel.error is PresentmentTimeout) {
                                 Triple(
                                     "", painterResource(Res.drawable.presentment_icon_error),
                                     stringResource(Res.string.presentment_timeout)
                                 )
-                        } else {
-                            Triple(
-                                "", painterResource(Res.drawable.presentment_icon_error),
-                                stringResource(Res.string.presentment_error)
-                            )
+                            } else {
+                                Triple(
+                                    "", painterResource(Res.drawable.presentment_icon_error),
+                                    stringResource(Res.string.presentment_error)
+                                )
+                            }
                         }
                     }
                 }
+                Text(
+                    text = appNameText,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Image(
+                    modifier = Modifier.size(200.dp).fillMaxSize().padding(10.dp),
+                    painter = iconPainter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                )
+                Text(
+                    text = iconCaptionText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Normal
+                )
             }
-            Text(
-                text = appNameText,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Image(
-                modifier = Modifier.size(200.dp).fillMaxSize().padding(10.dp),
-                painter = iconPainter,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-            )
-            Text(
-                text = iconCaptionText,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Normal
-            )
+            Spacer(modifier = Modifier.weight(1.0f))
         }
-        Spacer(modifier = Modifier.weight(1.0f))
-    }
 
-    // We show a X in the top-right to resemble a close button, under two circumstances
-    //
-    // - when connecting the the remote reader, because the underlying connection via NFC / BLE
-    //   could hang and/or take a long time. This gives the user an opportunity to stop the
-    //   transaction. Only applicable for for proximity.
-    //
-    // - in the case where the connection is kept alive and we're waiting for a second request from
-    //   the reader. This also only applies to proximity and in this case we have a bit of
-    //   hidden developer functionality insofar that if long-pressing we'll use session-specific
-    //   termination (according to 18013-5) and if double-clicking we'll close the connection without
-    //   sending a termination message at all. This is useful for testing and at interoperability events
-    //   and since it's hidden it doesn't materially affect a production app.
-    //
-    if (presentmentModel.dismissable.collectAsState().value && state != PresentmentModel.State.COMPLETED) {
-        // TODO: for phones with display cutouts in the top-right (for example Pixel 9 Pro Fold when unfolded)
-        //   the Close icon may be obscured. Examine the displayCutouts path and move the icon so it doesn't
-        //   overlap.
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = null,
-                modifier = Modifier
-                    .align(Alignment.TopEnd).padding(20.dp)
-                    .combinedClickable(
-                        onClick = { presentmentModel.dismiss(PresentmentModel.DismissType.CLICK) },
-                        onLongClick = { presentmentModel.dismiss(PresentmentModel.DismissType.LONG_CLICK) },
-                        onDoubleClick = { presentmentModel.dismiss(PresentmentModel.DismissType.DOUBLE_CLICK) },
-                    ),
-            )
+        // We show a X in the top-right to resemble a close button, under two circumstances
+        //
+        // - when connecting the the remote reader, because the underlying connection via NFC / BLE
+        //   could hang and/or take a long time. This gives the user an opportunity to stop the
+        //   transaction. Only applicable for for proximity.
+        //
+        // - in the case where the connection is kept alive and we're waiting for a second request from
+        //   the reader. This also only applies to proximity and in this case we have a bit of
+        //   hidden developer functionality insofar that if long-pressing we'll use session-specific
+        //   termination (according to 18013-5) and if double-clicking we'll close the connection without
+        //   sending a termination message at all. This is useful for testing and at interoperability events
+        //   and since it's hidden it doesn't materially affect a production app.
+        //
+        if (presentmentModel.dismissable.collectAsState().value && state != PresentmentModel.State.COMPLETED) {
+            // TODO: for phones with display cutouts in the top-right (for example Pixel 9 Pro Fold when unfolded)
+            //   the Close icon may be obscured. Examine the displayCutouts path and move the icon so it doesn't
+            //   overlap.
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd).padding(20.dp)
+                        .combinedClickable(
+                            onClick = { presentmentModel.dismiss(PresentmentModel.DismissType.CLICK) },
+                            onLongClick = { presentmentModel.dismiss(PresentmentModel.DismissType.LONG_CLICK) },
+                            onDoubleClick = { presentmentModel.dismiss(PresentmentModel.DismissType.DOUBLE_CLICK) },
+                        ),
+                )
+            }
         }
     }
 }
@@ -252,7 +263,10 @@ fun Presentment(
 @Composable
 private fun ConsentPrompt(
     coroutineScope: CoroutineScope,
-    presentmentModel: PresentmentModel
+    presentmentModel: PresentmentModel,
+    appName: String?,
+    appIconPainter: Painter?,
+    showCancelAsBack: Boolean
 ) {
     val documentMetadata = presentmentModel.consentData.document.metadata
     val cardArt = documentMetadata.cardArt?.let { remember { it.toByteArray().decodeToImageBitmap() } }
@@ -261,6 +275,7 @@ private fun ConsentPrompt(
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
+
     ConsentModalBottomSheet(
         sheetState = sheetState,
         request = presentmentModel.consentData.request,
@@ -268,6 +283,8 @@ private fun ConsentPrompt(
         documentDescription = documentMetadata.typeDisplayName!!,
         documentCardArt = cardArt,
         trustPoint = presentmentModel.consentData.trustPoint,
+        appName = appName,
+        appIconPainter = appIconPainter,
         onConfirm = {
             coroutineScope.launch {
                 sheetState.hide()
@@ -275,11 +292,13 @@ private fun ConsentPrompt(
             presentmentModel.consentReviewed(true)
         },
         onCancel = {
+            println("foo")
             coroutineScope.launch {
                 sheetState.hide()
             }
             presentmentModel.consentReviewed(false)
-        }
+        },
+        showCancelAsBack = showCancelAsBack
     )
 }
 

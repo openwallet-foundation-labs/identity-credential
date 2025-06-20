@@ -1,4 +1,4 @@
-package com.android.identity.testapp.provisioning.model
+package org.multipaz.testapp.provisioning.model
 
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.securearea.CreateKeySettings

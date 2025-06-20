@@ -39,6 +39,7 @@ import multipazproject.samples.testapp.generated.resources.app_icon
 import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.decodeImage
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.IosPromptModel
 import org.multipaz.prompt.PromptModel
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -58,6 +59,10 @@ import platform.posix.sockaddr_in6
 actual val platformAppName = "Multipaz Test App"
 
 actual val platformAppIcon = Res.drawable.app_icon
+
+actual val platformPromptModel: PromptModel by lazy {
+    IosPromptModel()
+}
 
 actual val platform = Platform.IOS
 
