@@ -156,6 +156,8 @@ class DeviceEngagementFragment : Fragment() {
                 adapter,
                 requireActivity()
             )
+        } else {
+            Toast.makeText(activity, "NFC adapter is not available", Toast.LENGTH_LONG).show()
         }
     }
 
