@@ -150,10 +150,15 @@ class DeviceEngagementFragment : Fragment() {
         } else {
             shouldRequestPermission()
         }
-        transferManager.setNdefDeviceEngagement(
-            NfcAdapter.getDefaultAdapter(requireContext()),
-            requireActivity()
-        )
+        val adapter = NfcAdapter.getDefaultAdapter(requireContext())
+        if (adapter != null) {
+            transferManager.setNdefDeviceEngagement(
+                adapter,
+                requireActivity()
+            )
+        } else {
+            Toast.makeText(activity, "NFC adapter is not available", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun disableReader() {
