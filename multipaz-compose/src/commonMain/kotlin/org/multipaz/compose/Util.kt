@@ -13,7 +13,7 @@ import org.multipaz.compose.camera.CameraFrame
 expect fun decodeImage(encodedData: ByteArray): ImageBitmap
 
 /**
- * Encodes a bitmap to PNG
+ * Encodes a bitmap to PNG.
  *
  * @param image the image to encode.
  * @return a [ByteString] with the encoded data.
@@ -66,7 +66,7 @@ expect fun cropRotateScaleImage(
     cx: Double,
     cy: Double,
     angleDegrees: Double,
-    outputWidth: Int,
-    outputHeight: Int,
-    targetWidth: Int // You might want to make targetWidth/Height nullable or handle aspect ratio
+    outputWidthPx: Int,
+    outputHeightPx: Int,
+    targetWidthPx: Int
 ): ImageBitmap

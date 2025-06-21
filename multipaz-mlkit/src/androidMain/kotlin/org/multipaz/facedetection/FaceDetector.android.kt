@@ -39,9 +39,10 @@ actual fun detectFaces(image: ImageBitmap): List<DetectedFace>? {
 
 private val faceDetectorOptions = FaceDetectorOptions.Builder()
     .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+    .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
     .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
     .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
+    .setMinFaceSize(0.20f)
     .build()
 
 private fun detectFaces(inputImage: InputImage, rotation: Int): List<DetectedFace>? =

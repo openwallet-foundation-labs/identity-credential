@@ -13,6 +13,7 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.camera.view.TransformExperimental
+import androidx.compose.foundation.layout.add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +32,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.multipaz.util.Logger
 import java.util.concurrent.Executors
+import kotlin.collections.isNotEmpty
+import kotlin.collections.toTypedArray
 
 private const val TAG = "Camera"
 
@@ -47,7 +50,7 @@ actual fun Camera(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val executor = remember { Executors.newSingleThreadExecutor() }
-    val previewView = remember { mutableStateOf<PreviewView?>(if (showCameraPreview) PreviewView(context) else null) }
+    var activePreviewView by remember { mutableStateOf<PreviewView?>(null) }
     var currentDisplayRotation by remember { mutableIntStateOf(Surface.ROTATION_0) }
 
     DisposableEffect(Unit) { // Keyed by Unit to run once and clean up with the composable
@@ -73,81 +76,113 @@ actual fun Camera(
         }
     }
 
-    DisposableEffect(cameraSelection) {
-        var preview: Preview? = null
-        if (showCameraPreview) {
-            preview = Preview.Builder().build()
-            // COMPATIBLE is needed b/c we're using `outputTransform.matrix`
-            previewView.value!!.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-            preview.setSurfaceProvider(previewView.value!!.surfaceProvider)
-        }
-
+    DisposableEffect(cameraSelection, showCameraPreview, activePreviewView, currentDisplayRotation) {
         val cameraProvider = cameraProviderFuture.get()
 
-        val resolutionStrategy = ResolutionStrategy(
-            captureResolution.getDimensions(),
-            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER
-        )
-        val resolutionSelector = ResolutionSelector.Builder()
-            .setResolutionStrategy(resolutionStrategy)
-            .build()
-
-        val imageAnalysis = ImageAnalysis.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-            .build()
-
-        imageAnalysis.setAnalyzer(executor) { imageProxy ->
-            runBlocking {
-                val transformationProxy = if (showCameraPreview) {
-                    withContext(Dispatchers.Main) {
-                        getCorrectionMatrix(imageProxy, previewView.value!!)
-                    }
-                } else {
-                    Matrix()
-                }
-                val frame = CameraFrame(
-                    cameraImage = CameraImage(imageProxy),
-                    width = imageProxy.width,
-                    height = imageProxy.height,
-                    rotation = calculateDetectorAngle(currentDisplayRotation, cameraSelection), 
-                    previewTransformation = transformationProxy
-                )
-                onFrameCaptured(frame)
-            }
-            imageProxy.close()
-        }
-
-        cameraProviderFuture.get().unbindAll()
-        if (showCameraPreview) {
-            cameraProviderFuture.get().bindToLifecycle(
-                lifecycleOwner,
-                cameraSelection.toAndroidCameraSelector(),
-                preview,
-                imageAnalysis
-            )
+        if (!cameraProviderFuture.isDone) {
+            onDispose { /** Not bound. */ }
         } else {
-            cameraProviderFuture.get().bindToLifecycle(
-                lifecycleOwner,
-                cameraSelection.toAndroidCameraSelector(),
-                imageAnalysis
-            )
-        }
-
-        onDispose {
             cameraProvider.unbindAll()
-            executor.shutdown()
+
+            val resolutionStrategy = ResolutionStrategy(
+                captureResolution.getDimensions(),
+                ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER
+            )
+            val resolutionSelector = ResolutionSelector.Builder()
+                .setResolutionStrategy(resolutionStrategy)
+                .build()
+
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setResolutionSelector(resolutionSelector)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                .setTargetRotation(currentDisplayRotation)
+                .build()
+
+            imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                runBlocking {
+                    val transformationProxy = if (showCameraPreview && activePreviewView != null) {
+                        withContext(Dispatchers.Main) {
+                            if (activePreviewView?.surfaceProvider != null && activePreviewView?.outputTransform != null) {
+                                getCorrectionMatrix(imageProxy, activePreviewView!!)
+                            } else {
+                                Matrix() // Fallback if preview is not ready.
+                            }
+                        }
+                    } else {
+                        Matrix()
+                    }
+                    val frame = CameraFrame(
+                        cameraImage = CameraImage(imageProxy),
+                        width = imageProxy.width,
+                        height = imageProxy.height,
+                        rotation = calculateDetectorAngle(currentDisplayRotation, cameraSelection),
+                        previewTransformation = transformationProxy
+                    )
+                    onFrameCaptured(frame)
+                }
+                imageProxy.close()
+            }
+
+            try {
+                if (showCameraPreview && activePreviewView != null) {
+                    val preview = Preview.Builder()
+                        .build()
+                        .also {
+                            activePreviewView!!.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                            it.setSurfaceProvider(activePreviewView!!.surfaceProvider)
+                        }
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelection.toAndroidCameraSelector(),
+                        preview,
+                        imageAnalysis
+                    )
+                } else {
+                    // Image Analysis only if preview is not shown.
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        cameraSelection.toAndroidCameraSelector(),
+                        imageAnalysis
+                    )
+                }
+            } catch (exc: Exception) {
+                Logger.e(TAG, "Use case binding failed", exc)
+            }
+
+            onDispose {
+                cameraProvider.unbindAll()
+            }
         }
     }
 
     if (showCameraPreview) {
         AndroidView(
             modifier = modifier,
-            factory = { context ->
-                previewView.value!!
+            factory = { ctx ->
+                PreviewView(ctx).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    activePreviewView = this
+                }
+            },
+            onRelease = {
+                activePreviewView = null
             }
         )
+    } else {
+        if (activePreviewView != null) {
+            // This ensures the DisposableEffect re-runs if the view was previously shown.
+            activePreviewView = null
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            Logger.d(TAG, "Shutting down camera executor.")
+            if (!executor.isShutdown) {
+                executor.shutdown()
+            }
+        }
     }
 }
 
@@ -177,7 +212,7 @@ private fun CameraSelection.toAndroidCameraSelector() =
     }
 
 @OptIn(TransformExperimental::class)
-private fun getCorrectionMatrix(imageProxy: ImageProxy, previewView: PreviewView) : Matrix {
+private fun getCorrectionMatrix(imageProxy: ImageProxy, previewView: PreviewView): Matrix {
 
     // This matrix maps (-1, -1) -> (1, 1) space to preview-coordinate system. This includes
     // any scaling, rotation, or cropping that's done in the preview.
@@ -188,8 +223,8 @@ private fun getCorrectionMatrix(imageProxy: ImageProxy, previewView: PreviewView
     // By the scale and translate below, we modify the matrix so it maps
     // (0, 0) -> (width, height) of the frame to analyze to the preview
     // coordinate system
-    composeMatrix.scale(2f/imageProxy.width, 2f/imageProxy.height, 1f)
-    composeMatrix.translate(-0.5f*imageProxy.width, -0.5f*imageProxy.height, 1.0f)
+    composeMatrix.scale(2f / imageProxy.width, 2f / imageProxy.height, 1f)
+    composeMatrix.translate(-0.5f * imageProxy.width, -0.5f * imageProxy.height, 1.0f)
 
     return composeMatrix
 }
