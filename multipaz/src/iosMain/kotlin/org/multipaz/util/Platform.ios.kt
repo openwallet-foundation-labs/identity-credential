@@ -6,6 +6,8 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
+import org.multipaz.prompt.IosPromptModel
+import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureEnclaveSecureArea
 import org.multipaz.storage.Storage
@@ -41,6 +43,9 @@ private fun openDatabase(filename: String, setExcludedFromBackupFlag: Boolean): 
 @OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
 actual object Platform {
     actual val name = "${UIDevice.currentDevice.systemName()} ${UIDevice.currentDevice.systemVersion}"
+
+    actual val promptModel: PromptModel
+        get() = IosPromptModel()
 
     actual suspend fun getStorage(): Storage {
         return SqliteStorage(

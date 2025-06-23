@@ -21,6 +21,10 @@ import platform.UIKit.UIGraphicsImageRenderer
 import platform.UIKit.UIGraphicsImageRendererFormat
 import kotlin.math.PI
 
+actual fun getApplicationInfo(appId: String): ApplicationInfo {
+    throw NotImplementedError("This information is not available not implemented on iOS")
+}
+
 actual fun decodeImage(encodedData: ByteArray): ImageBitmap {
     return Image.makeFromEncoded(encodedData).toComposeImageBitmap()
 }

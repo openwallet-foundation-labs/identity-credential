@@ -2,6 +2,7 @@
 
 package org.multipaz.util
 
+import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.SecureArea
 import org.multipaz.storage.Storage
 
@@ -15,6 +16,11 @@ expect object Platform {
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
     val name: String
+
+    /**
+     * A [PromptModel] implementation suitable for the platform.
+     */
+    val promptModel: PromptModel
 
     /**
      * Gets a [Storage] instance suitable for the platform.

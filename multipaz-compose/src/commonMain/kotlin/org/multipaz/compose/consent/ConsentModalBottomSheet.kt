@@ -1,13 +1,16 @@
 package org.multipaz.compose.consent
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,11 +20,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
@@ -35,40 +39,63 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import org.multipaz.compose.getOutlinedImageVector
-import org.multipaz.request.MdocRequestedClaim
-import org.multipaz.request.Request
-import org.multipaz.request.RequestedClaim
-import org.multipaz.trustmanagement.TrustPoint
-import org.multipaz.multipaz_compose.generated.resources.Res
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_cancel
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_more
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_share
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_card_art_description
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_data_element_icon_description
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_headline_share_with_known_requester
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_headline_share_with_unknown_requester
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_and_stored_by_known_requester
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_and_stored_by_unknown_requester
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_with_known_requester
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_with_unknown_requester
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_verifier_icon_description
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_wallet_privacy_policy
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_warning_icon_description
-import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.stringResource
+import org.multipaz.compose.ApplicationInfo
+import org.multipaz.compose.cards.WarningCard
+import org.multipaz.compose.certificateviewer.CertificateViewer
+import org.multipaz.compose.getApplicationInfo
+import org.multipaz.compose.getOutlinedImageVector
+import org.multipaz.multipaz_compose.generated.resources.Res
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_back
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_cancel
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_more
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_button_share
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_card_art_description
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_data_element_icon_description
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_headline_share_with_anonymous_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_headline_share_with_known_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_headline_share_with_unknown_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_info_verifier_in_trust_list
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_info_verifier_in_trust_list_app
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_info_verifier_in_trust_list_website
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_privacy_policy
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_and_stored_by_known_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_and_stored_by_unknown_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_with_known_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_share_with_unknown_requester
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_verifier_icon_description
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_anonymous
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_app
+import org.multipaz.multipaz_compose.generated.resources.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_website
+import org.multipaz.request.MdocRequestedClaim
+import org.multipaz.request.Request
+import org.multipaz.request.RequestedClaim
+import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.util.Logger
 import kotlin.math.min
+
+private const val TAG = "ConsentModalBottomSheet"
 
 /**
  * A [ModalBottomSheet] used for obtaining the user's consent when presenting credentials.
@@ -79,8 +106,11 @@ import kotlin.math.min
  * @param documentDescription a description of the document.
  * @param documentCardArt cart art for the document or `null`.
  * @param trustPoint if the requester is in a trust-list, the [TrustPoint] indicating this
+ * @param appName the name of the application or `null` to not show the name.
+ * @param appIconPainter the icon for the application or `null to not show the icon.
  * @param onConfirm called when the sheet is dismissed.
  * @param onCancel called when the user presses the "Share" button.
+ * @param showCancelAsBack if `true`, the cancel button will say "Back" instead of "Cancel".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,42 +121,130 @@ fun ConsentModalBottomSheet(
     documentDescription: String,
     documentCardArt: ImageBitmap?,
     trustPoint: TrustPoint?,
+    appName: String? = null,
+    appIconPainter: Painter? = null,
     onConfirm: () -> Unit = {},
-    onCancel: () -> Unit = {}
+    onCancel: () -> Unit = {},
+    showCancelAsBack: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val navController = rememberNavController()
+    val appInfo = remember {
+        request.requester.appId?.let {
+            try {
+                getApplicationInfo(it)
+            } catch (e: Throwable) {
+                Logger.w(TAG, "Error looking up information for appId $it")
+                null
+            }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = { onCancel() },
         sheetState = sheetState,
         dragHandle = null,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            RelyingPartySection(
-                request = request,
-                trustPoint = trustPoint
-            )
+        NavHost(navController = navController, startDestination = "main") {
+            composable("main") {
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
+                ) {
+                    if (appName != null) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            if (appIconPainter != null) {
+                                Image(
+                                    modifier = Modifier.size(20.dp),
+                                    painter = appIconPainter,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Fit,
+                                )
+                            }
+                            Text(
+                                text = appName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                            )
+                        }
+                    }
 
-            DocumentSection(documentName, documentDescription, documentCardArt)
+                    RelyingPartySection(
+                        request = request,
+                        trustPoint = trustPoint,
+                        appInfo = appInfo,
+                        onShowCertChain = {
+                            navController.navigate("readerCertChain")
+                        }
+                    )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusGroup()
-                    .verticalScroll(scrollState)
-                    .weight(0.9f, false)
-            ) {
-                RequestSection(
-                    request = request,
-                    trustPoint = trustPoint
-                )
+                    DocumentSection(documentName, documentDescription, documentCardArt)
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusGroup()
+                            .verticalScroll(scrollState)
+                            .weight(0.9f, false)
+                    ) {
+                        RequestSection(
+                            request = request,
+                            trustPoint = trustPoint,
+                            appInfo = appInfo,
+                            onViewCertificateClicked = {
+                                navController.navigate("readerCertChain")
+                            }
+                        )
+                    }
+
+                    ButtonSection(scope, sheetState, onConfirm, onCancel, showCancelAsBack, scrollState)
+                }
             }
 
-            ButtonSection(scope, sheetState, onConfirm, onCancel, scrollState)
+            composable("readerCertChain") {
+                Column(
+                    modifier = Modifier.padding(16.dp).fillMaxHeight(0.8f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        IconButton(onClick = { navController.navigate("main") }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Reader Certificate Chain",
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                        horizontalAlignment = Alignment.Start,
+                    ) {
+                        CertificateViewer(x509CertChain = request.requester.certChain!!)
+                    }
+                }
+            }
         }
     }
 }
@@ -138,6 +256,7 @@ private fun ButtonSection(
     sheetState: SheetState,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
+    showCancelAsBack: Boolean,
     scrollState: ScrollState
 ) {
     Row(
@@ -152,7 +271,13 @@ private fun ButtonSection(
                 onCancel()
             }
         }) {
-            Text(text = stringResource(Res.string.consent_modal_bottom_sheet_button_cancel))
+            Text(
+                text = if (showCancelAsBack) {
+                    stringResource(Res.string.consent_modal_bottom_sheet_button_back)
+                } else {
+                    stringResource(Res.string.consent_modal_bottom_sheet_button_cancel)
+                }
+            )
         }
 
         Button(
@@ -185,53 +310,72 @@ private fun ButtonSection(
 @Composable
 private fun RelyingPartySection(
     request: Request,
-    trustPoint: TrustPoint?
+    trustPoint: TrustPoint?,
+    appInfo: ApplicationInfo?,
+    onShowCertChain: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (trustPoint != null) {
-            if (trustPoint.displayIcon != null) {
-                val rpBitmap = remember {
-                    trustPoint.displayIcon!!.decodeToImageBitmap()
-                }
-                Icon(
-                    modifier = Modifier.size(80.dp).padding(bottom = 16.dp),
-                    bitmap = rpBitmap,
-                    contentDescription = stringResource(Res.string.consent_modal_bottom_sheet_verifier_icon_description),
-                    tint = Color.Unspecified
-                )
-            }
-            if (trustPoint.displayName != null) {
-                Text(
-                    text = stringResource(
-                        Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
-                        trustPoint.displayName!!
-                    ),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+        val (requesterName, requesterBitmap) = if (trustPoint != null) {
+            Pair(
+                trustPoint.displayName,
+                trustPoint.displayIcon?.let { remember { it.decodeToImageBitmap() } }
+            )
         } else if (request.requester.websiteOrigin != null) {
-            Text(
-                text = stringResource(
-                    Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
-                    request.requester.websiteOrigin!!
-                ),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+            Pair(
+                request.requester.websiteOrigin!!,
+                null
+            )
+        } else if (appInfo != null) {
+            Pair(
+                appInfo.name,
+                appInfo.icon
             )
         } else {
-            Text(
-                text = stringResource(Res.string.consent_modal_bottom_sheet_headline_share_with_unknown_requester),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+            Pair(null, null)
+        }
+
+        val headlineText = if (requesterName != null) {
+            stringResource(
+                Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
+                requesterName
+            )
+        } else {
+            if (trustPoint != null && request.requester.certChain != null) {
+                // If we have a trust point without `displayName`, use the name in the root certificate.
+                stringResource(
+                    Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
+                    trustPoint.certificate.subject.name
+                )
+            } else {
+                if (request.requester.certChain != null) {
+                    stringResource(Res.string.consent_modal_bottom_sheet_headline_share_with_unknown_requester)
+                } else {
+                    stringResource(Res.string.consent_modal_bottom_sheet_headline_share_with_anonymous_requester)
+                }
+            }
+        }
+
+        if (requesterBitmap != null) {
+            Icon(
+                modifier = Modifier.size(80.dp).padding(bottom = 16.dp)
+                    .clickable(enabled = request.requester.certChain != null) { onShowCertChain() },
+                bitmap = requesterBitmap,
+                contentDescription = stringResource(Res.string.consent_modal_bottom_sheet_verifier_icon_description),
+                tint = Color.Unspecified,
             )
         }
+        Text(
+            modifier = Modifier
+                .clickable(enabled = request.requester.certChain != null) { onShowCertChain() },
+            text = headlineText,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
@@ -256,7 +400,8 @@ private fun DocumentSection(
             horizontalAlignment = Alignment.Start,
         ) {
             Row(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (documentCardArt != null) {
                     Icon(
@@ -290,116 +435,163 @@ private fun DocumentSection(
 private fun RequestSection(
     request: Request,
     trustPoint: TrustPoint?,
+    appInfo: ApplicationInfo?,
+    onViewCertificateClicked: () -> Unit,
 ) {
     val useColumns = request.requestedClaims.size > 5
     val (storedFields, notStoredFields) = request.requestedClaims.partition {
         it is MdocRequestedClaim && it.intentToRetain == true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (notStoredFields.size > 0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Text(
-                        text = if (trustPoint?.displayName != null) {
-                            stringResource(
-                                Res.string.consent_modal_bottom_sheet_share_with_known_requester,
-                                trustPoint.displayName!!
-                            )
-                        } else if (request.requester.websiteOrigin != null) {
-                            stringResource(
-                                Res.string.consent_modal_bottom_sheet_share_with_known_requester,
-                                request.requester.websiteOrigin!!
-                            )
-                        } else {
-                            stringResource(Res.string.consent_modal_bottom_sheet_share_with_unknown_requester)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                DataElementGridView(notStoredFields, useColumns)
-            }
-            if (storedFields.size > 0) {
-                if (notStoredFields.size > 0) {
-                    HorizontalDivider(modifier = Modifier.padding(8.dp))
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Text(
-                        text = if (trustPoint?.displayName != null) {
-                            stringResource(
-                                Res.string.consent_modal_bottom_sheet_share_and_stored_by_known_requester,
-                                trustPoint.displayName!!
-                            )
-                        } else if (request.requester.websiteOrigin != null) {
-                            stringResource(
-                                Res.string.consent_modal_bottom_sheet_share_and_stored_by_known_requester,
-                                request.requester.websiteOrigin!!
-                            )
-                        } else {
-                            stringResource(Res.string.consent_modal_bottom_sheet_share_and_stored_by_unknown_requester)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                DataElementGridView(storedFields, useColumns)
-            }
-        }
+    val sections = mutableListOf<@Composable () -> Unit>()
+
+    // See if we should show a privacy policy link
+    var privacyPolicyText: String? = if (trustPoint?.privacyPolicyUrl != null) {
+        stringResource(
+            Res.string.consent_modal_bottom_sheet_privacy_policy,
+            trustPoint.displayName ?: "",
+            trustPoint.privacyPolicyUrl!!,
+        )
+    } else {
+        null
     }
-    Spacer(modifier = Modifier.height(2.dp))
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape = RoundedCornerShape(0.dp, 0.dp, 16.dp, 16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // TODO: When we upgrade to a newer version of compose-ui we can use
-            //  AnnotatedString.fromHtml() and clicking the links will also work.
-            //  See https://issuetracker.google.com/issues/139326648 for details.
-            //
-            val annotatedLinkString = buildAnnotatedString {
-                val str = stringResource(Res.string.consent_modal_bottom_sheet_wallet_privacy_policy)
-                val startIndex = 4
-                val endIndex = startIndex + 31
-                append(str)
-                addStyle(
-                    style = SpanStyle(
-                        color = Color(0xff64B5F6),
-                        textDecoration = TextDecoration.Underline
-                    ), start = startIndex, end = endIndex
+
+    sections.add() {
+        if (notStoredFields.size > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Text(
+                    text = if (trustPoint?.displayName != null) {
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_share_with_known_requester,
+                            trustPoint.displayName!!
+                        )
+                    } else if (request.requester.websiteOrigin != null) {
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_share_with_known_requester,
+                            request.requester.websiteOrigin!!
+                        )
+                    } else if (appInfo != null) {
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_share_with_known_requester,
+                            appInfo.name
+                        )
+                    } else {
+                        stringResource(Res.string.consent_modal_bottom_sheet_share_with_unknown_requester)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
                 )
             }
+            DataElementGridView(notStoredFields, useColumns)
+        }
+        if (storedFields.size > 0) {
+            if (notStoredFields.size > 0) {
+                HorizontalDivider(modifier = Modifier.padding(8.dp))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Text(
+                    text = if (trustPoint?.displayName != null) {
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_share_and_stored_by_known_requester,
+                            trustPoint.displayName!!
+                        )
+                    } else if (request.requester.websiteOrigin != null) {
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_share_and_stored_by_known_requester,
+                            request.requester.websiteOrigin!!
+                        )
+                    } else if (appInfo != null) {
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_share_and_stored_by_known_requester,
+                            appInfo.name
+                        )
+                    } else {
+                        stringResource(Res.string.consent_modal_bottom_sheet_share_and_stored_by_unknown_requester)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            DataElementGridView(storedFields, useColumns)
+        }
+    }
+
+    if (trustPoint != null) {
+        var text = if (request.requester.websiteOrigin != null) {
+            stringResource(Res.string.consent_modal_bottom_sheet_info_verifier_in_trust_list_website)
+        } else if (request.requester.appId != null) {
+            stringResource(Res.string.consent_modal_bottom_sheet_info_verifier_in_trust_list_app)
+        } else {
+            stringResource(Res.string.consent_modal_bottom_sheet_info_verifier_in_trust_list)
+        }
+        if (privacyPolicyText != null) {
+            text = "$text $privacyPolicyText"
+        }
+        sections.add {
             Text(
-                text = annotatedLinkString,
+                text = AnnotatedString.fromMarkdown(markdownString = text),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    } else if (privacyPolicyText != null) {
+        sections.add {
+            Text(
+                text = AnnotatedString.fromMarkdown(markdownString = privacyPolicyText),
                 style = MaterialTheme.typography.bodySmall
             )
         }
     }
-    if (trustPoint == null) {
-        Box(
-            modifier = Modifier.padding(vertical = 8.dp)
+
+
+    for (n in sections.indices) {
+        val section = sections[n]
+        val isLast = (n == sections.size - 1)
+        val rounded = 16.dp
+        val endRound = if (isLast) rounded else 0.dp
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape = RoundedCornerShape(0.dp, 0.dp, endRound, endRound))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            WarningCard(
-                stringResource(Res.string.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list)
-            )
+            section()
+        }
+        if (!isLast) {
+            Spacer(modifier = Modifier.height(2.dp))
+        }
+    }
+
+    Box(
+        modifier = Modifier.padding(vertical = 8.dp)
+    ) {
+        if (trustPoint == null) {
+            val text = if (request.requester.websiteOrigin != null) {
+                stringResource(Res.string.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_website)
+            } else if (request.requester.appId != null) {
+                stringResource(Res.string.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_app)
+            } else {
+                if (request.requester.certChain != null) {
+                    stringResource(Res.string.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list)
+                } else {
+                    stringResource(Res.string.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_anonymous)
+                }
+            }
+            if (text != null) {
+                WarningCard {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 }
@@ -447,6 +639,7 @@ private fun DataElementView(
     claim: RequestedClaim,
 ) {
     Row(
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
         modifier = modifier.padding(8.dp),
     ) {
@@ -465,30 +658,45 @@ private fun DataElementView(
     }
 }
 
-@Composable
-private fun WarningCard(text: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape = RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.errorContainer),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-        ) {
-            Icon(
-                modifier = Modifier.padding(end = 16.dp),
-                imageVector = Icons.Outlined.Warning,
-                contentDescription = stringResource(Res.string.consent_modal_bottom_sheet_warning_icon_description),
-                tint = MaterialTheme.colorScheme.onErrorContainer
-            )
+// This only supports links for now, would be nice to have a full support...
+//
+private fun AnnotatedString.Companion.fromMarkdown(
+    markdownString: String,
+    linkInteractionListener: LinkInteractionListener? = null
+): AnnotatedString {
+    val linkRegex = """\[(.*?)\]\((.*?)\)""".toRegex()
 
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer
+    val links = linkRegex.findAll(markdownString).toMutableList()
+    links.sortBy { it.range.start }
+
+    return buildAnnotatedString {
+        var idx = 0
+        for (link in links) {
+            if (idx < link.range.start) {
+                append(markdownString.substring(idx, link.range.start))
+            }
+            val linkText = link.groupValues[1]
+            val linkUrl = link.groupValues[2]
+            val styleStart = length
+            append(linkText)
+            addLink(
+                url = LinkAnnotation.Url(
+                    url = linkUrl,
+                    styles = TextLinkStyles(
+                        style = SpanStyle(
+                            color = Color.Blue,
+                            textDecoration = TextDecoration.Underline
+                        ),
+                    ),
+                    linkInteractionListener = linkInteractionListener
+                ),
+                start = styleStart,
+                end = length,
             )
+            idx = link.range.endInclusive + 1
+        }
+        if (idx < markdownString.length) {
+            append(markdownString.substring(idx, markdownString.length))
         }
     }
 }

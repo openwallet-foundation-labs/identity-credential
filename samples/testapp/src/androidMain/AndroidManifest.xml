@@ -31,12 +31,16 @@
     <!-- For NFC engagement -->
     <uses-feature
         android:name="android.hardware.nfc"
-        android:required="true" />
+        android:required="false" />
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- For posting notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- For displaying name/icon of application requesting credential -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         tools:targetApi="31"
@@ -85,10 +89,10 @@
         </activity>
 
         <activity
-            android:name=".CredmanPresentmentActivity"
+            android:name=".TestAppCredentialManagerPresentmentActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
+            android:theme="@android:style/Theme.Translucent"
             android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="androidx.credentials.registry.provider.action.GET_CREDENTIAL" />
@@ -102,7 +106,7 @@
                    user data it might be a privacy problem to show PII on the lock screen.
         -->
         <activity
-            android:name=".NfcPresentmentActivity"
+            android:name=".TestAppMdocNfcPresentmentActivity"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:exported="true"
@@ -112,7 +116,7 @@
         </activity>
 
         <service
-            android:name=".NdefService"
+            android:name=".TestAppMdocNdefService"
             android:exported="true"
             android:label="@string/nfc_ndef_service_description"
             android:permission="android.permission.BIND_NFC_SERVICE">
@@ -144,7 +148,7 @@
         </service>
 
         <service
-            android:name=".MdocNfcDataTransferService"
+            android:name=".TestAppMdocNfcDataTransferService"
             android:exported="true"
             android:label="@string/nfc_ndef_service_description"
             android:permission="android.permission.BIND_NFC_SERVICE">
