@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -124,6 +125,9 @@ import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
+import androidx.compose.runtime.SideEffect
+import com.android.identity.testapp.CredentialManager
+
 
 /**
  * Application singleton.
@@ -599,12 +603,17 @@ class App private constructor (val promptModel: PromptModel) {
             it.route == routeWithoutArgs
         } ?: StartDestination
 
+        SideEffect {
+            CredentialManager.initialize(provisioningModel) {
+                navController.navigate(ProvisioningTestDestination.route)
+            }
+        }
+
         LaunchedEffect(true) {
             while (true) {
                 val credentialOffer = credentialOffers.receive()
                 Logger.i(TAG, "Process credential offer from ${credentialOffer.issuerUri}")
-                provisioningModel.startProvisioning(credentialOffer)
-                navController.navigate(ProvisioningTestDestination.route)
+                CredentialManager.startIssuanceFlow(credentialOffer)
             }
         }
 

@@ -13,6 +13,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -65,6 +66,9 @@ import org.multipaz.testapp.platformAppIcon
 import org.multipaz.testapp.platformAppName
 import org.multipaz.util.Logger
 import kotlin.time.Duration.Companion.seconds
+import com.android.identity.testapp.CredentialManager
+import com.android.identity.testapp.IssuanceListener
+import org.multipaz.document.Document
 
 @Composable
 fun ProvisioningTestScreen(
@@ -72,7 +76,31 @@ fun ProvisioningTestScreen(
     provisioningModel: ProvisioningModel,
     presentmentModel: PresentmentModel
 ) {
+
+
     LaunchedEffect(provisioningModel) {
+        val listener = object : IssuanceListener {
+            override fun onStateChanged(state: ProvisioningModel.State) {
+                Logger.i("IssuanceListener", "State changed: ${state::class.simpleName}")
+            }
+
+            override fun onIssuanceCompleted(document: Document) {
+                Logger.i("IssuanceListener", "Issuance completed for document: ${document.identifier}")
+            }
+
+            override fun onIssuanceError(error: Throwable) {
+                Logger.e("IssuanceListener", "Issuance error", error)
+            }
+
+            override fun onUserConsent(granted: Boolean) {
+                Logger.i("IssuanceListener", "User consent: ${if (granted) "Granted" else "Rejected"}")
+            }
+
+            override fun onChoiceMade(choice: String) {
+                Logger.i("IssuanceListener", "User choice: $choice")
+            }
+        }
+        CredentialManager.setIssuanceListener(listener)
         provisioningModel.run()
     }
     val provisioningState = provisioningModel.state.collectAsState(ProvisioningModel.Initial).value
@@ -248,6 +276,7 @@ fun EvidenceRequestMessageView(
             Button(
                 modifier = Modifier.padding(8.dp),
                 onClick = {
+                    CredentialManager.onUserConsent(false)
                     coroutineScope.launch {
                         provisioningModel.provideEvidence(
                             evidence = EvidenceResponseMessage(false)
@@ -260,6 +289,7 @@ fun EvidenceRequestMessageView(
         Button(
             modifier = Modifier.padding(8.dp),
             onClick = {
+                CredentialManager.onUserConsent(true)
                 coroutineScope.launch {
                     provisioningModel.provideEvidence(
                         evidence = EvidenceResponseMessage(true)
@@ -499,6 +529,7 @@ fun EvidenceRequestQuestionMultipleChoiceView(
             onAccept(radioOptionsKeys[selectedOption])
             // Reset to first choice, for the next time this is used
             onOptionSelected(0)
+            CredentialManager.onChoiceMade(radioOptionsKeys[selectedOption])
         }) {
             Text(evidenceRequest.acceptButtonText)
         }

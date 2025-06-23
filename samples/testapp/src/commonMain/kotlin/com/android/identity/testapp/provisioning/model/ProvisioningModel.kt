@@ -41,6 +41,7 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import kotlin.coroutines.CoroutineContext
+import com.android.identity.testapp.CredentialManager
 
 class ProvisioningModel(
     private val provisioningBackendProvider: ProvisioningBackendProvider,
@@ -62,6 +63,11 @@ class ProvisioningModel(
 
     fun startProvisioning(offer: Openid4VciCredentialOffer) {
         pendingOffer = offer
+    }
+
+    private suspend fun emitState(state: State) {
+        CredentialManager.onStateChanged(state)
+        mutableState.emit(state)
     }
 
     suspend fun provideEvidence(evidence: EvidenceResponse) {
@@ -88,12 +94,15 @@ class ProvisioningModel(
         coroutineContext = coreCoroutineContext + RpcAuthClientSession()
         return withContext(coroutineContext) {
             try {
-                runProvisioning(offer)
+                val document = runProvisioning(offer)
+                CredentialManager.onIssuanceCompleted(document)
+                document
             } catch(err: CancellationException) {
                 throw err
             } catch(err: Throwable) {
                 Logger.e(TAG, "Error provisioning", err)
-                mutableState.emit(Error(err))
+                CredentialManager.onIssuanceError(err)
+                emitState(Error(err))
                 null
             } finally {
                 privateApplicationSupport = null
@@ -102,9 +111,9 @@ class ProvisioningModel(
     }
 
     private suspend fun runProvisioning(offer: Openid4VciCredentialOffer): Document {
-        mutableState.emit(Initial)
+        emitState(Initial)
         privateApplicationSupport = provisioningBackendProvider.getApplicationSupport()
-        mutableState.emit(Connected)
+        emitState(Connected)
         val issuingAuthority = provisioningBackendProvider.createOpenid4VciIssuingAuthorityByUri(
             offer.issuerUri,
             offer.configurationId
@@ -112,7 +121,7 @@ class ProvisioningModel(
         val issuerConfiguration = issuingAuthority.getConfiguration()
 
         Logger.i(TAG, "Start registration")
-        mutableState.emit(Registration)
+        emitState(Registration)
         val registration = issuingAuthority.register()
         val documentRegistrationConfiguration =
             registration.getDocumentRegistrationConfiguration()
@@ -147,18 +156,18 @@ class ProvisioningModel(
         while (evidenceRequests.isNotEmpty()) {
             val requestsAsText = evidenceRequests.map { it::class.simpleName }.joinToString(" ")
             Logger.i(TAG, "Requesting evidence: $requestsAsText")
-            mutableState.emit(selectViableEvidenceRequests(evidenceRequests))
+            emitState(selectViableEvidenceRequests(evidenceRequests))
             val evidence = evidenceResponseChannel.receive()
             Logger.i(TAG, "Sending evidence: ${evidence::class.simpleName}")
-            mutableState.emit(SendingEvidence)
+            emitState(SendingEvidence)
             proofing.sendEvidence(evidence)
             Logger.i(TAG, "Processing evidence")
-            mutableState.emit(ProcessingEvidence)
+            emitState(ProcessingEvidence)
             evidenceRequests = proofing.getEvidenceRequests()
         }
 
         Logger.i(TAG, "Proofing complete")
-        mutableState.emit(ProofingComplete)
+        emitState(ProofingComplete)
 
         issuingAuthority.completeProof(proofing)
 
@@ -243,7 +252,7 @@ class ProvisioningModel(
                 null
             }
 
-            mutableState.emit(RequestingCredentials)
+            emitState(RequestingCredentials)
 
             val challenges = credentialWorkflow.sendCredentials(
                 credentialRequests = credentialRequests,
@@ -296,7 +305,7 @@ class ProvisioningModel(
             }
         }
 
-        mutableState.emit(CredentialsIssued)
+        emitState(CredentialsIssued)
 
         return document
     }
