@@ -133,17 +133,17 @@ class SqlStatementMaker(
             $returning
         """.trimIndent()
 
-    val enumerateStatement =
+    fun enumerateStatement(withData: Boolean) =
         """
-            SELECT id
+            SELECT ${if (withData) "id, data" else "id"}
             FROM $tableName
             WHERE (id > ? $partitionCondition $expirationCondition)
             ORDER BY id
         """.trimIndent()
 
-    val enumerateWithLimitStatement =
+    fun enumerateWithLimitStatement(withData: Boolean) =
         """
-            SELECT id
+            SELECT ${if (withData) "id, data" else "id"}
             FROM $tableName
             WHERE (id > ? $partitionCondition $expirationCondition)
             ORDER BY id
