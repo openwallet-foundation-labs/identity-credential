@@ -675,7 +675,7 @@ private fun handleDcGetDataMdocApi(
     credentialResponse: String
 ) {
     val response = Json.parseToJsonElement(credentialResponse).jsonObject
-    val encryptedResponseBase64 = response["Response"]!!.jsonPrimitive.content
+    val encryptedResponseBase64 = response["response"]!!.jsonPrimitive.content
 
     val array = Cbor.decode(encryptedResponseBase64.fromBase64Url()).asArray
     if (array.get(0).asTstr != "dcapi") {
