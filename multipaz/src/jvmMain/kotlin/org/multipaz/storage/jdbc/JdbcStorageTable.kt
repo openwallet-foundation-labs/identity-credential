@@ -204,9 +204,9 @@ class JdbcStorageTable(
         return storage.withConnection { connection ->
             val statement = connection.prepareStatement(
                 if (limit < Int.MAX_VALUE) {
-                    sql.enumerateWithLimitStatement
+                    sql.enumerateWithLimitStatement(false)
                 } else {
-                    sql.enumerateStatement
+                    sql.enumerateStatement(false)
                 }
             )
             var index = 1
@@ -224,6 +224,44 @@ class JdbcStorageTable(
             val list = mutableListOf<String>()
             while (resultSet.next()) {
                 list.add(resultSet.getString(1))
+            }
+            list
+        }
+    }
+
+    override suspend fun enumerateWithData(
+        partitionId: String?,
+        afterKey: String?,
+        limit: Int
+    ): List<Pair<String, ByteString>> {
+        checkPartition(partitionId)
+        checkLimit(limit)
+        if (limit == 0) {
+            return listOf()
+        }
+        return storage.withConnection { connection ->
+            val statement = connection.prepareStatement(
+                if (limit < Int.MAX_VALUE) {
+                    sql.enumerateWithLimitStatement(true)
+                } else {
+                    sql.enumerateStatement(true)
+                }
+            )
+            var index = 1
+            statement.setString(index++, afterKey ?: "")
+            if (spec.supportPartitions) {
+                statement.setString(index++, partitionId!!)
+            }
+            if (spec.supportExpiration) {
+                statement.setLong(index++, storage.clock.now().epochSeconds)
+            }
+            if (limit < Int.MAX_VALUE) {
+                statement.setInt(index, limit)
+            }
+            val resultSet = statement.executeQuery()
+            val list = mutableListOf<Pair<String, ByteString>>()
+            while (resultSet.next()) {
+                list.add(Pair(resultSet.getString(1), ByteString(resultSet.getBytes(2))))
             }
             list
         }

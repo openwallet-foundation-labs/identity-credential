@@ -204,6 +204,36 @@ internal class AndroidStorageTable(
         }
     }
 
+    override suspend fun enumerateWithData(
+        partitionId: String?,
+        afterKey: String?,
+        limit: Int
+    ): List<Pair<String, ByteString>> {
+        checkPartition(partitionId)
+        checkLimit(limit)
+        if (limit == 0) {
+            return listOf()
+        }
+        return storage.withDatabase { database ->
+            val cursor = database.query(
+                sql.tableName,
+                arrayOf("id", "data"),
+                sql.enumerateConditionWithExpiration(storage.clock.now().epochSeconds),
+                whereArgs(afterKey ?: "", partitionId),
+                null,
+                null,
+                "id",
+                if (limit < Int.MAX_VALUE) "0, $limit" else null
+            )
+            val list = mutableListOf<Pair<String, ByteString>>()
+            while (cursor.moveToNext()) {
+                list.add(Pair(cursor.getString(0), ByteString(cursor.getBlob(1))))
+            }
+            cursor.close()
+            list
+        }
+    }
+
     override suspend fun purgeExpired() {
         storage.withDatabase { database ->
             database.execSQL(sql.purgeExpiredStatement

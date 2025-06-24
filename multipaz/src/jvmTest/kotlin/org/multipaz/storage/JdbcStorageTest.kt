@@ -1,24 +1,23 @@
 package org.multipaz.storage
 
-import androidx.test.platform.app.InstrumentationRegistry
-import org.multipaz.storage.base.BaseStorageTable
-import org.multipaz.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.newFixedThreadPoolContext
-import kotlin.test.Test
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
-import org.multipaz.storage.android.AndroidStorage
+import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.storage.jdbc.JdbcStorage
+import org.multipaz.util.toHex
 import kotlin.random.Random
 import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -28,7 +27,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
-class AndroidStorageTest {
+class JdbcStorageTest {
     @BeforeTest
     fun resetSharedState() {
         TestClock.time = Instant.DISTANT_PAST
@@ -566,40 +565,22 @@ class AndroidStorageTest {
     }
 }
 
+var count = 0
+
 private fun createTransientStorageList(testClock: Clock): List<Storage> {
     return listOf<Storage>(
-        EphemeralStorage(testClock),
-        /*
-        TODO: this can be enabled once SqliteStorage is moved into commonMain
-        org.multipaz.storage.sqlite.SqliteStorage(
-            connection = AndroidSQLiteDriver().open(":memory:"),
-            clock = testClock
-        ),
-        org.multipaz.storage.sqlite.SqliteStorage(
-            connection = BundledSQLiteDriver().open(":memory:"),
-            clock = testClock,
-            // bundled sqlite crashes when used with Dispatchers.IO
-            coroutineContext = newSingleThreadContext("DB")
-        ),
-         */
-        AndroidStorage(
-            databasePath = null,
-            clock = testClock,
-            keySize = 3
-        )
+            EphemeralStorage(testClock),
+            JdbcStorage(
+                jdbc = "jdbc:hsqldb:mem:tmp${count++}",
+                clock = testClock,
+                keySize = 3
+            )
     )
 }
 
-val knownNames = mutableSetOf<String>()
-
 private fun createPersistentStorage(name: String, testClock: Clock): Storage? {
-    val context = InstrumentationRegistry.getInstrumentation().context
-    val dbFile = context.getDatabasePath("$name.db")
-    if (knownNames.add(name)) {
-        dbFile.delete()
-    }
-    return AndroidStorage(
-        databasePath = dbFile.absolutePath,
+    return JdbcStorage(
+        jdbc = "jdbc:hsqldb:mem:p${name}",
         clock = testClock,
         keySize = 3
     )

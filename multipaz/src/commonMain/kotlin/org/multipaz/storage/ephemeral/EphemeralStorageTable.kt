@@ -150,7 +150,20 @@ internal class EphemeralStorageTable(
         partitionId: String?,
         afterKey: String?,
         limit: Int
-    ): List<String> {
+    ) = enumerateImpl(partitionId, afterKey, limit) { it.key }
+
+    override suspend fun enumerateWithData(
+        partitionId: String?,
+        afterKey: String?,
+        limit: Int
+    ) = enumerateImpl(partitionId, afterKey, limit) { Pair(it.key, it.value) }
+
+    private suspend fun<T> enumerateImpl(
+        partitionId: String?,
+        afterKey: String?,
+        limit: Int,
+        extractor: (EphemeralStorageItem) -> T
+    ): List<T> {
         checkPartition(partitionId)
         checkLimit(limit)
         if (limit == 0) {
@@ -164,18 +177,18 @@ internal class EphemeralStorageTable(
                 abs(storedData.binarySearch(EphemeralStorageItem(partitionId, afterKey)) + 1)
             }
             val now = clock.now()
-            val keyList = mutableListOf<String>()
-            while (keyList.size < limit && index < storedData.size) {
+            val results = mutableListOf<T>()
+            while (results.size < limit && index < storedData.size) {
                 val data = storedData[index]
                 if (data.partitionId != partitionId) {
                     break
                 }
                 if (!data.expired(now)) {
-                    keyList.add(data.key)
+                    results.add(extractor(data))
                 }
                 index++
             }
-            keyList.toList()
+            results.toList()
         }
     }
 

@@ -100,29 +100,34 @@ class IosStorageTest {
                     data = "bad$i".encodeToByteString()
                 )
             }
-            val keys = (0..19).map { i ->
-                table.insert(
+            val valueMap = (0..19).associate { i ->
+                val data = "good$i"
+                val key = table.insert(
                     key = null,
                     partitionId = "client1",
-                    data = "good$i".encodeToByteString()
+                    data = data.encodeToByteString()
                 )
-            }.toSet()
-            assertEquals(20, keys.size)
+                Pair(key, data)
+            }
+            assertEquals(20, valueMap.size)
             val chunk1 = table.enumerate(
                 partitionId = "client1",
                 limit = 9
             )
-            val chunk2 = table.enumerate(
+            val chunk2WithData = table.enumerateWithData(
                 partitionId = "client1",
                 afterKey = chunk1.last(),
                 limit = 14
             )
             assertEquals(9, chunk1.size)
-            assertEquals(11, chunk2.size)
-            assertEquals(keys.sorted(), chunk1 + chunk2)
-            for (key in keys) {
+            assertEquals(11, chunk2WithData.size)
+            assertEquals(valueMap.keys.sorted(), chunk1 + chunk2WithData.map { it.first })
+            for ((key, value) in valueMap) {
                 val data = table.get(partitionId = "client1", key = key)!!.decodeToString()
-                assertTrue(data.startsWith("good"))
+                assertEquals(value, data)
+            }
+            for ((key, data) in chunk2WithData) {
+                assertEquals(valueMap[key], data.decodeToString())
             }
             assertEquals(listOf(), table.enumerate(partitionId = "client1", limit = 0))
         }

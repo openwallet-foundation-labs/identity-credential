@@ -138,4 +138,16 @@ interface StorageTable {
         afterKey: String? = null,
         limit: Int = Int.MAX_VALUE
     ): List<String>
+
+    /**
+     * Enumerate the records with given table and partitionId in key lexicographic order.
+     *
+     * This is similar to [enumerate], but it returns key/data pairs stored in the table rather
+     * than just keys.
+     */
+    suspend fun enumerateWithData(
+        partitionId: String? = null,
+        afterKey: String? = null,
+        limit: Int = Int.MAX_VALUE
+    ): List<Pair<String, ByteString>>
 }
