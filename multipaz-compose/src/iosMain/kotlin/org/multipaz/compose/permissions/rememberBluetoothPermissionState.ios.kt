@@ -46,6 +46,7 @@ private class IosBluetoothPermissionState(
 
 @Composable
 actual fun rememberBluetoothPermissionState(): PermissionState {
+    // integrate ble enabled check and request
     val scope = rememberCoroutineScope()
     val recomposeCounter = remember { mutableIntStateOf(0) }
     LaunchedEffect(recomposeCounter.value) {}
