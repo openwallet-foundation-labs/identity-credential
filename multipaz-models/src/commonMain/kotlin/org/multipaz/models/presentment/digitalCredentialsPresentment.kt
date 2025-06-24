@@ -894,7 +894,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         )
 
     val responseJson = buildJsonObject {
-        put("Response", encryptedResponse.toBase64Url())
+        put("response", encryptedResponse.toBase64Url())
     }
     presentmentMechanism.sendResponse(responseJson.toString())
     mdocCredential.increaseUsageCount()

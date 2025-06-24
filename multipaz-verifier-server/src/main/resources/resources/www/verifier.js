@@ -414,6 +414,7 @@ async function dcRequestCredential(sessionId, dcRequestProtocol, dcRequest) {
             },
             mediation: 'required',
           })
+        console.log('credentialResponse ', credentialResponse)
         dcProcessResponse(sessionId, credentialResponse)
     } catch (err) {
         alert(err)
