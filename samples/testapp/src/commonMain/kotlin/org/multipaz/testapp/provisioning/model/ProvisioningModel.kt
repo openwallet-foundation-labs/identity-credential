@@ -269,6 +269,7 @@ class ProvisioningModel(
 
         val documentState = issuingAuthority.getState(issuerDocumentIdentifier)
         if (documentState.numAvailableCredentials > 0) {
+            var issued = false
             for (credentialData in issuingAuthority.getCredentials(issuerDocumentIdentifier)) {
                 val pendingCredential = if (credentialData.secureAreaBoundKey == null) {
                     // Keyless credential
@@ -293,10 +294,13 @@ class ProvisioningModel(
                     credentialData.validFrom,
                     credentialData.validUntil
                 )
+                issued = true
+            }
+            if (issued) {
+                document.metadata.markAsProvisioned()
+                mutableState.emit(CredentialsIssued)
             }
         }
-
-        mutableState.emit(CredentialsIssued)
 
         return document
     }
@@ -369,14 +373,14 @@ class ProvisioningModel(
 
     sealed class State
 
-    object Initial: State()
-    object Connected: State()
-    object Registration: State()
-    object SendingEvidence: State()
-    object ProcessingEvidence: State()
-    object ProofingComplete: State()
-    object RequestingCredentials: State()
-    object CredentialsIssued: State()
+    data object Initial: State()
+    data object Connected: State()
+    data object Registration: State()
+    data object SendingEvidence: State()
+    data object ProcessingEvidence: State()
+    data object ProofingComplete: State()
+    data object RequestingCredentials: State()
+    data object CredentialsIssued: State()
 
     data class EvidenceRequested(
         val evidenceRequests: List<EvidenceRequest>,
