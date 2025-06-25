@@ -5,9 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.92.0] - Not yet released, expected end of July 2025
+## [0.92.0] - 2025-06-25
 Changes since Multipaz 0.91 include:
-- TODO
+- Face Detection routines and Selfie detection, using MLKit
+- BLE GATT data race fixes.
+- Update SD-JWT implementation to properly handle non-top-level disclosures.
+- Update JWE, JWS routines to work on Kotlin Multiplatform and drop dependency on Nimbus library.
+- Update to latest W3C Digital Credential API.
+- OpenID4VP Draft 29 support.
+- OpenID4VCI interoperability fixes.
+- Removal of BouncyCastle Dependency.
+- Consent Prompt enhancements.
+- Exporting of Android services/activities to make W3C DC API and NFC Engagement easier to implement.
+- Fix for Annex C implementation discovered during interop testing ("Response" -> "response").
+- Migration of all server code to use Ktor environment, making it easier to deploy.
+- Stand up at https://verifier.multipaz.org, https://issuer.multipaz.org, and https://csa.multipaz.org.
+- New "Raw DCQL" box in online verifier code.
+- Rework QR code generation and scanning and drop some dependencies.
+- Generate and publish Multipaz.xcframework w/ Package.swift file for easy consumption in Swift projects.
 
 ## [0.91.0] - 2025-05-30
 Changes since Multipaz 0.90 include
