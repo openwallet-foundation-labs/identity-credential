@@ -14,25 +14,29 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.document.NameSpacedData
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
-import org.multipaz.mdoc.mso.StaticAuthDataGenerator
-import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.yearsUntil
 import org.multipaz.cbor.RawCbor
+import org.multipaz.cbor.Simple
+import org.multipaz.cbor.Uint
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.util.Logger
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -94,19 +98,38 @@ internal class CredentialFactoryMdl : CredentialFactory {
         val mdocType = DrivingLicense.getDocumentType()
             .mdocDocumentType!!.namespaces[DrivingLicense.MDL_NAMESPACE]!!
 
+        val timeZone = TimeZone.currentSystemDefault()
+        val dateOfBirth = Cbor.decode(
+            source.getDataElement(EUPersonalID.EUPID_NAMESPACE, "birth_date")).asDateString
+        val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
+        // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
+        val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
+        val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
+
         val issuerNamespaces = buildIssuerNamespaces {
             addNamespace(DrivingLicense.MDL_NAMESPACE) {
+                val added = mutableSetOf<String>()
                 for (elementName in source.getDataElementNames(EUPersonalID.EUPID_NAMESPACE)) {
                     val value = source.getDataElement(EUPersonalID.EUPID_NAMESPACE, elementName)
                     if (mdocType.dataElements.containsKey(elementName)) {
                         addDataElement(elementName, Cbor.decode(value))
+                        added.add(elementName)
                     }
                 }
+
+                // Values derived from the birth_date
+                addDataElement("age_in_years",
+                    Uint(dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toULong()))
+                addDataElement("age_birth_year", Uint(dateOfBirth.year.toULong()))
+                addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
+                addDataElement( "age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
+
                 val useMalePhoto = source.hasDataElement(EUPersonalID.EUPID_NAMESPACE, "sex") &&
                         source.getDataElementNumber(EUPersonalID.EUPID_NAMESPACE, "sex") == 1L
                 val photoResource = if (useMalePhoto) "male.jpg" else "female.jpg"
                 val photoBytes = resources.getRawResource(photoResource)
                 addDataElement("portrait", Bstr(photoBytes!!.toByteArray()))
+                added.add("portrait")
 
                 addDataElement(
                     "driving_privileges",
@@ -123,6 +146,21 @@ internal class CredentialFactoryMdl : CredentialFactory {
                         }
                     }
                 )
+                added.add("driving_privileges")
+
+                // Add all mandatory elements for completeness. This will come from the System of
+                // Record in the future
+                for ((elementName, data) in mdocType.dataElements) {
+                    if (!data.mandatory || added.contains(elementName)) {
+                        continue
+                    }
+                    val value = data.attribute.sampleValueMdoc
+                    if (value != null) {
+                        addDataElement(elementName, value)
+                    } else {
+                        Logger.e(TAG, "Could not fill '$elementName': no sample data")
+                    }
+                }
             }
         }
 
@@ -171,36 +209,10 @@ internal class CredentialFactoryMdl : CredentialFactory {
             }
         )
 
-        /*
-        val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
-        val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
-            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
-        ))
-        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
-            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            X509CertChain(listOf(
-                X509Cert(documentSigningKeyCert.encodedCertificate)
-            )
-            ).toDataItem()
-        ))
-        val encodedIssuerAuth = Cbor.encode(
-            Cose.coseSign1Sign(
-                documentSigningKey,
-                taggedEncodedMso,
-                true,
-                Algorithm.ES256,
-                protectedHeaders,
-                unprotectedHeaders
-            ).toDataItem()
-        )
-
-        val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-            issuerNameSpaces,
-            encodedIssuerAuth
-        ).generate()
-        */
-
         return issuerProvidedAuthenticationData.toBase64Url()
+    }
+
+    companion object {
+        const val TAG = "CredentialFactoryMdl"
     }
 }
