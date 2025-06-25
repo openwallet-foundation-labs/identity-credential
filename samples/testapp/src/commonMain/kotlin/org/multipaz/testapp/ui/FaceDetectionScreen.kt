@@ -95,7 +95,7 @@ fun FaceDetectionScreen(
                                 // Note: this is a suspend-func called on an I/O thread managed by Camera() composable
                                 lastSeenFaces.value = detectFaces(cameraFrame)
                                 transformationMatrix.value = cameraFrame.previewTransformation
-                                isLandscape.value = cameraFrame.rotation == 90 || cameraFrame.rotation == 270
+                                isLandscape.value = cameraFrame.isLandscape
                                 // Show normalized bitmap
                                 if (showCameraDialog.value?.showPreview == false
                                     && lastSeenFaces.value?.isNotEmpty() == true) {
@@ -395,12 +395,24 @@ private fun extractFaceBitmap(
         return frameData.cameraImage.toImageBitmap()
     }
 
-    val faceCenterX = (leftEye.position.x + rightEye.position.x) / 2
-    val faceCenterY = (leftEye.position.y + rightEye.position.y) / 2
+    // Heuristic multiplier to fit the face normalized to the eyes pupilar distance.
+    val faceCropFactor = 3.5f
+
+    // Heuristic multiplier to offset vertically so the face is better centered within the rectangular crop.
+    val faceVerticalOffsetFactor = 0.5f
+
+    var faceCenterX = (leftEye.position.x + rightEye.position.x) / 2
+    var faceCenterY = (leftEye.position.y + rightEye.position.y) / 2
     val eyeOffsetX = leftEye.position.x - rightEye.position.x
     val eyeOffsetY = leftEye.position.y - rightEye.position.y
     val eyeDistance = sqrt(eyeOffsetX * eyeOffsetX + eyeOffsetY * eyeOffsetY)
-    val faceWidth = eyeDistance * 3 // Heuristic multiplier to fit the face normalized to the eyes pupilar distance.
+    val faceWidth = eyeDistance * faceCropFactor
+    val faceVerticalOffset = eyeDistance * faceVerticalOffsetFactor
+    if (frameData.isLandscape) {
+        faceCenterY += faceVerticalOffset
+    } else {
+        faceCenterX -= faceVerticalOffset
+    }
     val eyesAngleRad = atan2(eyeOffsetY, eyeOffsetX)
     val eyesAngleDeg = eyesAngleRad * 180.0 / PI // Convert radians to degrees
     val totalRotationDegrees = 180 - eyesAngleDeg
@@ -411,9 +423,10 @@ private fun extractFaceBitmap(
         cx = faceCenterX.toDouble(), // Point between eyes
         cy = faceCenterY.toDouble(), // Point between eyes
         angleDegrees = totalRotationDegrees, //includes the camera rotation and eyes rotation.
-        outputWidth = faceWidth.toInt(), // Expected face width for cropping *before* final scaling.
-        outputHeight = faceWidth.toInt(),// Expected face height for cropping *before* final scaling.
-        targetWidth = 256 // Final square image size (for database saving and face matching tasks).
+        outputWidthPx = faceWidth.toInt(), // Expected face width for cropping *before* final scaling.
+        outputHeightPx = faceWidth.toInt(),// Expected face height for cropping *before* final scaling.
+        targetWidthPx = 256, // Final square image size (for database saving and face matching tasks).
     )
 }
+
 

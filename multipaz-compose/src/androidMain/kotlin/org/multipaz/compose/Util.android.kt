@@ -46,22 +46,22 @@ actual fun cropRotateScaleImage(
     cx: Double,
     cy: Double,
     angleDegrees: Double,
-    outputWidth: Int,
-    outputHeight: Int,
-    targetWidth: Int
+    outputWidthPx: Int,
+    outputHeightPx: Int,
+    targetWidthPx: Int
 ): ImageBitmap {
     val androidBitmap = frameData.cameraImage.imageProxy.toBitmap()
-    val finalScale = targetWidth.toFloat() / outputWidth.toFloat()
-    val finalOutputHeight = (outputHeight * finalScale).toInt()
+    val finalScale = targetWidthPx.toFloat() / outputWidthPx.toFloat()
+    val finalOutputHeight = (outputHeightPx * finalScale).toInt()
     val matrix = Matrix() // Use Android's Matrix
 
     matrix.postTranslate(-cx.toFloat(), -cy.toFloat())
     matrix.postRotate(angleDegrees.toFloat())
-    matrix.postTranslate((outputWidth / 2).toFloat(), (outputHeight / 2).toFloat())
+    matrix.postTranslate((outputWidthPx / 2).toFloat(), (outputHeightPx / 2).toFloat())
     matrix.postScale(finalScale, finalScale)
 
     // Create the output bitmap with the final scaled dimensions.
-    val resultBitmap = createBitmap(targetWidth, finalOutputHeight, androidBitmap.config ?: Bitmap.Config.ARGB_8888)
+    val resultBitmap = createBitmap(targetWidthPx, finalOutputHeight, androidBitmap.config ?: Bitmap.Config.ARGB_8888)
     Canvas(resultBitmap).drawBitmap(androidBitmap, matrix, paint)
 
     return resultBitmap.asImageBitmap()
