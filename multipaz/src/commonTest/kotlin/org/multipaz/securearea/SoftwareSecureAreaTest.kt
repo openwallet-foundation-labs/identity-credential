@@ -393,7 +393,7 @@ class SoftwareSecureAreaTest {
         val sa = SoftwareSecureArea.create(storage)
         val batchCreateKeyResult = sa.batchCreateKey(10, CreateKeySettings(algorithm = Algorithm.ESP256))
         assertEquals(batchCreateKeyResult.keyInfos.size, 10)
-        assertNull(batchCreateKeyResult.openid4vciKeyAttestation)
+        assertNull(batchCreateKeyResult.openid4vciKeyAttestationJws)
         for (n in 0..9) {
             val keyInfo = batchCreateKeyResult.keyInfos[n]
             val dataToSign = byteArrayOf(4, 5, 6)

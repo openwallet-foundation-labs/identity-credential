@@ -57,7 +57,6 @@ import org.multipaz.crypto.javaX509Certificate
 import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.KeyAttestation
-import org.multipaz.testapp.platformSecureAreaProvider
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import org.multipaz.util.toHex
@@ -67,6 +66,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.crypto.Algorithm
+import org.multipaz.util.Platform
 import kotlin.time.Duration.Companion.days
 
 private const val TAG = "AndroidKeystoreSecureAreaScreen"
@@ -475,7 +475,7 @@ private fun getFeatureVersionKeystore(appContext: Context, useStrongbox: Boolean
 private suspend fun aksAttestation(strongBox: Boolean): KeyAttestation {
     val now = Clock.System.now()
     val thirtyDaysFromNow = now + 30.days
-    val androidKeystoreSecureArea = platformSecureAreaProvider().get() as AndroidKeystoreSecureArea
+    val androidKeystoreSecureArea = Platform.getSecureArea() as AndroidKeystoreSecureArea
     androidKeystoreSecureArea.createKey(
         "testKey",
         AndroidKeystoreCreateKeySettings.Builder("Challenge".encodeToByteString())
@@ -520,7 +520,7 @@ private suspend fun aksTestUnguarded(
     strongBox: Boolean,
     showToast: (message: String) -> Unit) {
 
-    val androidKeystoreSecureArea = platformSecureAreaProvider().get() as AndroidKeystoreSecureArea
+    val androidKeystoreSecureArea = Platform.getSecureArea() as AndroidKeystoreSecureArea
     androidKeystoreSecureArea.createKey(
         "testKey",
         AndroidKeystoreCreateKeySettings.Builder("Challenge".encodeToByteString())

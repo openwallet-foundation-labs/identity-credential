@@ -8,6 +8,7 @@ import org.multipaz.device.DeviceCheck
 import org.multipaz.device.DeviceAssertion
 import org.multipaz.device.DeviceAttestation
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.X509Cert
 
 /**
  * This describes the protocol (messages and constants) between the device and the server
@@ -372,6 +373,53 @@ object CloudSecureAreaProtocol {
     data class CreateKeyResponse1(
         val remoteKeyAttestation: X509CertChain,
         val serverState: ByteArray
+    ) : Command()
+
+    data class BatchCreateKeyRequest0(
+        val algorithm: String,
+        val validFromMillis: Long,
+        val validUntilMillis: Long,
+        val passphraseRequired: Boolean,
+        val userAuthenticationRequired: Boolean,
+        val userAuthenticationTypes: Long,
+        val challenge: ByteArray
+    ) : Command()
+
+    data class BatchCreateKeyResponse0(
+        val cloudChallenge: ByteArray,
+        val serverState: ByteArray
+    ) : Command()
+
+    /**
+     * The second request for batch creation of keys.
+     *
+     * Note that the size the number of keys requested in the batch is conveyed here as the size of [localKeys].
+     *
+     * @property localKeys the local keys created with the challenge retrieved from the server.
+     * @property localKeyAttestations the attestations for the local keys created - is empty if the device doesn't
+     *   support key attestations. Otherwise its cardinality matches that of [localKeys]
+     */
+    data class BatchCreateKeyRequest1(
+        val localKeys: List<CoseKey>,
+        val localKeyAttestations: List<X509CertChain>,
+        val serverState: ByteArray
+    ) : Command()
+
+    /**
+     * The second and final response for batch creation of keys.
+     *
+     * @property commonCertChain the X.509 certificate that all the leaf certificates got in common.
+     * @property remoteKeyAttestationLeafs Leaf X.509 certificates for each generated cloud key.
+     * @property serverStates A serverState for each generated cloud key.
+     * @property openid4vciKeyAttestationCompactSerialization An attestation over all the keys according to
+     *   [OpenID4VCI Key Attestation](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html#name-key-attestation-in-jwt-form)
+     *   or `null` if the implementation doesn't provide such an attestation or wasn't requested.
+     */
+    data class BatchCreateKeyResponse1(
+        val commonCertChain: X509CertChain,
+        val remoteKeyAttestationLeafs: List<X509Cert>,
+        val serverStates: List<ByteArray>,
+        val openid4vciKeyAttestationCompactSerialization: String?
     ) : Command()
 
     data class SignRequest0(

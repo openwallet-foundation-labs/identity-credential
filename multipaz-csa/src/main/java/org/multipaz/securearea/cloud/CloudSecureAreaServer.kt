@@ -3,7 +3,6 @@ package org.multipaz.securearea.cloud
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.cose.CoseKey
 import org.multipaz.crypto.Algorithm
@@ -41,7 +40,17 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonArrayBuilder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.crypto.JsonWebSignature
+import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.BatchCreateKeyResponse1
+import org.multipaz.util.toBase64Url
 import java.nio.ByteBuffer
 import java.util.Locale
 import kotlin.random.Random
@@ -67,6 +76,16 @@ import kotlin.random.Random
  *   service. Each element is the bytes of the SHA-256 of a signing certificate, see the
  *   [Signature](https://developer.android.com/reference/android/content/pm/Signature) class in
  *   the Android SDK for details. If empty, allow any app.
+ * @param openid4vciKeyAttestationIssuer The value to use for the `iss` field in OpenID4VCI attestations or `null` to
+ *   not include this field.
+ * @param openid4vciKeyAttestationKeyStorage The value to use for the `key_storage` field in OpenID4VCI attestations or
+ *   `null` to not include this field.
+ * @param openid4vciKeyAttestationUserAuthentication The value to use for the `user_authentication` field in OpenID4VCI
+ *   attestations for keys that are passphrase protected or `null` to not include this field.
+ * @param openid4vciKeyAttestationUserAuthenticationNoPassphrase The value to use for the `user_authentication` field
+ *   in OpenID4VCI attestations for keys that are not passphrase protected or `null` to not include this field.
+ * @param openid4vciKeyAttestationCertification The value to use for the `certification` field in OpenID4VCI
+ *   attestations or `null` to not include this field.
  * @param passphraseFailureEnforcer the [PassphraseFailureEnforcer] to use.
  */
 class CloudSecureAreaServer(
@@ -85,6 +104,11 @@ class CloudSecureAreaServer(
     private val androidGmsAttestation: Boolean,
     private val androidVerifiedBootGreen: Boolean,
     private val androidAppSignatureCertificateDigests: List<ByteString>,
+    private val openid4vciKeyAttestationIssuer: String?,
+    private val openid4vciKeyAttestationKeyStorage: String?,
+    private val openid4vciKeyAttestationUserAuthentication: String?,
+    private val openid4vciKeyAttestationUserAuthenticationNoPassphrase: String?,
+    private val openid4vciKeyAttestationCertification: String?,
     private val passphraseFailureEnforcer: PassphraseFailureEnforcer
 ) {
     private fun encryptState(plaintext: ByteArray): ByteArray {
@@ -504,6 +528,173 @@ class CloudSecureAreaServer(
         return Pair(200, encryptedResponse1.toCbor())
     }
 
+    private fun doBatchCreateKeyRequest0(
+        request0: CloudSecureAreaProtocol.BatchCreateKeyRequest0,
+        remoteHost: String,
+        e2eeState: E2EEState
+    ): Pair<Int, ByteArray> {
+        val state = CreateKeyState()
+        state.challenge = request0.challenge
+        state.cloudChallenge = Random.Default.nextBytes(32)
+        state.algorithm = Algorithm.fromName(request0.algorithm)
+        state.validFromMillis = request0.validFromMillis
+        state.validUntilMillis = request0.validUntilMillis
+        state.passphraseRequired = request0.passphraseRequired
+        state.userAuthenticationRequired = request0.userAuthenticationRequired
+        state.userAuthenticationTypes = request0.userAuthenticationTypes
+        val response0 = CloudSecureAreaProtocol.BatchCreateKeyResponse0(
+            state.cloudChallenge!!,
+            encryptCreateKeyState(state)
+        )
+        val encryptedResponse0 = E2EEResponse(
+            encryptToDevice(e2eeState, response0.toCbor()),
+            e2eeState.encrypt()
+        )
+        Logger.d(TAG, "$remoteHost: BatchCreateKeyRequest0: Sending challenge to client")
+        return Pair(200, encryptedResponse0.toCbor())
+    }
+
+    private suspend fun doBatchCreateKeyRequest1(
+        request1: CloudSecureAreaProtocol.BatchCreateKeyRequest1,
+        remoteHost: String,
+        e2eeState: E2EEState
+    ): Pair<Int, ByteArray> {
+        val state = decryptCreateKeyState(request1.serverState)
+
+        // iOS devices don't have key attestation for the locally created key but other platforms do, including
+        // Android. So we check that the attestation is valid and matches what we requested.
+        if (e2eeState.context!!.deviceAttestation !is DeviceAttestationIos) {
+            for (localKeyAttestation in request1.localKeyAttestations) {
+                try {
+                    validateAndroidKeyAttestation(
+                        chain = localKeyAttestation,
+                        challenge = ByteString(state.cloudChallenge!!),
+                        requireGmsAttestation = androidGmsAttestation,
+                        requireVerifiedBootGreen = androidVerifiedBootGreen,
+                        requireAppSignatureCertificateDigests = androidAppSignatureCertificateDigests
+                    )
+                    // Check that device created the key with the requested user authentication.
+                    val attestation = AndroidAttestationExtensionParser(localKeyAttestation.certificates[0])
+                    if (state.userAuthenticationRequired) {
+                        val attestationExtensionUserAuthType = attestation.getUserAuthenticationType()
+                        check(attestationExtensionUserAuthType == state.userAuthenticationTypes) {
+                            "Requested userAuthType ${state.userAuthenticationTypes} for the local key but the Android " +
+                                    "attestation extension contains ${attestationExtensionUserAuthType}"
+                        }
+                    } else {
+                        check(attestation.getUserAuthenticationType() == 0L)
+                    }
+                } catch (e: Throwable) {
+                    throw IllegalStateException("doBatchCreateKeyRequest1: Android Keystore attestation did not validate", e)
+                }
+            }
+        }
+
+        val remoteKeyAttestationLeafs = mutableListOf<X509Cert>()
+        val serverStates = mutableListOf<ByteArray>()
+        val openid4vciAttestedKeysJwks = mutableListOf<JsonElement>()
+        for (localKey in request1.localKeys) {
+            state.localKey = localKey
+            val storage = EphemeralStorage()
+            val secureArea = SoftwareSecureArea.create(storage)
+            val builder = SoftwareCreateKeySettings.Builder()
+                .setValidityPeriod(
+                    Instant.fromEpochMilliseconds(state.validFromMillis),
+                    Instant.fromEpochMilliseconds(state.validUntilMillis)
+                )
+                .setAlgorithm(state.algorithm)
+            secureArea.createKey("CloudKey", builder.build())
+
+            val keyInfo = secureArea.getKeyInfo("CloudKey")
+
+            val attestationCert = X509Cert.Builder(
+                publicKey = keyInfo.publicKey,
+                signingKey = attestationKey,
+                signatureAlgorithm = attestationKeySignatureAlgorithm,
+                serialNumber = ASN1Integer(1L),
+                subject = X500Name.fromName("CN=Cloud Secure Area Key"),
+                issuer = X500Name.fromName(attestationKeyIssuer),
+                validFrom = Instant.fromEpochMilliseconds(state.validFromMillis),
+                validUntil = Instant.fromEpochMilliseconds(state.validUntilMillis)
+            )
+                .includeSubjectKeyIdentifier()
+                .setAuthorityKeyIdentifierToCertificate(attestationKeyCertification.certificates[0])
+                .setKeyUsage(
+                    setOf(
+                        if (keyInfo.algorithm.isSigning) {
+                            X509KeyUsage.DIGITAL_SIGNATURE
+                        } else {
+                            X509KeyUsage.KEY_AGREEMENT
+                        }
+                    )
+                )
+                .addExtension(
+                    oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
+                    critical = false,
+                    value = CloudAttestationExtension(
+                        challenge = ByteString(state.challenge!!),
+                        passphrase = state.passphraseRequired,
+                        userAuthentication = CloudUserAuthType.decodeSet(state.userAuthenticationTypes)
+                    ).encode().toByteArray()
+                )
+                .build()
+            remoteKeyAttestationLeafs.add(attestationCert)
+
+            state.cloudKeyStorage = storage.serialize().toByteArray()
+            serverStates.add(encryptCreateKeyState(state))
+            openid4vciAttestedKeysJwks.add(
+                keyInfo.publicKey.toJwk()
+            )
+        }
+        val openidvciAttestationBody = buildJsonObject {
+            openid4vciKeyAttestationIssuer?.let { put("iss", it) }
+            put("iat", Clock.System.now().epochSeconds)
+            put("nbf", state.validFromMillis/1000L)
+            put("exp", state.validUntilMillis/1000L)
+            if (openid4vciKeyAttestationKeyStorage != null) {
+                putJsonArray("key_storage") {
+                    add(openid4vciKeyAttestationKeyStorage)
+                }
+            }
+            if (state.passphraseRequired) {
+                if (openid4vciKeyAttestationUserAuthentication != null) {
+                    putJsonArray("user_authentication") {
+                        add(openid4vciKeyAttestationUserAuthentication)
+                    }
+                }
+            } else {
+                if (openid4vciKeyAttestationUserAuthenticationNoPassphrase != null) {
+                    putJsonArray("user_authentication") {
+                        add(openid4vciKeyAttestationUserAuthenticationNoPassphrase)
+                    }
+                }
+            }
+            openid4vciKeyAttestationCertification?.let { put("certification", it) }
+            put("nonce", state.challenge!!.toBase64Url())
+            // TODO: include 'status' field
+            put("attested_keys", JsonArray(openid4vciAttestedKeysJwks))
+        }
+        val openidvciAttestation = JsonWebSignature.sign(
+            key = attestationKey,
+            signatureAlgorithm = attestationKeySignatureAlgorithm,
+            claimsSet = openidvciAttestationBody,
+            type = "key-attestation+jwt",
+            x5c = attestationKeyCertification
+        )
+        val response1 = BatchCreateKeyResponse1(
+            commonCertChain = X509CertChain(attestationKeyCertification.certificates),
+            remoteKeyAttestationLeafs = remoteKeyAttestationLeafs,
+            serverStates = serverStates,
+            openid4vciKeyAttestationCompactSerialization = openidvciAttestation
+        )
+        val encryptedResponse1 = E2EEResponse(
+            encryptToDevice(e2eeState, response1.toCbor()),
+            e2eeState.encrypt()
+        )
+        Logger.d(TAG, "$remoteHost: BatchCreateKeyRequest1: Created key for client")
+        return Pair(200, encryptedResponse1.toCbor())
+    }
+
     @CborSerializable
     data class SignState(
         var keyContext: CreateKeyState? = null,
@@ -871,6 +1062,8 @@ class CloudSecureAreaServer(
             is CloudSecureAreaProtocol.RegisterStage2Request0 -> doRegisterStage2Request0(command, remoteHost, e2eeState!!)
             is CreateKeyRequest0 -> doCreateKeyRequest0(command, remoteHost, e2eeState!!)
             is CloudSecureAreaProtocol.CreateKeyRequest1 -> doCreateKeyRequest1(command, remoteHost, e2eeState!!)
+            is CloudSecureAreaProtocol.BatchCreateKeyRequest0 -> doBatchCreateKeyRequest0(command, remoteHost, e2eeState!!)
+            is CloudSecureAreaProtocol.BatchCreateKeyRequest1 -> doBatchCreateKeyRequest1(command, remoteHost, e2eeState!!)
             is CloudSecureAreaProtocol.SignRequest0 -> doSignRequest0(command, remoteHost, e2eeState!!)
             is CloudSecureAreaProtocol.SignRequest1 -> doSignRequest1(command, remoteHost, e2eeState!!)
             is CloudSecureAreaProtocol.KeyAgreementRequest0 -> doKeyAgreementRequest0(command, remoteHost, e2eeState!!)

@@ -128,7 +128,7 @@ data class KeyMaterial(
 
             // Create instance-specific intermediate certificate.
             val attestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
-            val attestationKeySignatureAlgorithm = Algorithm.ES256
+            val attestationKeySignatureAlgorithm = Algorithm.ESP256
             val attestationKeySubject = "CN=Cloud Secure Area Attestation Root"
             val rootCertificate = attestationRoot.certificateChain.certificates.first()
             val attestationKeyCertificate = X509Cert.Builder(
@@ -150,7 +150,7 @@ data class KeyMaterial(
             // Create Cloud Binding Key Attestation Root w/ self-signed certificate.
             val bindingRoot = BackendEnvironment.getServerIdentity("csa_binding_identity") {
                 val cloudBindingKeyAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
-                val cloudBindingKeySignatureAlgorithm = Algorithm.ES256
+                val cloudBindingKeySignatureAlgorithm = Algorithm.ESP256
                 val cloudBindingKeySubject =
                     "CN=Cloud Secure Area Cloud Binding Key Attestation Root"
                 val cloudBindingKeyAttestationCertificate = X509Cert.Builder(

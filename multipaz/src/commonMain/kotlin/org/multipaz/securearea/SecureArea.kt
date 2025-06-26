@@ -101,7 +101,7 @@ interface SecureArea {
         }
         return BatchCreateKeyResult(
             keyInfos = keyInfos,
-            openid4vciKeyAttestation = null
+            openid4vciKeyAttestationJws = null
         )
     }
 

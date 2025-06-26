@@ -8,30 +8,45 @@ import org.multipaz.util.fromBase64Url
 class CloudSecureAreaSettings(private val conf: Configuration) {
 
     val iosReleaseBuild
-        get() = getBool("iosRequireReleaseBuild", false)
+        get() = getBool("ios_require_release_build", false)
 
     val iosAppIdentifier
-        get() = getString("iosRequireAppIdentifier")
+        get() = getString("ios_require_app_identifier")
 
     val androidRequireGmsAttestation
-        get() = getBool("androidRequireGmsAttestation", true)
+        get() = getBool("android_require_gms_attestation", true)
 
     val androidRequireVerifiedBootGreen
-        get() = getBool("androidRequireVerifiedBootGreen", true)
+        get() = getBool("android_require_verified_boot_green", true)
 
     val androidRequireAppSignatureCertificateDigests: List<ByteString>
-        get() = getStringList("androidRequireAppSignatureCertificateDigests").map {
+        get() = getStringList("android_require_app_signature_certificate_digests").map {
             ByteString(it.fromBase64Url())
         }
 
     val cloudSecureAreaRekeyingIntervalSeconds: Int
-        get() = getInt("cloudSecureAreaRekeyingIntervalSeconds", 300)
+        get() = getInt("cloud_secure_area_rekeying_interval_seconds", 300)
 
     val cloudSecureAreaLockoutNumFailedAttempts: Int
-        get() = getInt("cloudSecureAreaLockoutNumFailedAttempts", 3)
+        get() = getInt("cloud_secure_area_lockout_num_failed_attempts", 3)
 
     val cloudSecureAreaLockoutDurationSeconds: Int
-        get() = getInt("cloudSecureAreaLockoutDurationSeconds", 60)
+        get() = getInt("cloud_secure_area_lockout_duration_seconds", 60)
+
+    val openid4vciKeyAttestationIssuer
+        get() = getString("openid4vci_key_attestation_issuer")
+
+    val openid4vciKeyAttestationKeyStorage
+        get() = getString("openid4vci_key_attestation_key_storage")
+
+    val openid4vciKeyAttestationUserAuthentication
+        get() = getString("openid4vci_key_attestation_user_authentication")
+
+    val openid4vciKeyAttestationUserAuthenticationNoPassphrase
+        get() = getString("openid4vci_key_attestation_user_authentication_no_passphrase")
+
+    val openid4vciKeyAttestationCertification
+        get() = getString("openid4vci_key_attestation_certification")
 
     private fun getString(key: String) = conf.getValue(key)
 

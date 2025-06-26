@@ -122,6 +122,8 @@ import org.multipaz.prompt.PromptModel
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
+import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.Platform
 import org.multipaz.util.fromHex
 
 /**
@@ -223,7 +225,7 @@ class App private constructor (val promptModel: PromptModel) {
     }
 
     private suspend fun settingsInit() {
-        settingsModel = TestAppSettingsModel.create(platformStorage())
+        settingsModel = TestAppSettingsModel.create(Platform.storage)
     }
 
     private suspend fun documentTypeRepositoryInit() {
@@ -235,10 +237,10 @@ class App private constructor (val promptModel: PromptModel) {
     }
 
     private suspend fun documentStoreInit() {
-        softwareSecureArea = SoftwareSecureArea.create(platformStorage())
+        softwareSecureArea = SoftwareSecureArea.create(Platform.storage)
         secureAreaRepository = SecureAreaRepository.Builder()
             .add(softwareSecureArea)
-            .add(platformSecureAreaProvider().get())
+            .add(Platform.getSecureArea())
             .addFactory(CloudSecureArea.IDENTIFIER_PREFIX) { identifier ->
                 val queryString = identifier.substring(CloudSecureArea.IDENTIFIER_PREFIX.length + 1)
                 val params = queryString.split("&").associate {
@@ -248,7 +250,7 @@ class App private constructor (val promptModel: PromptModel) {
                 val cloudSecureAreaUrl = params["url"]!!
                 Logger.i(TAG, "Creating CSA with url $cloudSecureAreaUrl for $identifier")
                 CloudSecureArea.create(
-                    platformStorage(),
+                    Platform.nonBackedUpStorage,
                     identifier,
                     cloudSecureAreaUrl,
                     platformHttpClientEngineFactory()
@@ -256,7 +258,7 @@ class App private constructor (val promptModel: PromptModel) {
             }
             .build()
         documentStore = buildDocumentStore(
-            storage = platformStorage(),
+            storage = Platform.storage,
             secureAreaRepository = secureAreaRepository
         ) {
             //setTableSpec(testDocumentTableSpec)
@@ -378,7 +380,7 @@ class App private constructor (val promptModel: PromptModel) {
     private lateinit var keyStorage: StorageTable
 
     private suspend fun keyStorageInit() {
-        keyStorage = platformStorage().getTable(
+        keyStorage = Platform.storage.getTable(
             StorageTableSpec(
                 name = "TestAppKeys",
                 supportPartitions = false,

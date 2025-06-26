@@ -61,7 +61,7 @@ class DocumentModel(
                             if (document != null) {
                                 documentInfos[event.documentId] = DocumentInfo(
                                     document = document,
-                                    cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
+                                    cardArt = decodeImage(document.metadata.cardArt?.toByteArray() ?: byteArrayOf(0)),
                                     credentialInfos = document.buildCredentialInfos()
                                 )
                             }
