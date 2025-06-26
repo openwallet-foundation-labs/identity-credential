@@ -15,7 +15,7 @@ import org.multipaz.rpc.backend.getTable
 import org.multipaz.rpc.handler.RpcAuthContext
 import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import org.multipaz.storage.StorageTableSpec
-import org.multipaz.testapp.platformSecureAreaProvider
+import org.multipaz.util.Platform
 import kotlin.coroutines.CoroutineContext
 
 class ProvisioningBackendProviderLocal: ProvisioningBackendProvider {
@@ -47,7 +47,7 @@ class ProvisioningBackendProviderLocal: ProvisioningBackendProvider {
     ): DeviceAssertion {
         init()
         return DeviceCheck.generateAssertion(
-            secureArea = platformSecureAreaProvider().get(),
+            secureArea = Platform.getSecureArea(),
             deviceAttestationId = deviceAttestationId!!,
             assertion = assertionFactory(CLIENT_ID)
         )
@@ -66,7 +66,7 @@ class ProvisioningBackendProviderLocal: ProvisioningBackendProvider {
                 val clientTable =
                     BackendEnvironment.getTable(RpcAuthInspectorAssertion.rpcClientTableSpec)
                 val newAttestationResult = DeviceCheck.generateAttestation(
-                    secureArea = platformSecureAreaProvider().get(),
+                    secureArea = Platform.getSecureArea(),
                     challenge = CLIENT_ID.encodeToByteString()
                 )
                 deviceAttestation = newAttestationResult.deviceAttestation

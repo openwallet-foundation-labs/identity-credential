@@ -16,8 +16,7 @@ import org.multipaz.rpc.handler.RpcNotifier
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import org.multipaz.testapp.platformHttpClientEngineFactory
-import org.multipaz.testapp.platformSecureAreaProvider
-import org.multipaz.testapp.platformStorage
+import org.multipaz.util.Platform
 import org.multipaz.util.fromBase64Url
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
@@ -30,7 +29,7 @@ class BackendEnvironmentLocal(
     private val deviceAssertionMaker: DeviceAssertionMaker
 ): BackendEnvironment {
     private var configuration = ConfigurationImpl()
-    private val storage = platformStorage()
+    private val storage = Platform.getStorage()
     private val resources = ResourcesImpl()
     private val notificationsLocal = RpcNotificationsLocal(NoopCipher)
     private val httpClient = HttpClient(platformHttpClientEngineFactory()) {
@@ -46,7 +45,7 @@ class BackendEnvironmentLocal(
             RpcNotifications::class -> notificationsLocal
             RpcNotifier::class -> notificationsLocal
             HttpClient::class -> httpClient
-            SecureAreaProvider::class -> platformSecureAreaProvider()
+            SecureAreaProvider::class -> SecureAreaProvider { Platform.getSecureArea() }
             DeviceAssertionMaker::class -> deviceAssertionMaker
             ApplicationSupport::class -> applicationSupportLocal
             RpcAuthInspector::class -> RpcAuthInspectorAssertion.Default

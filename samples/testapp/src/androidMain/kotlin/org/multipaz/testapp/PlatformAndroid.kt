@@ -84,29 +84,7 @@ actual fun getLocalIpAddress(): String {
     throw IllegalStateException("Unable to determine address")
 }
 
-private val androidStorage: AndroidStorage by lazy {
-    AndroidStorage(
-        // We do not want our database to be backed-up as it is useless without private keys
-        // in the secure area (which are not, and cannot be backed-up). In the future we
-        // may want to have another database which would be backed-up (and may be used as a way
-        // to re-provision credentials to a new device).
-        File(applicationContext.noBackupFilesDir.path, "storage.db").absolutePath
-    )
-}
-
-actual fun platformStorage(): Storage {
-    return androidStorage
-}
-
 actual fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*> = Android
-
-private val androidKeystoreSecureAreaProvider = SecureAreaProvider {
-    AndroidKeystoreSecureArea.create(androidStorage)
-}
-
-actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
-    return androidKeystoreSecureAreaProvider
-}
 
 actual val platformSecureAreaHasKeyAgreement by lazy {
     AndroidKeystoreSecureArea.Capabilities().keyAgreementSupported

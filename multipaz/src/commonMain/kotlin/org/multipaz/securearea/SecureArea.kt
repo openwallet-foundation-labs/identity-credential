@@ -15,9 +15,13 @@
  */
 package org.multipaz.securearea
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.EcSignature
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * An interface to a Secure Area.
@@ -183,3 +187,32 @@ interface SecureArea {
      */
     suspend fun getKeyInvalidated(alias: String): Boolean
 }
+
+fun benchmarkReset() {
+    lastResetAt = Clock.System.now()
+    createKeyTime = 0.seconds
+    createKeyTimeInKeystore = 0.seconds
+    numCreateKeyCalls = 0
+}
+
+fun benchmarkGetTimes(): BenchmarkTimes {
+    return BenchmarkTimes(
+        numCreateKeyCalls,
+        Clock.System.now() - lastResetAt,
+        createKeyTime = createKeyTime,
+        createKeyTimeInKeystore = createKeyTimeInKeystore
+    )
+}
+
+internal lateinit var lastResetAt: Instant
+internal var createKeyTime = 0.seconds
+internal var createKeyTimeInKeystore = 0.seconds
+internal var numCreateKeyCalls = 0
+
+data class BenchmarkTimes(
+    val numCreateKeyCalls: Int,
+    val totalElapsedTime: Duration,
+    val createKeyTime: Duration,
+    val createKeyTimeInKeystore: Duration
+)
+

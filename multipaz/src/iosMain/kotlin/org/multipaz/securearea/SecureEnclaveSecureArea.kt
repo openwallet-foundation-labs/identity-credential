@@ -1,5 +1,6 @@
 package org.multipaz.securearea
 
+import kotlinx.datetime.Clock
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -8,7 +9,6 @@ import org.multipaz.crypto.EcSignature
 import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
-import org.multipaz.util.Logger
 import kotlinx.io.bytestring.ByteString
 
 /**
@@ -70,6 +70,7 @@ class SecureEnclaveSecureArea private constructor(
         get() = listOf(Algorithm.ESP256, Algorithm.ECDH_P256)
 
     override suspend fun createKey(alias: String?, createKeySettings: CreateKeySettings): KeyInfo {
+        val t0 = Clock.System.now()
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(alias, partitionId)
@@ -98,13 +99,18 @@ class SecureEnclaveSecureArea private constructor(
         if (settings.userAuthenticationRequired) {
             accessControlCreateFlags = SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes)
         }
+        val ost0 = Clock.System.now()
         val (keyBlob, pubKey) = Crypto.secureEnclaveCreateEcPrivateKey(
             settings.algorithm,
             accessControlCreateFlags
         )
-        Logger.d(TAG, "EC key with alias '$alias' created")
+        createKeyTimeInKeystore += (Clock.System.now() - ost0)
+        //Logger.d(TAG, "EC key with alias '$alias' created")
         val newAlias = insertKey(alias, settings, keyBlob, pubKey)
-        return getKeyInfo(newAlias)
+        val ret = getKeyInfo(newAlias)
+        createKeyTime += (Clock.System.now() - t0)
+        numCreateKeyCalls += 1
+        return ret
     }
 
     private suspend fun insertKey(

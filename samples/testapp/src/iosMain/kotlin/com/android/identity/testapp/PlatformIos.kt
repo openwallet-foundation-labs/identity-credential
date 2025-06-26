@@ -131,31 +131,7 @@ private fun openDatabase(): SQLiteConnection {
     return NativeSQLiteDriver().open(rootPath.path() + "/storage.db")
 }
 
-@OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
-private val iosStorage = SqliteStorage(
-    connection = openDatabase(),
-    // native sqlite crashes when used with Dispatchers.IO
-    coroutineContext = newSingleThreadContext("DB")
-)
-
-// SecureEnclaveSecureArea doesn't work on the iOS simulator so use SoftwareSecureArea there
-private val secureEnclaveSecureAreaProvider = SecureAreaProvider {
-    if (platformIsEmulator) {
-        SoftwareSecureArea.create(iosStorage)
-    } else {
-        SecureEnclaveSecureArea.create(iosStorage)
-    }
-}
-
-actual fun platformStorage(): Storage {
-    return iosStorage
-}
-
 actual fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*> = Darwin
-
-actual fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea> {
-    return secureEnclaveSecureAreaProvider
-}
 
 actual val platformSecureAreaHasKeyAgreement = true
 

@@ -10,15 +10,15 @@ actual object Platform {
     actual val promptModel: PromptModel
         get() = throw NotImplementedError()
 
-    actual suspend fun getStorage(): Storage {
+    actual fun getStorage(): Storage {
         throw NotImplementedError()
     }
 
-    actual suspend fun getNonBackedUpStorage(): Storage {
+    actual fun getNonBackedUpStorage(): Storage {
         throw NotImplementedError()
     }
 
-    actual suspend fun getSecureArea(storage: Storage): SecureArea {
+    actual suspend fun getSecureArea(): SecureArea {
         throw NotImplementedError()
     }
 }

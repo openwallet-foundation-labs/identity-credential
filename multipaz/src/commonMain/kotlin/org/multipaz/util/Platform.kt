@@ -27,7 +27,7 @@ expect object Platform {
      *
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
-    suspend fun getStorage(): Storage
+    fun getStorage(): Storage
 
     /**
      * Gets a [Storage] instance suitable for the platform in a location where the
@@ -35,12 +35,12 @@ expect object Platform {
      *
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
-    suspend fun getNonBackedUpStorage(): Storage
+    fun getNonBackedUpStorage(): Storage
 
     /**
      * Gets a [SecureArea] implementation suitable for the platform.
      *
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
-    suspend fun getSecureArea(storage: Storage): SecureArea
+    suspend fun getSecureArea(): SecureArea
 }

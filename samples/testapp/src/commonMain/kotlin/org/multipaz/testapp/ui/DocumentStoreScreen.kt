@@ -42,22 +42,25 @@ import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.testapp.TestAppUtils
 import org.multipaz.testapp.platformCreateKeySettings
 import org.multipaz.testapp.platformSecureAreaHasKeyAgreement
-import org.multipaz.testapp.platformSecureAreaProvider
-import org.multipaz.testapp.platformStorage
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
+import org.multipaz.securearea.benchmarkGetTimes
+import org.multipaz.securearea.benchmarkReset
 import org.multipaz.testapp.platformHttpClientEngineFactory
-import org.multipaz.util.fromHex
+import org.multipaz.util.Platform
 import kotlin.time.Duration.Companion.days
 
 private const val TAG = "DocumentStoreScreen"
+
+enum class CsaCreationMode {
+    NORMAL,
+    EUPID_WITH_10_CREDENTIALS,
+    EUPID_WITH_10_CREDENTIALS_BATCH,
+}
 
 @Composable
 fun DocumentStoreScreen(
@@ -94,6 +97,7 @@ fun DocumentStoreScreen(
     }
 
     val showCsaConnectDialog = remember { mutableStateOf(false) }
+    val csaCreationMode = remember { mutableStateOf<CsaCreationMode>(CsaCreationMode.NORMAL) }
     if (showCsaConnectDialog.value) {
         CsaConnectDialog(
             settingsModel.cloudSecureAreaUrl.value,
@@ -105,7 +109,7 @@ fun DocumentStoreScreen(
                 settingsModel.cloudSecureAreaUrl.value = url
                 coroutineScope.launch {
                     val cloudSecureArea = CloudSecureArea.create(
-                        platformStorage(),
+                        Platform.getNonBackedUpStorage(),
                         "CloudSecureArea?url=${url.encodeURLParameter()}",
                         url,
                         platformHttpClientEngineFactory()
@@ -118,6 +122,7 @@ fun DocumentStoreScreen(
                         showToast("Registered with CSA")
                         val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                         provisionTestDocuments(
+                            csaCreationMode = csaCreationMode.value,
                             documentStore = documentStore,
                             secureArea = cloudSecureArea,
                             secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
@@ -140,7 +145,6 @@ fun DocumentStoreScreen(
                             numCredentialsPerDomain = numCredentialsPerDomain.value,
                             showDocumentCreationDialog = showDocumentCreationDialog,
                         )
-
                     } catch (e: Throwable) {
                         e.printStackTrace()
                         showToast("${e.message}")
@@ -176,8 +180,9 @@ fun DocumentStoreScreen(
                     }
                     val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                     provisionTestDocuments(
+                        csaCreationMode = CsaCreationMode.NORMAL,
                         documentStore = documentStore,
-                        secureArea = platformSecureAreaProvider().get(),
+                        secureArea = Platform.getSecureArea(),
                         secureAreaCreateKeySettingsFunc = ::platformCreateKeySettings,
                         dsKey = dsKey,
                         dsCert = dsCert,
@@ -197,6 +202,7 @@ fun DocumentStoreScreen(
                 coroutineScope.launch {
                     val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                     provisionTestDocuments(
+                        csaCreationMode = CsaCreationMode.NORMAL,
                         documentStore = documentStore,
                         secureArea = softwareSecureArea,
                         secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
@@ -221,9 +227,26 @@ fun DocumentStoreScreen(
         }
         item {
             TextButton(onClick = {
+                csaCreationMode.value = CsaCreationMode.NORMAL
                 showCsaConnectDialog.value = true
             }) {
                 Text(text = "Create Test Documents in Cloud Secure Area")
+            }
+        }
+        item {
+            TextButton(onClick = {
+                csaCreationMode.value = CsaCreationMode.EUPID_WITH_10_CREDENTIALS
+                showCsaConnectDialog.value = true
+            }) {
+                Text(text = "Create EUPID in CSA w/ 10 creds")
+            }
+        }
+        item {
+            TextButton(onClick = {
+                csaCreationMode.value = CsaCreationMode.EUPID_WITH_10_CREDENTIALS_BATCH
+                showCsaConnectDialog.value = true
+            }) {
+                Text(text = "Create EUPID in CSA w/ 10 creds (batch)")
             }
         }
         item {
@@ -337,6 +360,7 @@ private fun generateDsKeyAndCert(
 }
 
 private suspend fun provisionTestDocuments(
+    csaCreationMode: CsaCreationMode,
     documentStore: DocumentStore,
     secureArea: SecureArea,
     secureAreaCreateKeySettingsFunc: (
@@ -372,7 +396,10 @@ private suspend fun provisionTestDocuments(
         return
     }
     try {
+        benchmarkReset()
+        val prevNumDocs = documentStore.listDocuments().size
         TestAppUtils.provisionTestDocuments(
+            csaCreationMode,
             documentStore,
             secureArea,
             secureAreaCreateKeySettingsFunc,
@@ -382,6 +409,15 @@ private suspend fun provisionTestDocuments(
             deviceKeyMacAlgorithm,
             numCredentialsPerDomain
         )
+        val result = benchmarkGetTimes()
+        val numDocs = documentStore.listDocuments().size - prevNumDocs
+        val txt = "Created ${numDocs} documents with ${result.numCreateKeyCalls} keys in ${secureArea.identifier} " +
+                "in ${result.totalElapsedTime}.\n" +
+                "The Storage used for documents and key metadata was ${Platform.getNonBackedUpStorage()}.\n" +
+                "Time spent in createKey() was ${result.createKeyTime} of which " +
+                "${result.createKeyTimeInKeystore} was spent in calls to the underlying keystore."
+        println(txt)
+        showToast(txt)
     } catch (e: Throwable) {
         e.printStackTrace()
         showToast("Error provisioning documents: $e")

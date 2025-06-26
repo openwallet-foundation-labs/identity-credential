@@ -52,6 +52,7 @@ import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.sdjwt.SdJwt
+import org.multipaz.testapp.ui.CsaCreationMode
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -134,6 +135,7 @@ object TestAppUtils {
     )
 
     suspend fun provisionTestDocuments(
+        csaCreationMode: CsaCreationMode,
         documentStore: DocumentStore,
         secureArea: SecureArea,
         secureAreaCreateKeySettingsFunc: (
@@ -151,75 +153,148 @@ object TestAppUtils {
     ) {
         require(deviceKeyAlgorithm.isSigning)
         require(deviceKeyMacAlgorithm == Algorithm.UNSET || deviceKeyMacAlgorithm.isKeyAgreement)
-        provisionDocument(
-            documentStore,
-            secureArea,
-            secureAreaCreateKeySettingsFunc,
-            dsKey,
-            dsCert,
-            deviceKeyAlgorithm,
-            deviceKeyMacAlgorithm,
-            numCredentialsPerDomain,
-            DrivingLicense.getDocumentType(),
-            "Erika",
-            "Erika's Driving License",
-            Res.drawable.driving_license_card_art
+        if (csaCreationMode == CsaCreationMode.EUPID_WITH_10_CREDENTIALS ||
+            csaCreationMode == CsaCreationMode.EUPID_WITH_10_CREDENTIALS_BATCH) {
+            provisionCsaEuPid(
+                csaCreationMode == CsaCreationMode.EUPID_WITH_10_CREDENTIALS_BATCH,
+                documentStore,
+                secureArea,
+                secureAreaCreateKeySettingsFunc,
+                dsKey,
+                dsCert,
+                deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm,
+                EUPersonalID.getDocumentType(),
+                "Erika",
+                "Erika's EU PID",
+                Res.drawable.pid_card_art
+            )
+        } else {
+            provisionDocument(
+                documentStore,
+                secureArea,
+                secureAreaCreateKeySettingsFunc,
+                dsKey,
+                dsCert,
+                deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm,
+                numCredentialsPerDomain,
+                DrivingLicense.getDocumentType(),
+                "Erika",
+                "Erika's Driving License",
+                Res.drawable.driving_license_card_art
+            )
+            provisionDocument(
+                documentStore,
+                secureArea,
+                secureAreaCreateKeySettingsFunc,
+                dsKey,
+                dsCert,
+                deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm,
+                numCredentialsPerDomain,
+                PhotoID.getDocumentType(),
+                "Erika",
+                "Erika's Photo ID",
+                Res.drawable.photo_id_card_art
+            )
+            provisionDocument(
+                documentStore,
+                secureArea,
+                secureAreaCreateKeySettingsFunc,
+                dsKey,
+                dsCert,
+                deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm,
+                numCredentialsPerDomain,
+                PhotoID.getDocumentType(),
+                "Erika #2",
+                "Erika's Photo ID #2",
+                Res.drawable.photo_id_card_art
+            )
+            provisionDocument(
+                documentStore,
+                secureArea,
+                secureAreaCreateKeySettingsFunc,
+                dsKey,
+                dsCert,
+                deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm,
+                numCredentialsPerDomain,
+                EUPersonalID.getDocumentType(),
+                "Erika",
+                "Erika's EU PID",
+                Res.drawable.pid_card_art
+            )
+            provisionDocument(
+                documentStore,
+                secureArea,
+                secureAreaCreateKeySettingsFunc,
+                dsKey,
+                dsCert,
+                deviceKeyAlgorithm,
+                deviceKeyMacAlgorithm,
+                numCredentialsPerDomain,
+                UtopiaMovieTicket.getDocumentType(),
+                "Erika",
+                "Erika's Movie Ticket",
+                Res.drawable.movie_ticket_cart_art
+            )
+        }
+    }
+
+    @OptIn(ExperimentalResourceApi::class)
+    private suspend fun provisionCsaEuPid(
+        useBatching: Boolean,
+        documentStore: DocumentStore,
+        secureArea: SecureArea,
+        secureAreaCreateKeySettingsFunc: (
+            challenge: ByteString,
+            algorithm: Algorithm,
+            userAuthenticationRequired: Boolean,
+            validFrom: Instant,
+            validUntil: Instant
+        ) -> CreateKeySettings,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
+        deviceKeyAlgorithm: Algorithm,
+        deviceKeyMacAlgorithm: Algorithm,
+        documentType: DocumentType,
+        givenNameOverride: String,
+        displayName: String,
+        cardArtResource: DrawableResource,
+    ) {
+        val cardArt = getDrawableResourceBytes(
+            getSystemResourceEnvironment(),
+            cardArtResource,
         )
-        provisionDocument(
-            documentStore,
-            secureArea,
-            secureAreaCreateKeySettingsFunc,
-            dsKey,
-            dsCert,
-            deviceKeyAlgorithm,
-            deviceKeyMacAlgorithm,
-            numCredentialsPerDomain,
-            PhotoID.getDocumentType(),
-            "Erika",
-            "Erika's Photo ID",
-            Res.drawable.photo_id_card_art
+
+        val document = documentStore.createDocument(
+            displayName = displayName,
+            typeDisplayName = documentType.displayName,
+            cardArt = ByteString(cardArt),
         )
-        provisionDocument(
-            documentStore,
-            secureArea,
-            secureAreaCreateKeySettingsFunc,
-            dsKey,
-            dsCert,
-            deviceKeyAlgorithm,
-            deviceKeyMacAlgorithm,
-            numCredentialsPerDomain,
-            PhotoID.getDocumentType(),
-            "Erika #2",
-            "Erika's Photo ID #2",
-            Res.drawable.photo_id_card_art
-        )
-        provisionDocument(
-            documentStore,
-            secureArea,
-            secureAreaCreateKeySettingsFunc,
-            dsKey,
-            dsCert,
-            deviceKeyAlgorithm,
-            deviceKeyMacAlgorithm,
-            numCredentialsPerDomain,
-            EUPersonalID.getDocumentType(),
-            "Erika",
-            "Erika's EU PID",
-            Res.drawable.pid_card_art
-        )
-        provisionDocument(
-            documentStore,
-            secureArea,
-            secureAreaCreateKeySettingsFunc,
-            dsKey,
-            dsCert,
-            deviceKeyAlgorithm,
-            deviceKeyMacAlgorithm,
-            numCredentialsPerDomain,
-            UtopiaMovieTicket.getDocumentType(),
-            "Erika",
-            "Erika's Movie Ticket",
-            Res.drawable.movie_ticket_cart_art
+
+        val now = Clock.System.now()
+        val signedAt = now - 1.hours
+        val validFrom =  now - 1.hours
+        val validUntil = now + 365.days
+
+        addMdocCredentialsSameType(
+            useBatching = useBatching,
+            document = document,
+            documentType = documentType,
+            secureArea = secureArea,
+            secureAreaCreateKeySettingsFunc = secureAreaCreateKeySettingsFunc,
+            deviceKeyAlgorithm = deviceKeyAlgorithm,
+            deviceKeyMacAlgorithm = deviceKeyMacAlgorithm,
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+            dsKey = dsKey,
+            dsCert = dsCert,
+            numCredentialsPerDomain = 10,
+            givenNameOverride = givenNameOverride
         )
     }
 
@@ -429,6 +504,144 @@ object TestAppUtils {
             }
         }
 
+    }
+
+    private suspend fun addMdocCredentialsSameType(
+        useBatching: Boolean,
+        document: Document,
+        documentType: DocumentType,
+        secureArea: SecureArea,
+        secureAreaCreateKeySettingsFunc: (
+            challenge: ByteString,
+            algorithm: Algorithm,
+            userAuthenticationRequired: Boolean,
+            validFrom: Instant,
+            validUntil: Instant
+        ) -> CreateKeySettings,
+        deviceKeyAlgorithm: Algorithm,
+        deviceKeyMacAlgorithm: Algorithm,
+        signedAt: Instant,
+        validFrom: Instant,
+        validUntil: Instant,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
+        numCredentialsPerDomain: Int,
+        givenNameOverride: String
+    ) {
+        val issuerNamespaces = buildIssuerNamespaces {
+            for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
+                addNamespace(nsName) {
+                    for ((deName, de) in ns.dataElements) {
+                        val sampleValue = de.attribute.sampleValueMdoc
+                        if (sampleValue != null) {
+                            val value = if (deName.startsWith("given_name")) {
+                                Tstr(givenNameOverride)
+                            } else {
+                                sampleValue
+                            }
+                            addDataElement(deName, value)
+                        } else {
+                            Logger.w(TAG, "No sample value for data element $deName")
+                        }
+                    }
+                }
+            }
+        }
+
+        val domain = CREDENTIAL_DOMAIN_MDOC_USER_AUTH
+        val algorithm = deviceKeyAlgorithm
+
+        val credentials = if (useBatching) {
+            val (creds, _) = MdocCredential.createBatch(
+                numberOfCredentials = 10,
+                document = document,
+                domain = CREDENTIAL_DOMAIN_MDOC_USER_AUTH,
+                secureArea = secureArea,
+                docType = documentType.mdocDocumentType!!.docType,
+                createKeySettings = secureAreaCreateKeySettingsFunc(
+                    "Challenge".encodeToByteString(),
+                    deviceKeyAlgorithm,
+                    true,
+                    validFrom,
+                    validUntil
+                )
+            )
+            creds
+        } else {
+            val creds = mutableListOf<MdocCredential>()
+            for (n in 1..numCredentialsPerDomain) {
+                val mdocCredential = MdocCredential.create(
+                    document = document,
+                    asReplacementForIdentifier = null,
+                    domain = CREDENTIAL_DOMAIN_MDOC_USER_AUTH,
+                    secureArea = secureArea,
+                    docType = documentType.mdocDocumentType!!.docType,
+                    createKeySettings = secureAreaCreateKeySettingsFunc(
+                        "Challenge".encodeToByteString(),
+                        deviceKeyAlgorithm,
+                        true,
+                        validFrom,
+                        validUntil
+                    )
+                )
+                creds.add(mdocCredential)
+            }
+            creds
+        }
+
+        for (mdocCredential in credentials) {
+            // Generate an MSO and issuer-signed data for this authentication key.
+            val msoGenerator = MobileSecurityObjectGenerator(
+                Algorithm.SHA256,
+                documentType.mdocDocumentType!!.docType,
+                mdocCredential.getAttestation().publicKey
+            )
+            msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, null)
+            msoGenerator.addValueDigests(issuerNamespaces)
+
+            val mso = msoGenerator.generate()
+            val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
+
+            // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
+            //
+            // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+            //
+            val protectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                    Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
+                )
+            )
+            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                    X509CertChain(listOf(dsCert)).toDataItem()
+                )
+            )
+            val encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                    dsKey,
+                    taggedEncodedMso,
+                    true,
+                    dsKey.publicKey.curve.defaultSigningAlgorithm,
+                    protectedHeaders,
+                    unprotectedHeaders
+                ).toDataItem()
+            )
+            val issuerProvidedAuthenticationData = Cbor.encode(
+                buildCborMap {
+                    put("nameSpaces", issuerNamespaces.toDataItem())
+                    put("issuerAuth", RawCbor(encodedIssuerAuth))
+                }
+            )
+
+            // Now that we have issuer-provided authentication data we certify the authentication key.
+            mdocCredential.certify(
+                issuerProvidedAuthenticationData,
+                validFrom,
+                validUntil
+            )
+        }
     }
 
     // Technically - according to RFC 7800 at least - SD-JWT could do MACing too but it would

@@ -1,5 +1,6 @@
 package org.multipaz.testapp
 
+import org.multipaz.util.Platform
 import org.multipaz.compose.mdoc.MdocNdefService
 import org.multipaz.mdoc.transport.MdocTransportOptions
 
@@ -8,7 +9,7 @@ class TestAppMdocNdefService: MdocNdefService() {
 
     override suspend fun getSettings(): Settings {
         settingsModel = TestAppSettingsModel.create(
-            storage = platformStorage(),
+            storage = Platform.getStorage(),
             readOnly = true
         )
         platformCryptoInit(settingsModel)

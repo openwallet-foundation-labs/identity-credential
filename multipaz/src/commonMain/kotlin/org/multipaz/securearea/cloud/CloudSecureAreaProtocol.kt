@@ -374,6 +374,34 @@ object CloudSecureAreaProtocol {
         val serverState: ByteArray
     ) : Command()
 
+    data class BatchCreateKeyRequest0(
+        val numKeys: Int,
+        val algorithm: String,
+        val validFromMillis: Long,
+        val validUntilMillis: Long,
+        val passphraseRequired: Boolean,
+        val userAuthenticationRequired: Boolean,
+        val userAuthenticationTypes: Long,
+        val challenge: ByteArray
+    ) : Command()
+
+    data class BatchCreateKeyResponse0(
+        val cloudChallenge: ByteArray,
+        val serverState: ByteArray
+    ) : Command()
+
+    data class BatchCreateKeyRequest1(
+        val localKeys: List<CoseKey>,
+        val localKeyAttestations: List<X509CertChain>, // TODO: make cbor-rpc handle list type being null
+        val serverState: ByteArray
+    ) : Command()
+
+    data class BatchCreateKeyResponse1(
+        val remoteKeyAttestations: List<X509CertChain>,
+        val serverStates: List<ByteArray>
+        // TODO: include OpenID4VCI key attestation
+    ) : Command()
+
     data class SignRequest0(
         val dataToSign: ByteArray,
         val keyContext: ByteArray

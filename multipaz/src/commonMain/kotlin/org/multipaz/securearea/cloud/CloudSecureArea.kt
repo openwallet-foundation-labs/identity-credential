@@ -12,6 +12,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.delay
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
@@ -21,6 +22,7 @@ import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.cose.CoseKey
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -32,13 +34,19 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.device.AssertionNonce
 import org.multipaz.device.DeviceCheck
 import org.multipaz.prompt.requestPassphrase
+import org.multipaz.securearea.BatchCreateKeyResult
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyAttestation
+import org.multipaz.securearea.KeyInfo
 import org.multipaz.securearea.KeyLockedException
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.BatchCreateKeyRequest0
+import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.BatchCreateKeyRequest1
+import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.BatchCreateKeyResponse0
+import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.BatchCreateKeyResponse1
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.CreateKeyRequest0
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.CreateKeyRequest1
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.CreateKeyResponse0
@@ -61,7 +69,10 @@ import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.SignRequest0
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.SignRequest1
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.SignResponse0
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.SignResponse1
+import org.multipaz.securearea.createKeyTime
+import org.multipaz.securearea.createKeyTimeInKeystore
 import org.multipaz.securearea.fromCbor
+import org.multipaz.securearea.numCreateKeyCalls
 import org.multipaz.securearea.toCbor
 import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageEngine
@@ -487,6 +498,7 @@ open class CloudSecureArea protected constructor(
         alias: String?,
         createKeySettings: CreateKeySettings
     ): CloudKeyInfo {
+        val t0 = Clock.System.now()
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(
@@ -509,6 +521,7 @@ open class CloudSecureArea protected constructor(
                 .build()
         }
         setupE2EE(false)
+        val ost0 = Clock.System.now()
         try {
             // Default for validFrom and validUntil is Jan 1, 1970 to Feb 7, 2106
             var validFrom: Long = 0
@@ -549,13 +562,110 @@ open class CloudSecureArea protected constructor(
                 response0.serverState
             )
             val response1 = CloudSecureAreaProtocol.Command.fromCbor(communicateE2EE(request1.toCbor())) as CreateKeyResponse1
+            createKeyTimeInKeystore += (Clock.System.now() - ost0)
             storageTable.update(
                 key = newKeyAlias,
                 partitionId = identifier,
                 data = ByteString(response1.serverState)
             )
             saveKeyMetadata(newKeyAlias, cSettings, response1.remoteKeyAttestation)
-            return getKeyInfo(newKeyAlias)
+            val ret = getKeyInfo(newKeyAlias)
+            createKeyTime += (Clock.System.now() - t0)
+            numCreateKeyCalls += 1
+            return ret
+        } catch (e: Exception) {
+            throw CloudException(e)
+        }
+    }
+
+    override suspend fun batchCreateKey(
+        numKeys: Int,
+        createKeySettings: CreateKeySettings
+    ): BatchCreateKeyResult {
+        val t0 = Clock.System.now()
+        val cSettings = if (createKeySettings is CloudCreateKeySettings) {
+            createKeySettings
+        } else {
+            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
+            CloudCreateKeySettings.Builder(createKeySettings.nonce)
+                .setUserAuthenticationRequired(
+                    required = createKeySettings.userAuthenticationRequired,
+                    types = setOf(
+                        CloudUserAuthType.PASSCODE,
+                        CloudUserAuthType.BIOMETRIC,
+                    )
+                )
+                .build()
+        }
+        setupE2EE(false)
+        val ost0 = Clock.System.now()
+        try {
+            // Default for validFrom and validUntil is Jan 1, 1970 to Feb 7, 2106
+            var validFrom: Long = 0
+            var validUntil = Int.MAX_VALUE * 1000L * 2
+            if (cSettings.validFrom != null) {
+                validFrom = cSettings.validFrom.toEpochMilliseconds()
+            }
+            if (cSettings.validUntil != null) {
+                validUntil = cSettings.validUntil.toEpochMilliseconds()
+            }
+            val request0 = BatchCreateKeyRequest0(
+                numKeys,
+                cSettings.algorithm.name,
+                validFrom,
+                validUntil,
+                cSettings.passphraseRequired,
+                cSettings.userAuthenticationRequired,
+                CloudUserAuthType.encodeSet(cSettings.userAuthenticationTypes),
+                cSettings.attestationChallenge.toByteArray()
+            )
+            val response0 = CloudSecureAreaProtocol.Command.fromCbor(communicateE2EE(request0.toCbor())) as BatchCreateKeyResponse0
+            val newKeyAliases = mutableListOf<String>()
+            val localKeys = mutableListOf<CoseKey>()
+            val localKeyAttestations = mutableListOf<X509CertChain>()
+            repeat(numKeys) {
+                val newKeyAlias = storageTable.insert(
+                    key = null,
+                    partitionId = identifier,
+                    data = ByteString()
+                )
+                val localKeyInfo = platformSecureArea.createKey(
+                    alias = getLocalKeyAlias(newKeyAlias),
+                    createKeySettings = cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
+                        challenge = ByteString(response0.cloudChallenge),
+                        algorithm = Algorithm.ESP256,
+                        userAuthenticationRequired = cSettings.userAuthenticationRequired,
+                        userAuthenticationTypes = cSettings.userAuthenticationTypes
+                    )
+                )
+                localKeys.add(localKeyInfo.publicKey.toCoseKey())
+                if (localKeyInfo.attestation.certChain != null) {
+                    localKeyAttestations.add(localKeyInfo.attestation.certChain)
+                }
+                newKeyAliases.add(newKeyAlias)
+            }
+            val request1 = BatchCreateKeyRequest1(
+                localKeys,
+                localKeyAttestations,
+                response0.serverState
+            )
+            val response1 = CloudSecureAreaProtocol.Command.fromCbor(communicateE2EE(request1.toCbor())) as BatchCreateKeyResponse1
+            createKeyTimeInKeystore += (Clock.System.now() - ost0)
+            val keyInfos = mutableListOf<KeyInfo>()
+            var n = 0
+            for (newKeyAlias in newKeyAliases) {
+                storageTable.update(
+                    key = newKeyAlias,
+                    partitionId = identifier,
+                    data = ByteString(response1.serverStates[n])
+                )
+                saveKeyMetadata(newKeyAlias, cSettings, response1.remoteKeyAttestations[n])
+                keyInfos.add(getKeyInfo(newKeyAlias))
+                n++
+            }
+            createKeyTime += (Clock.System.now() - t0)
+            numCreateKeyCalls += numKeys
+            return BatchCreateKeyResult(keyInfos, null) // TODO: OpenID4VCI attestation
         } catch (e: Exception) {
             throw CloudException(e)
         }

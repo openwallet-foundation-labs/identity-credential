@@ -47,7 +47,7 @@ actual object Platform {
     actual val promptModel: PromptModel
         get() = IosPromptModel()
 
-    actual suspend fun getStorage(): Storage {
+    actual fun getStorage(): Storage {
         return SqliteStorage(
             connection = openDatabase(
                 filename = "storage.db",
@@ -58,7 +58,7 @@ actual object Platform {
         )
     }
 
-    actual suspend fun getNonBackedUpStorage(): Storage {
+    actual fun getNonBackedUpStorage(): Storage {
         return SqliteStorage(
             connection = openDatabase(
                 filename = "storageNoBackup.db",
@@ -69,7 +69,7 @@ actual object Platform {
         )
     }
 
-    actual suspend fun getSecureArea(storage: Storage): SecureArea {
-        return SecureEnclaveSecureArea.create(storage)
+    actual suspend fun getSecureArea(): SecureArea {
+        return SecureEnclaveSecureArea.create(getNonBackedUpStorage())
     }
 }

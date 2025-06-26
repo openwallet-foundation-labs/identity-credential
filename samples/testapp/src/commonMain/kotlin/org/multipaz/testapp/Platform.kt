@@ -33,15 +33,9 @@ expect fun getLocalIpAddress(): String
 
 expect val platformIsEmulator: Boolean
 
-expect fun platformStorage(): Storage
-
 expect fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*>
 
 expect fun platformRestartApp()
-/**
- * Gets a provider for the preferred [SecureArea] implementation for the platform.
- */
-expect fun platformSecureAreaProvider(): SecureAreaProvider<SecureArea>
 
 expect val platformSecureAreaHasKeyAgreement: Boolean
 

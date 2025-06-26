@@ -15,6 +15,7 @@
  */
 package org.multipaz.securearea.software
 
+import kotlinx.datetime.Clock
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
@@ -33,6 +34,9 @@ import org.multipaz.storage.StorageTableSpec
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.annotation.CborSerializable
+import org.multipaz.securearea.createKeyTime
+import org.multipaz.securearea.createKeyTimeInKeystore
+import org.multipaz.securearea.numCreateKeyCalls
 import kotlin.random.Random
 
 /**
@@ -67,6 +71,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
         alias: String?,
         createKeySettings: org.multipaz.securearea.CreateKeySettings
     ): SoftwareKeyInfo {
+        val t0 = Clock.System.now()
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(alias)
@@ -81,6 +86,7 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
                 .build()
         }
         try {
+            val ost0 = Clock.System.now()
             val privateKey = Crypto.createEcPrivateKey(settings.algorithm.curve!!)
             val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem())
             val keyMetadata = if (settings.passphraseRequired) {
@@ -113,11 +119,15 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
                     passphraseConstraints = null
                 )
             }
+            createKeyTimeInKeystore += (Clock.System.now() - ost0)
             val newAlias = storageTable.insert(
                 key = alias,
                 data = ByteString(keyMetadata.toCbor())
             )
-            return getKeyInfo(newAlias)
+            val ret = getKeyInfo(newAlias)
+            createKeyTime += (Clock.System.now() - t0)
+            numCreateKeyCalls += 1
+            return ret
         } catch (e: Exception) {
             // such as NoSuchAlgorithmException, CertificateException, InvalidAlgorithmParameterException, OperatorCreationException, IOException, NoSuchProviderException
             throw IllegalStateException("Unexpected exception", e)

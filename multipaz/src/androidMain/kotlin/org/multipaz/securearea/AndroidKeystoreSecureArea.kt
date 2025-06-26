@@ -40,6 +40,7 @@ import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
@@ -148,6 +149,7 @@ class AndroidKeystoreSecureArea private constructor(
         alias: String?,
         createKeySettings: CreateKeySettings
     ): AndroidKeystoreKeyInfo {
+        val t0 = Clock.System.now()
         if (alias != null) {
             // If the key with the given alias exists, it is silently overwritten.
             storageTable.delete(alias, partitionId)
@@ -174,6 +176,7 @@ class AndroidKeystoreSecureArea private constructor(
         }
 
         try {
+            val ost0 = Clock.System.now()
             val kpg = KeyPairGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore"
             )
@@ -276,6 +279,7 @@ class AndroidKeystoreSecureArea private constructor(
                 throw IllegalStateException(e)
             }
             kpg.generateKeyPair()
+            createKeyTimeInKeystore += (Clock.System.now() - ost0)
         } catch (e: NoSuchAlgorithmException) {
             throw IllegalStateException("Error creating key", e)
         } catch (e: NoSuchProviderException) {
@@ -283,6 +287,7 @@ class AndroidKeystoreSecureArea private constructor(
         }
         val attestationCerts = mutableListOf<X509Cert>()
         try {
+            val ost0 = Clock.System.now()
             val ks = KeyStore.getInstance("AndroidKeyStore")
             withContext(Dispatchers.IO) {
                 ks.load(null)
@@ -290,12 +295,18 @@ class AndroidKeystoreSecureArea private constructor(
             ks.getCertificateChain(newKeyAlias).forEach { certificate ->
                 attestationCerts.add(X509Cert(certificate.encoded))
             }
+            createKeyTimeInKeystore += (Clock.System.now() - ost0)
         } catch (e: Exception) {
             throw IllegalStateException(e)
         }
-        Logger.d(TAG, "EC key with alias '$alias' created")
+        //Logger.d(TAG, "EC key with alias '$alias' created")
+        val ost0 = Clock.System.now()
         saveKeyMetadata(newKeyAlias, aSettings, X509CertChain(attestationCerts))
-        return getKeyInfo(newKeyAlias)
+        createKeyTimeInKeystore += (Clock.System.now() - ost0)
+        val ret = getKeyInfo(newKeyAlias)
+        createKeyTime += (Clock.System.now() - t0)
+        numCreateKeyCalls += 1
+        return ret
     }
 
     /**
@@ -775,6 +786,7 @@ class AndroidKeystoreSecureArea private constructor(
     }
 
     companion object {
+
         /**
          * The Secure Area identifier for the Android Keystore Secure Area.
          */
@@ -882,3 +894,4 @@ class AndroidKeystoreSecureArea private constructor(
         }
     }
 }
+

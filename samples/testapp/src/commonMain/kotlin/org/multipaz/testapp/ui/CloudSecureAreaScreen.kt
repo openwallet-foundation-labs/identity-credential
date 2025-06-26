@@ -320,9 +320,10 @@ fun CsaConnectDialog(
                         onDismissRequest = { expanded.value = false }
                     ) {
                         for (urlOption in listOf(
-                            "http://10.0.2.2:8080/server/csa",
-                            "http://localhost:8080/server/csa",
-                            "https://ws.davidz25.net/server/csa"
+                            "https://csa.multipaz.org/",
+                            "https://csa.multipaz.org/open",
+                            "http://10.0.2.2:8005",
+                            "http://localhost:8005",
                         )) {
                             DropdownMenuItem(
                                 text = { Text(urlOption) },
