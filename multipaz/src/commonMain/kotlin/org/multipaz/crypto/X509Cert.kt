@@ -20,6 +20,7 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.util.Logger
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -28,6 +29,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  *
  * @param encodedCertificate the bytes of the X.509 certificate.
  */
+@CborSerializationImplemented(schemaId = "")
 class X509Cert(
     val encodedCertificate: ByteArray
 ) {

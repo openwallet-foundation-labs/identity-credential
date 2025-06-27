@@ -178,8 +178,7 @@ class TestAppSettingsModel private constructor(
     val cryptoPreferBouncyCastle = MutableStateFlow<Boolean>(false)
 }
 
-// On the Android Emulator, 10.0.2.2 points to the host so this will work
-// nicely if you are running the server on the same machine you are running
-// Android Studio on.
+// Default to our open CSA, where "open" means it'll work with even unlocked bootloaders
+// and any application signing key.
 //
-private val CSA_URL_DEFAULT: String = "http://10.0.2.2:8080/server/csa"
+private val CSA_URL_DEFAULT: String = "https://csa.multipaz.org/open"

@@ -293,7 +293,7 @@ class AndroidKeystoreSecureArea private constructor(
         } catch (e: Exception) {
             throw IllegalStateException(e)
         }
-        Logger.d(TAG, "EC key with alias '$alias' created")
+        //Logger.d(TAG, "EC key with alias '$alias' created")
         saveKeyMetadata(newKeyAlias, aSettings, X509CertChain(attestationCerts))
         return getKeyInfo(newKeyAlias)
     }

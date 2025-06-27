@@ -68,7 +68,8 @@ class MdocCredential : SecureAreaBoundCredential {
          * @param createKeySettings The settings to use for key creation, including algorithm parameters.
          * @return A pair containing:
          *   - A list of created [MdocCredential] instances, ready to be certified
-         *   - An optional [JsonObject] containing OpenID4VCI key attestation data if supported by the secure area
+         *   - An optional string containing the compact serialization of a JWS with OpenID4VCI key attestation
+         *     data if supported by the secure area.
          */
         suspend fun createBatch(
             numberOfCredentials: Int,
@@ -77,7 +78,7 @@ class MdocCredential : SecureAreaBoundCredential {
             secureArea: SecureArea,
             docType: String,
             createKeySettings: CreateKeySettings
-        ): Pair<List<MdocCredential>, JsonObject?> {
+        ): Pair<List<MdocCredential>, String?> {
             val batchResult = secureArea.batchCreateKey(numberOfCredentials, createKeySettings)
             val credentials = batchResult.keyInfos
                 .map { it.alias }
@@ -92,9 +93,7 @@ class MdocCredential : SecureAreaBoundCredential {
                         useExistingKey(keyAlias)
                     }
                 }
-
-            return Pair(credentials, batchResult.openid4vciKeyAttestation)
-
+            return Pair(credentials, batchResult.openid4vciKeyAttestationJws)
         }
 
         suspend fun create(

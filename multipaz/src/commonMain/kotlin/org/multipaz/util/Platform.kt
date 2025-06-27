@@ -23,24 +23,24 @@ expect object Platform {
     val promptModel: PromptModel
 
     /**
-     * Gets a [Storage] instance suitable for the platform.
+     * A [Storage] instance suitable for the platform.
      *
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
-    suspend fun getStorage(): Storage
+    val storage: Storage
 
     /**
-     * Gets a [Storage] instance suitable for the platform in a location where the
+     * A [Storage] instance suitable for the platform in a location where the
      * underlying data file is excluded from backups.
      *
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
-    suspend fun getNonBackedUpStorage(): Storage
+    val nonBackedUpStorage: Storage
 
     /**
      * Gets a [SecureArea] implementation suitable for the platform.
      *
      * @throws NotImplementedError if called on a platform which isn't Android or iOS.
      */
-    suspend fun getSecureArea(storage: Storage): SecureArea
+    suspend fun getSecureArea(): SecureArea
 }

@@ -161,10 +161,15 @@ private fun createCloudSecureArea(
         androidGmsAttestation = settings.androidRequireGmsAttestation,
         androidVerifiedBootGreen = settings.androidRequireVerifiedBootGreen,
         androidAppSignatureCertificateDigests = settings.androidRequireAppSignatureCertificateDigests,
+        openid4vciKeyAttestationIssuer = settings.openid4vciKeyAttestationIssuer,
+        openid4vciKeyAttestationKeyStorage = settings.openid4vciKeyAttestationKeyStorage,
+        openid4vciKeyAttestationUserAuthentication = settings.openid4vciKeyAttestationUserAuthentication,
+        openid4vciKeyAttestationUserAuthenticationNoPassphrase = settings.openid4vciKeyAttestationUserAuthenticationNoPassphrase,
+        openid4vciKeyAttestationCertification = settings.openid4vciKeyAttestationCertification,
         passphraseFailureEnforcer = SimplePassphraseFailureEnforcer(
             settings.cloudSecureAreaLockoutNumFailedAttempts,
             settings.cloudSecureAreaLockoutDurationSeconds.seconds
-        )
+        ),
     )
 }
 

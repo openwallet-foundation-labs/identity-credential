@@ -18,8 +18,6 @@ import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.ProvisioningBackend
 import org.multipaz.provisioning.register
 import org.multipaz.storage.StorageTableSpec
-import org.multipaz.testapp.platformSecureAreaProvider
-import org.multipaz.testapp.platformStorage
 import org.multipaz.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +35,7 @@ import org.multipaz.provisioning.AuthenticationStub
 import org.multipaz.provisioning.ProvisioningBackendStub
 import org.multipaz.rpc.handler.RpcAuthIssuerAssertion
 import org.multipaz.rpc.handler.RpcDispatcherAuth
+import org.multipaz.util.Platform
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.seconds
@@ -148,12 +147,12 @@ class ProvisioningBackendProviderRemote(
     override suspend fun makeDeviceAssertion(
         assertionFactory: (clientId: String) -> Assertion
     ): DeviceAssertion {
-        val serverTable = platformStorage().getTable(serverTableSpec)
+        val serverTable = Platform.storage.getTable(serverTableSpec)
         val serverData = serverTable.get(key = baseUrl)!!.let {
             ServerData.fromCbor(it.toByteArray())
         }
         return DeviceCheck.generateAssertion(
-            secureArea = platformSecureAreaProvider().get(),
+            secureArea = Platform.getSecureArea(),
             deviceAttestationId = serverData.deviceAttestationId,
             assertion = assertionFactory(serverData.clientId)
         )
@@ -173,12 +172,12 @@ class ProvisioningBackendProviderRemote(
         }
         dispatcher = RpcDispatcherHttp(httpClient, exceptionMapBuilder.build())
 
-        val serverTable = platformStorage().getTable(serverTableSpec)
+        val serverTable = Platform.storage.getTable(serverTableSpec)
         var serverData = serverTable.get(key = baseUrl)?.let {
             ServerData.fromCbor(it.toByteArray())
         }
 
-        val secureAreaProvider = platformSecureAreaProvider()
+        val secureArea = Platform.getSecureArea()
 
         // RPC entry point that does not require authorization, it is used to set up
         // authorization parameters with the server (so these parameters can be used for subsequent
@@ -194,7 +193,7 @@ class ProvisioningBackendProviderRemote(
         if (serverData?.clientId != challenge.clientId) {
             // new client
             val result = DeviceCheck.generateAttestation(
-                secureAreaProvider.get(),
+                secureArea,
                 challenge.clientId.encodeToByteString()
             )
             deviceAttestation = result.deviceAttestation
@@ -221,7 +220,7 @@ class ProvisioningBackendProviderRemote(
         authentication.authenticate(ClientAuthentication(
             deviceAttestation,
             DeviceCheck.generateAssertion(
-                secureAreaProvider.get(),
+                secureArea,
                 serverData.deviceAttestationId,
                 AssertionNonce(challenge.nonce)
             ),
@@ -232,7 +231,7 @@ class ProvisioningBackendProviderRemote(
             base = dispatcher,
             rpcAuthIssuer = RpcAuthIssuerAssertion(
                 clientId = serverData.clientId,
-                secureArea = secureAreaProvider.get(),
+                secureArea = secureArea,
                 deviceAttestationId = serverData.deviceAttestationId
             )
         )

@@ -6,6 +6,8 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.multipaz.prompt.IosPromptModel
 import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.SecureArea
@@ -44,32 +46,41 @@ private fun openDatabase(filename: String, setExcludedFromBackupFlag: Boolean): 
 actual object Platform {
     actual val name = "${UIDevice.currentDevice.systemName()} ${UIDevice.currentDevice.systemVersion}"
 
-    actual val promptModel: PromptModel
-        get() = IosPromptModel()
+    actual val promptModel by lazy {
+        IosPromptModel() as PromptModel
+    }
 
-    actual suspend fun getStorage(): Storage {
-        return SqliteStorage(
+    actual val storage by lazy {
+        SqliteStorage(
             connection = openDatabase(
                 filename = "storage.db",
                 setExcludedFromBackupFlag = false
             ),
             // native sqlite crashes when used with Dispatchers.IO
             coroutineContext = newSingleThreadContext("DB")
-        )
+        ) as Storage
     }
 
-    actual suspend fun getNonBackedUpStorage(): Storage {
-        return SqliteStorage(
+    actual val nonBackedUpStorage by lazy {
+        SqliteStorage(
             connection = openDatabase(
                 filename = "storageNoBackup.db",
                 setExcludedFromBackupFlag = true
             ),
             // native sqlite crashes when used with Dispatchers.IO
             coroutineContext = newSingleThreadContext("DB")
-        )
+        ) as Storage
     }
 
-    actual suspend fun getSecureArea(storage: Storage): SecureArea {
-        return SecureEnclaveSecureArea.create(storage)
+    private var secureArea: SecureArea? = null
+    private val secureAreaLock = Mutex()
+
+    actual suspend fun getSecureArea(): SecureArea {
+        secureAreaLock.withLock {
+            if (secureArea == null) {
+                secureArea = SecureEnclaveSecureArea.create(nonBackedUpStorage)
+            }
+            return secureArea!!
+        }
     }
 }
