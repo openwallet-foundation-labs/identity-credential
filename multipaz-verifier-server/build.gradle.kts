@@ -25,6 +25,7 @@ dependencies {
     ksp(project(":multipaz-cbor-rpc"))
     implementation(project(":multipaz"))
     implementation(project(":multipaz-doctypes"))
+    implementation(project(":multipaz-models"))
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)

@@ -49,6 +49,7 @@ import com.nimbusds.jose.util.Base64
 import com.nimbusds.jwt.EncryptedJWT
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import io.ktor.client.request.request
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -77,6 +78,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import net.minidev.json.JSONArray
@@ -95,7 +97,7 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
-import org.multipaz.openid.OpenID4VP
+import org.multipaz.models.openid.OpenID4VP
 import org.multipaz.rpc.cache
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.sdjwt.SdJwt
@@ -508,8 +510,8 @@ private suspend fun handleDcBeginRawDcql(
 
     val (protocol, version) = when (request.protocol) {
         // Keep in sync with verifier.html
-        "w3c_dc_openid4vp_24" -> Pair(Protocol.W3C_DC_OPENID4VP_24, 24)
-        "w3c_dc_openid4vp_29" -> Pair(Protocol.W3C_DC_OPENID4VP_29, 29)
+        "w3c_dc_openid4vp_24" -> Pair(Protocol.W3C_DC_OPENID4VP_24, OpenID4VP.Version.DRAFT_24)
+        "w3c_dc_openid4vp_29" -> Pair(Protocol.W3C_DC_OPENID4VP_29, OpenID4VP.Version.DRAFT_29)
         else -> throw InvalidRequestException("Unknown protocol '$request.protocol'")
     }
     Logger.i(TAG, "version $version")
@@ -546,7 +548,9 @@ private suspend fun handleDcBeginRawDcql(
         readerAuthKeyCertification = readerAuthKeyCertification,
         signRequest = request.signRequest,
         encryptResponse = request.encryptResponse,
-        dcql = Json.decodeFromString(JsonObject.serializer(), request.rawDcql)
+        dcql = Json.decodeFromString(JsonObject.serializer(), request.rawDcql),
+        responseMode = OpenID4VP.ResponseMode.DC_API,
+        responseUri = null
     )
     Logger.i(TAG, "dcRequestString: $dcRequestString")
     val json = Json { ignoreUnknownKeys = true }
@@ -877,10 +881,191 @@ private suspend fun handleOpenID4VPBegin(
     )
 }
 
+@OptIn(ExperimentalEncodingApi::class)
+private suspend fun handleOpenID4VPRequest(
+    call: ApplicationCall
+) {
+    val sessionId = call.request.queryParameters["sessionId"]
+        ?: throw InvalidRequestException("No session parameter")
+    val verifierSessionTable = BackendEnvironment.getTable(verifierSessionTableSpec)
+    val encodedSession = verifierSessionTable.get(sessionId)
+        ?: throw InvalidRequestException("No session for sessionId $sessionId")
+    val session = Session.fromCbor(encodedSession.toByteArray())
+    val baseUrl = BackendEnvironment.getBaseUrl()
+
+    val (readerAuthKey, readerAuthKeyCertification) = createSingleUseReaderKey(session.host)
+
+    val request = lookupWellknownRequest(session.requestFormat, session.requestDocType, session.requestId)
+
+    // We'll need responseUri later (to calculate sessionTranscript)
+    val responseUri = baseUrl + "/verifier/openid4vpResponse?sessionId=${sessionId}"
+
+    val requestString = calcDcRequestStringOpenID4VP(
+        version = OpenID4VP.Version.DRAFT_29,
+        documentTypeRepository = documentTypeRepo,
+        format = "mdoc", // TODO
+        session = session,
+        request = request,
+        nonce = session.nonce,
+        origin = session.origin,
+        readerKey =  session.encryptionKey,
+        readerPublicKey = session.encryptionKey.publicKey as EcPublicKeyDoubleCoordinate,
+        readerAuthKey = readerAuthKey,
+        readerAuthKeyCertification = readerAuthKeyCertification,
+        signRequest = true, // TODO
+        encryptResponse = true, // TODO
+        responseMode = OpenID4VP.ResponseMode.DIRECT_POST,
+        responseUri = responseUri
+    )
+    val requestObject = Json.decodeFromString<JsonObject>(requestString)
+    val signedRequestCs = requestObject["request"]!!.jsonPrimitive.content
+    Logger.i(TAG, "signedRequestCs: $signedRequestCs")
+
+    call.respondText(
+        contentType = OAUTH_AUTHZ_REQ_JWT,
+        text = signedRequestCs
+    )
+
+    session.responseUri = responseUri
+    runBlocking {
+        verifierSessionTable.update(
+            key = sessionId,
+            data = ByteString(session.toCbor()),
+            expiration = Clock.System.now() + SESSION_EXPIRATION_INTERVAL
+        )
+    }
+
+}
+
+private suspend fun handleOpenID4VPResponse(
+    call: ApplicationCall,
+    requestData: ByteArray
+) {
+    val sessionId = call.request.queryParameters["sessionId"]
+        ?: throw InvalidRequestException("No session parameter")
+    val verifierSessionTable = BackendEnvironment.getTable(verifierSessionTableSpec)
+    val encodedSession = verifierSessionTable.get(sessionId)
+        ?: throw InvalidRequestException("No session for sessionId $sessionId")
+    val session = Session.fromCbor(encodedSession.toByteArray())
+
+    val responseString = requestData.decodeToString()
+    Logger.i(TAG, "TODO: look at $responseString")
+
+    val kvPairs = mutableMapOf<String, String>()
+    for (part in responseString.split("&")) {
+        val parts = part.split("=", limit = 2)
+        kvPairs[parts[0]] = parts[1]
+    }
+
+    val responseJwtCs = kvPairs["response"]!!
+    val splits = responseJwtCs.split(".")
+    val responseObj = if (splits.size == 3) {
+        // Unsecured JWT
+        Json.decodeFromString(JsonObject.serializer(), splits[1].fromBase64Url().decodeToString())
+    } else {
+        JsonWebEncryption.decrypt(responseJwtCs, session.encryptionKey)
+    }
+    Logger.iJson(TAG, "Voila", responseObj)
+
+    // We only support a simple cred so...
+    val vpToken = responseObj["vp_token"]!!.jsonObject
+    val vpTokenForCred = vpToken.values.first().jsonArray.first().jsonPrimitive.content
+
+    // This is a total hack but in case of Raw DCQL we actually don't really
+    // know what was requested. This heuristic to determine if the token is
+    // for an ISO mdoc or IETF SD-JWT VC works for now...
+    //
+    val isMdoc = try {
+        val decodedCbor = Cbor.decode(vpTokenForCred.fromBase64Url())
+        true
+    } catch (e: Throwable) {
+        false
+    }
+    Logger.i(TAG, "isMdoc: $isMdoc")
+
+    if (isMdoc) {
+        val effectiveClientId = if (session.signRequest) {
+            "x509_san_dns:${session.host}"
+        } else {
+            "web-origin:${session.origin}"
+        }
+        val handoverInfo = Cbor.encode(
+            buildCborArray {
+                add("x509_san_dns:${session.host}")
+                add(session.nonce.toByteArray().toBase64Url())
+                if (session.encryptResponse) {
+                    add(session.encryptionKey.publicKey.toJwkThumbprint(Algorithm.SHA256).toByteArray())
+                } else {
+                    add(Simple.NULL)
+                }
+                add(session.responseUri!!)
+            }
+        )
+        session.sessionTranscript = Cbor.encode(
+            buildCborArray {
+                add(Simple.NULL) // DeviceEngagementBytes
+                add(Simple.NULL) // EReaderKeyBytes
+                addCborArray {
+                    add("OpenID4VPDCAPIHandover")
+                    add(Crypto.digest(Algorithm.SHA256, handoverInfo))
+                }
+            }
+        )
+        Logger.iCbor(TAG, "handoverInfo", handoverInfo)
+        Logger.iCbor(TAG, "sessionTranscript", session.sessionTranscript!!)
+        session.deviceResponse = vpTokenForCred.fromBase64Url()
+    } else {
+        session.verifiablePresentation = vpTokenForCred
+    }
+
+    // Save `deviceResponse` and `sessionTranscript`, for later
+    verifierSessionTable.update(
+        key = sessionId,
+        data = ByteString(session.toCbor()),
+        expiration = Clock.System.now() + SESSION_EXPIRATION_INTERVAL
+    )
+
+    val baseUrl = BackendEnvironment.getBaseUrl()
+    val redirectUri = baseUrl + "/verifier_redirect.html?sessionId=${sessionId}"
+    call.respondText(
+        contentType = ContentType.Application.Json,
+        text = prettyJson.encodeToString(
+            buildJsonObject {
+                put("redirect_uri", redirectUri)
+            }
+        )
+    )
+}
+
+private suspend fun handleOpenID4VPGetData(
+    call: ApplicationCall,
+    requestData: ByteArray
+) {
+    val requestString = String(requestData, 0, requestData.size, Charsets.UTF_8)
+    val request = Json.decodeFromString<OpenID4VPGetData>(requestString)
+
+    val verifierSessionTable = BackendEnvironment.getTable(verifierSessionTableSpec)
+    val encodedSession = verifierSessionTable.get(request.sessionId)
+        ?: throw InvalidRequestException("No session for sessionId ${request.sessionId}")
+    val session = Session.fromCbor(encodedSession.toByteArray())
+
+    val lines = when (session.requestFormat) {
+        "mdoc" -> handleGetDataMdoc(session)
+        "vc" -> handleGetDataSdJwt(session, clientId())
+        else -> throw IllegalStateException("Invalid format ${session.requestFormat}")
+    }
+    val json = Json { ignoreUnknownKeys = true }
+    call.respondText(
+        contentType = ContentType.Application.Json,
+        text = json.encodeToString(OpenID4VPResultData(lines))
+    )
+}
+
+
 val OAUTH_AUTHZ_REQ_JWT = ContentType.parse("application/oauth-authz-req+jwt")
 
 @OptIn(ExperimentalEncodingApi::class)
-private suspend fun handleOpenID4VPRequest(
+private suspend fun handleOpenID4VPRequestOld(
     call: ApplicationCall
 ) {
     val sessionId = call.request.queryParameters["sessionId"]
@@ -977,7 +1162,7 @@ private suspend fun handleGetReaderRootCert(
     text = getReaderIdentity().certificateChain.certificates.joinToString { it.toPem() }
 )
 
-private suspend fun handleOpenID4VPResponse(
+private suspend fun handleOpenID4VPResponseOld(
     call: ApplicationCall,
     requestData: ByteArray
 ) {
@@ -1064,7 +1249,7 @@ private suspend fun handleOpenID4VPResponse(
     )
 }
 
-private suspend fun handleOpenID4VPGetData(
+private suspend fun handleOpenID4VPGetDataOld(
     call: ApplicationCall,
     requestData: ByteArray
 ) {
@@ -1281,7 +1466,7 @@ private fun calcDcRequestString(
         }
         Protocol.W3C_DC_OPENID4VP_24 -> {
             return calcDcRequestStringOpenID4VP(
-                24,
+                OpenID4VP.Version.DRAFT_29,
                 documentTypeRepository,
                 format,
                 session,
@@ -1294,11 +1479,13 @@ private fun calcDcRequestString(
                 readerAuthKeyCertification,
                 signRequest,
                 encryptResponse,
+                OpenID4VP.ResponseMode.DC_API,
+                null
             )
         }
         Protocol.W3C_DC_OPENID4VP_29 -> {
             return calcDcRequestStringOpenID4VP(
-                29,
+                OpenID4VP.Version.DRAFT_29,
                 documentTypeRepository,
                 format,
                 session,
@@ -1311,6 +1498,8 @@ private fun calcDcRequestString(
                 readerAuthKeyCertification,
                 signRequest,
                 encryptResponse,
+                OpenID4VP.ResponseMode.DC_API,
+                null
             )
         }
         else -> {
@@ -1355,7 +1544,7 @@ private fun mdocCalcDcRequestStringPreview(
 }
 
 private fun calcDcRequestStringOpenID4VPforDCQL(
-    version: Int,
+    version: OpenID4VP.Version,
     session: Session,
     nonce: ByteString,
     readerPublicKey: EcPublicKeyDoubleCoordinate,
@@ -1364,109 +1553,25 @@ private fun calcDcRequestStringOpenID4VPforDCQL(
     signRequest: Boolean,
     encryptResponse: Boolean,
     dcql: JsonObject,
+    responseMode: OpenID4VP.ResponseMode,
+    responseUri: String?
 ): String {
-    return when (version) {
-        24 -> OpenID4VP.generateRequestDraft24(
-            origin = session.origin,
-            clientId = "x509_san_dns:${session.host}",
-            nonce = nonce.toByteArray().toBase64Url(),
-            responseEncryptionKey = if (encryptResponse) readerPublicKey else null,
-            requestSigningKey = if (signRequest) readerAuthKey else null,
-            requestSigningKeyCertification = if (signRequest) readerAuthKeyCertification else null,
-            dclqQuery = dcql
-        )
-        29 -> OpenID4VP.generateRequest(
-            origin = session.origin,
-            clientId = "x509_san_dns:${session.host}",
-            nonce = nonce.toByteArray().toBase64Url(),
-            responseEncryptionKey = if (encryptResponse) readerPublicKey else null,
-            requestSigningKey = if (signRequest) readerAuthKey else null,
-            requestSigningKeyCertification = if (signRequest) readerAuthKeyCertification else null,
-            dclqQuery = dcql
-        )
-        else -> throw IllegalArgumentException("Unsupport OpenID4VP version $version")
-    }.toString()
-    /*
-    val responseMode = if (encryptResponse) {
-        Logger.i(TAG, "readerPublicKey is ${readerPublicKey}")
-        "dc_api.jwt"
-    } else {
-        "dc_api"
-    }
-
-    val clientMetadata = buildJsonObject {
-        put("vp_formats", buildJsonObject {
-            putJsonObject("mso_mdoc") {
-                putJsonArray("alg") {
-                    add(JsonPrimitive("ES256"))
-                }
-            }
-            putJsonObject("dc+sd-jwt") {
-                putJsonArray("sd-jwt_alg_values") {
-                    add(JsonPrimitive("ES256"))
-                }
-                putJsonArray("kb-jwt_alg_values") {
-                    add(JsonPrimitive("ES256"))
-                }
-            }
-        })
-        // TODO:  "require_signed_request_object": true
-        if (encryptResponse) {
-            put("authorization_encrypted_response_alg", JsonPrimitive("ECDH-ES"))
-            put("authorization_encrypted_response_enc", JsonPrimitive("A128GCM"))
-        }
-        putJsonObject("jwks") {
-            putJsonArray("keys") {
-                if (encryptResponse) {
-                    addJsonObject {
-                        put("kty", JsonPrimitive("EC"))
-                        put("use", JsonPrimitive("enc"))
-                        put("crv", JsonPrimitive("P-256"))
-                        put("alg", JsonPrimitive("ECDH-ES"))
-                        put("kid", JsonPrimitive("reader-auth-key"))
-                        put("x", JsonPrimitive(readerPublicKey.x.toBase64Url()))
-                        put("y", JsonPrimitive(readerPublicKey.y.toBase64Url()))
-                    }
-                }
-            }
-        }
-    }
-
-    val unsignedRequest = buildJsonObject {
-        put("response_type", JsonPrimitive("vp_token"))
-        put("response_mode", JsonPrimitive(responseMode))
-        put("client_metadata", clientMetadata)
-        // Only include client_id for signed requests
-        if (signRequest) {
-            put("client_id", JsonPrimitive("x509_san_dns:${session.host}"))
-            putJsonArray("expected_origins") {
-                add(JsonPrimitive(session.origin))
-            }
-        }
-        put("nonce", JsonPrimitive(nonce.toByteArray().toBase64Url()))
-        put("dcql_query", dcql)
-    }
-
-    if (!signRequest) {
-        return unsignedRequest.toString()
-    }
-    val signedRequestElement = JsonWebSignature.sign(
-        key = readerAuthKey,
-        signatureAlgorithm = readerAuthKey.curve.defaultSigningAlgorithmFullySpecified,
-        claimsSet = unsignedRequest,
-        type = "oauth-authz-req+jwt",
-        x5c = readerAuthKeyCertification
-    )
-    val signedRequest = buildJsonObject {
-        put("request", JsonPrimitive(signedRequestElement))
-    }
-    return signedRequest.toString()
-
-     */
+    return OpenID4VP.generateRequest(
+        version = version,
+        origin = session.origin,
+        clientId = "x509_san_dns:${session.host}",
+        nonce = nonce.toByteArray().toBase64Url(),
+        responseEncryptionKey = if (encryptResponse) readerPublicKey else null,
+        requestSigningKey = if (signRequest) readerAuthKey else null,
+        requestSigningKeyCertification = if (signRequest) readerAuthKeyCertification else null,
+        responseMode = responseMode,
+        responseUri = responseUri,
+        dclqQuery = dcql
+    ).toString()
 }
 
 private fun calcDcRequestStringOpenID4VP(
-    version: Int,
+    version: OpenID4VP.Version,
     documentTypeRepository: DocumentTypeRepository,
     format: String,
     session: Session,
@@ -1478,7 +1583,9 @@ private fun calcDcRequestStringOpenID4VP(
     readerAuthKey: EcPrivateKey,
     readerAuthKeyCertification: X509CertChain,
     signRequest: Boolean,
-    encryptResponse: Boolean
+    encryptResponse: Boolean,
+    responseMode: OpenID4VP.ResponseMode,
+    responseUri: String?
 ): String {
     val dcql = buildJsonObject {
         putJsonArray("credentials") {
@@ -1539,7 +1646,9 @@ private fun calcDcRequestStringOpenID4VP(
         readerAuthKeyCertification = readerAuthKeyCertification,
         signRequest = signRequest,
         encryptResponse = encryptResponse,
-        dcql = dcql
+        dcql = dcql,
+        responseMode = responseMode,
+        responseUri = responseUri
     )
 }
 
