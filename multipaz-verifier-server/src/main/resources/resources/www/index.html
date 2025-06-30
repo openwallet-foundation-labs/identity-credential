@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="referrer" content="unsafe-url">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="origin-trial" content="AqrF+vKVQZS3y5OJ3K2wkWZ4yEVxroNpC0oQR3kFeRmnvjBw+T9NPftQV9reLYszk8kNYyF1Zw+u3UZ9PMuxFQIAAACBeyJvcmlnaW4iOiJodHRwczovL2RpZ2l0YWwtY3JlZGVudGlhbHMuZGV2OjQ0MyIsImZlYXR1cmUiOiJXZWJJZGVudGl0eURpZ2l0YWxDcmVkZW50aWFscyIsImV4cGlyeSI6MTc0NDc2MTU5OSwiaXNTdWJkb21haW4iOnRydWV9">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -36,7 +37,7 @@
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle btn-lg overflow-visible" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false" id="protocolDropdown">
-                    W3C DC API (OpenID4VP Draft 29)
+                    W3C DC API (OpenID4VP 1.0)
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item mdoc-only" value="w3c_dc_preview" href="#">
@@ -52,34 +53,27 @@
                         W3C DC API (OpenID4VP Draft 24)
                     </a></li>
                     <li><a class="dropdown-item" value="w3c_dc_openid4vp_29" href="#">
-                        W3C DC API (OpenID4VP Draft 29)
+                        W3C DC API (OpenID4VP 1.0)
                     </a></li>
-                    <li><a class="dropdown-item" value="openid4vp_plain" href="#">
-                        OpenID4VP (openid4vp:// URI scheme)
+                    <li><a class="dropdown-item" value="uri_scheme_openid4vp_29" href="#">
+                        URI scheme (OpenID4VP 1.0)
                     </a></li>
-                    <li><a class="dropdown-item" value="openid4vp_eudi" href="#">
-                        OpenID4VP (eudi-openid4vp:// URI scheme)
-                    </a></li>
-                    <li><a class="dropdown-item" value="openid4vp_mdoc" href="#">
-                        OpenID4VP (mdoc-openid4vp:// URI scheme)
-                    </a></li>
-                    <li><button class="dropdown-item" value="openid4vp_custom" href="#">
-                        OpenID4VP (Custom URI scheme)
-                    </button></li>
                 </ul>
             </div>
         </div>
 
-        <div id="scheme-form" class="input-group mb-3 w-25" hidden style="flex-basis: 40%;">
-            <input class="form-control text-end" type="text" placeholder="custom-uri-scheme" id="scheme-input">
-        </div>
-        <div id="openid4vp-sign-request" class="mb-3 w-25" style="flex-basis: 40%;">
+        <div id="openid4vp-sign-request" class="mb-3 w-50" style="flex-basis: 40%;">
             <input type="checkbox" name="openid4vp-sign-request-input" id="openid4vp-sign-request-input" checked>
             <label for="openid4vp-sign-request-input">Sign Request</label>
         </div>
-        <div id="openid4vp-encrypt-response" class="mb-3 w-25" style="flex-basis: 40%;">
+        <div id="openid4vp-encrypt-response" class="mb-3 w-50" style="flex-basis: 40%;">
             <input type="checkbox" name="openid4vp-encrypt-response-input" id="openid4vp-encrypt-response-input" checked>
             <label for="openid4vp-encrypt-response-input">Encrypt Response</label>
+        </div>
+        <div id="scheme-form" class="input-group mb-3 w-50" hidden style="width: 40%; flex-direction: column">
+            <label for="scheme-input">URI scheme for invocation</label>
+            <p>
+            <input class="form-control text-end" type="text" placeholder="scheme" id="scheme-input" value="openid4vp">
         </div>
 
     </main>

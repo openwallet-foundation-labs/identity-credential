@@ -21,22 +21,30 @@ async function onLoad() {
             selected === 'w3c_dc_mdoc_api' ||
             selected === 'w3c_dc_openid4vp_24' ||
             selected === 'w3c_dc_openid4vp_29' ||
-            selected === 'openid4vp_plain' ||
-            selected === 'openid4vp_eudi' ||
-            selected === 'openid4vp_mdoc' ||
-            selected === 'openid4vp_custom') {
+            selected === 'uri_scheme_openid4vp_29'
+        ) {
             selectedProtocol = selected
             preferredProtocol = selectedProtocol
             protocolDropdown.innerHTML = target.innerHTML
 
-            const scheme = document.getElementById("scheme-form")
-            scheme.hidden = (selected !== 'openid4vp_custom')
-
             const openid4vp_sign_request_checkbox = document.getElementById("openid4vp-sign-request")
-            openid4vp_sign_request_checkbox.hidden = (selected !== 'w3c_dc_openid4vp_24' && selected !== 'w3c_dc_openid4vp_29')
+            openid4vp_sign_request_checkbox.hidden = (
+                selected !== 'w3c_dc_openid4vp_24' &&
+                selected !== 'w3c_dc_openid4vp_29' &&
+                selected !== 'uri_scheme_openid4vp_29'
+            )
 
             const openid4vp_encrypt_response_checkbox = document.getElementById("openid4vp-encrypt-response")
-            openid4vp_encrypt_response_checkbox.hidden = (selected !== 'w3c_dc_openid4vp_24' && selected !== 'w3c_dc_openid4vp_29')
+            openid4vp_encrypt_response_checkbox.hidden = (
+                selected !== 'w3c_dc_openid4vp_24' &&
+                selected !== 'w3c_dc_openid4vp_29' &&
+                selected !== 'uri_scheme_openid4vp_29'
+            )
+
+            const scheme = document.getElementById("scheme-form")
+            scheme.hidden = (
+                selected !== 'uri_scheme_openid4vp_29'
+            )
         }
     })
 
@@ -206,9 +214,17 @@ function updateProtocolOptions(mdocOrVc) {
     }
 
     const openid4vp_sign_request_checkbox = document.getElementById("openid4vp-sign-request")
-    openid4vp_sign_request_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp_24' && selectedProtocol !== 'w3c_dc_openid4vp_29')
+    openid4vp_sign_request_checkbox.hidden = (
+        selectedProtocol !== 'w3c_dc_openid4vp_24' &&
+        selectedProtocol !== 'w3c_dc_openid4vp_29' &&
+        selectedProtocol !== 'uri_scheme_openid4vp_29'
+    )
     const openid4vp_encrypt_response_checkbox = document.getElementById("openid4vp-encrypt-response")
-    openid4vp_encrypt_response_checkbox.hidden = (selectedProtocol !== 'w3c_dc_openid4vp_24' && selectedProtocol !== 'w3c_dc_openid4vp_29')
+    openid4vp_encrypt_response_checkbox.hidden = (
+        selectedProtocol !== 'w3c_dc_openid4vp_24' &&
+        selectedProtocol !== 'w3c_dc_openid4vp_29' &&
+        selectedProtocol !== 'uri_scheme_openid4vp_29'
+    )
 }
 
 async function onLoadRedirect() {
@@ -240,6 +256,7 @@ async function requestDocumentRawDcql() {
     const textArea = document.getElementById('rawDclqTextArea')
     const rawDcql = textArea.value
     console.log('requestDocumentRawDcql, rawDcql=' + rawDcql)
+    // TODO: also make work for uri_scheme_openid4vp_29
     if (selectedProtocol != "w3c_dc_openid4vp_24" && selectedProtocol !== 'w3c_dc_openid4vp_29') {
         alert("Only OpenID4VP over W3C DC supports Raw DCQL.")
         return
@@ -274,11 +291,13 @@ async function requestDocumentRawDcql() {
 
 async function requestDocument(format, docType, requestId) {
     console.log('requestDocument, format=' + format + ' docType=' + docType + ' requestId=' + requestId + ' protocol=' + selectedProtocol)
-    if (selectedProtocol === 'openid4vp_custom') {
+    if (selectedProtocol === 'uri_scheme_openid4vp_29') {
         if (document.getElementById("scheme-input").value === "") {
-            alert("You must specify a non-empty scheme when performing a custom OpenID4VP request.")
+            alert("You must specify a non-empty scheme")
             return
         }
+        var signRequest = document.getElementById("openid4vp-sign-request-input").checked
+        var encryptResponse = document.getElementById("openid4vp-encrypt-response-input").checked
         const response = await callServer(
             'openid4vpBegin',
             {
@@ -288,26 +307,13 @@ async function requestDocument(format, docType, requestId) {
                 protocol: selectedProtocol,
                 origin: location.origin,
                 host: location.host,
-                scheme: document.getElementById("scheme-input").value
+                scheme: document.getElementById("scheme-input").value,
+                signRequest: signRequest,
+                encryptResponse: encryptResponse
             }
         )
         console.log("URI " + response.uri)
         window.open(response.uri, '_blank').focus()
-    } else if (selectedProtocol.startsWith('openid4vp_')) {
-              const response = await callServer(
-                  'openid4vpBegin',
-                  {
-                      format: format,
-                      docType: docType,
-                      requestId: requestId,
-                      protocol: selectedProtocol,
-                      origin: location.origin,
-                      host: location.host,
-                      scheme: ""
-                  }
-              )
-              console.log("URI " + response.uri)
-              window.open(response.uri, '_blank').focus()
     } else if (selectedProtocol === "w3c_dc_preview") {
         try {
             const response = await callServer(
