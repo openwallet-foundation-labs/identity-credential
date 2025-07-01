@@ -5,9 +5,11 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
@@ -62,8 +64,8 @@ class DigitalCredentialsPresentmentTest {
         data = data,
         document = document,
     ) {
-        override fun sendResponse(response: String) {
-            this.response = response
+        override fun sendResponse(protocol: String, data: JsonObject) {
+            this.response = Json.encodeToString(data)
         }
 
         override fun close() {

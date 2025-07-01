@@ -257,10 +257,13 @@ private suspend fun digitalCredentialsPreviewProtocol(
         }
     )
 
-    val responseJson = buildJsonObject {
+    val data = buildJsonObject {
         put("token", encodedCredentialDocument.toBase64Url())
     }
-    presentmentMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(
+        protocol = presentmentMechanism.protocol,
+        data = data
+    )
     mdocCredential.increaseUsageCount()
     presentmentModel.setCompleted()
 }
@@ -459,7 +462,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     Logger.iJson(TAG, "vpToken", vpToken)
 
     val walletGeneratedNonce = Random.nextBytes(16).toBase64Url()
-    val responseJson = if (reReaderPublicKey != null) {
+    val data = if (reReaderPublicKey != null) {
         buildJsonObject {
             put("response",
                 JsonWebEncryption.encrypt(
@@ -475,7 +478,10 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
     } else {
         vpToken
     }
-    presentmentMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(
+        protocol = presentmentMechanism.protocol,
+        data = data
+    )
     presentmentModel.setCompleted()
 }
 
@@ -784,10 +790,13 @@ private suspend fun digitalCredentialsArfProtocol(
             }
         )
 
-    val responseJson = buildJsonObject {
+    val data = buildJsonObject {
         put("encryptedResponse", encryptedResponse.toBase64Url())
     }
-    presentmentMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(
+        protocol = presentmentMechanism.protocol,
+        data = data
+    )
     mdocCredential.increaseUsageCount()
     presentmentModel.setCompleted()
 }
@@ -893,10 +902,13 @@ private suspend fun digitalCredentialsMdocApiProtocol(
             }
         )
 
-    val responseJson = buildJsonObject {
+    val data = buildJsonObject {
         put("response", encryptedResponse.toBase64Url())
     }
-    presentmentMechanism.sendResponse(responseJson.toString())
+    presentmentMechanism.sendResponse(
+        protocol = presentmentMechanism.protocol,
+        data = data
+    )
     mdocCredential.increaseUsageCount()
     presentmentModel.setCompleted()
 }
