@@ -30,7 +30,7 @@ import kotlin.math.atan2
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-const val TAG = "SelfieCheck"
+private const val TAG = "SelfieCheckViewModel"
 
 private const val FACE_CENTER_TOLERANCE = 0.1f
 private const val HEAD_ROTATION_ANGLE_THRESHOLD = 20.0f
@@ -541,7 +541,6 @@ class SelfieCheckViewModel(
         if (frameData.isLandscape) {
             /** Required for iOS capable of upside-down face detection. */
             faceCenterY += faceVerticalOffset * (if (leftEye.position.y < mouthPosition.position.y) 1 else -1)
-
         } else {
             /** Required for iOS capable of upside-down face detection. */
             faceCenterX -= faceVerticalOffset * (if (leftEye.position.x < mouthPosition.position.x) -1 else 1)
