@@ -9,7 +9,7 @@ enum class CameraSelection {
 }
 
 /** Helper definitions of the camera bitmap image mirroring feature On. */
-internal fun CameraSelection.isMirrored() = when (this) {
+fun CameraSelection.isMirrored() = when (this) {
     CameraSelection.DEFAULT_BACK_CAMERA -> false
     CameraSelection.DEFAULT_FRONT_CAMERA -> true
 }

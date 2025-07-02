@@ -47,6 +47,11 @@ kotlin {
             moduleName = "MLKitVision"
             version = "9.0.0"
         }
+        pod("TensorFlowLiteObjC") {
+            moduleName = "TFLTensorFlowLite"
+            version = "2.17.0"
+        }
+
     }
 
     listOf(
@@ -70,6 +75,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                api(compose.components.resources)
+
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
@@ -106,6 +113,12 @@ kotlin {
                 implementation(libs.androidx.camera.camera2)
                 implementation(libs.face.detection)
                 implementation(libs.mlkit.barcode.scanning)
+
+                //LiteRT
+                implementation(libs.litert)
+                implementation(libs.litert.gpu)
+                implementation(libs.litert.metadata)
+                implementation(libs.litert.support)
             }
         }
     }
