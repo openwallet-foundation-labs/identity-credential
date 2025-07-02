@@ -2,12 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Bluetooth permission is required for proximity presentations</string>
-	<key>NSCameraUsageDescription</key>
-	<string>This app uses the camera to read QR codes</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>This app uses FaceID to protect keys</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -28,6 +22,14 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>This app uses NFC to scan identity credentials</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Bluetooth permission is required for proximity presentations</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app uses the camera to read QR codes</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses FaceID to protect keys</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -45,20 +47,18 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NFCReaderUsageDescription</key>
-	<string>This app uses NFC to scan identity credentials</string>
-    <key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
-    <array>
-        <string>D2760000850101</string>
-        <string>A0000002471001</string>
-        <string>A0000002480400</string>
-    </array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>D2760000850101</string>
+		<string>A0000002471001</string>
+		<string>A0000002480400</string>
 	</array>
 </dict>
 </plist>

@@ -122,6 +122,7 @@ import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.Platform
+import org.multipaz.testapp.ui.FaceMatchScreen
 import org.multipaz.testapp.ui.TrustManagerScreen
 import org.multipaz.testapp.ui.TrustPointViewerScreen
 import org.multipaz.trustmanagement.CompositeTrustManager
@@ -721,7 +722,8 @@ class App private constructor (val promptModel: PromptModel) {
                             onClickCamera = { navController.navigate(CameraDestination.route) },
                             onClickFaceDetection = { navController.navigate(FaceDetectionDestination.route) },
                             onClickBarcodeScanning = { navController.navigate(BarcodeScanningDestination.route) },
-                            onClickSelfieCheck = { navController.navigate(SelfieCheckScreenDestination.route) }
+                            onClickSelfieCheck = { navController.navigate(SelfieCheckScreenDestination.route) },
+                            onClickFaceMatch = { navController.navigate(FaceMatchScreenDestination.route) },
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -1000,6 +1002,11 @@ class App private constructor (val promptModel: PromptModel) {
                     }
                     composable(route = SelfieCheckScreenDestination.route) {
                         SelfieCheckScreen(
+                            showToast = { message -> showToast(message) }
+                        )
+                    }
+                    composable(route = FaceMatchScreenDestination.route) {
+                        FaceMatchScreen(
                             showToast = { message -> showToast(message) }
                         )
                     }

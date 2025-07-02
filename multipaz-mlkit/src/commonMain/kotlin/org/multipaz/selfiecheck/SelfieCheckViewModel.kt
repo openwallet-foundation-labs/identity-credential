@@ -541,7 +541,6 @@ class SelfieCheckViewModel(
         if (frameData.isLandscape) {
             /** Required for iOS capable of upside-down face detection. */
             faceCenterY += faceVerticalOffset * (if (leftEye.position.y < mouthPosition.position.y) 1 else -1)
-
         } else {
             /** Required for iOS capable of upside-down face detection. */
             faceCenterX -= faceVerticalOffset * (if (leftEye.position.x < mouthPosition.position.x) -1 else 1)
