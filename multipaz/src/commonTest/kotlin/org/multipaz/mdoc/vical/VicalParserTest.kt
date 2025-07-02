@@ -991,7 +991,7 @@ Mbff+DlHy77+wXISb35NiZ8FdVHgC2ut4fDQTRN4
         )
         assertEquals(
             "org.iso.18013.5.1.mDL, org.iso.23220.photoid.1, org.micov.1, org.iso.7367.1.mVRC",
-            ci.docType.joinToString()
+            ci.docTypes.joinToString()
         )
         assertNull(ci.certificateProfiles)
     }
@@ -1055,7 +1055,7 @@ A01EUDAKBggqhkjOPQQDAgNIADBFAiEAnX3+E4E5dQ+5G1rmStJTW79ZAiDTabyL
         )
         assertEquals(
             "org.iso.18013.5.1.mDL",
-            ci.docType.joinToString()
+            ci.docTypes.joinToString()
         )
         assertNull(ci.certificateProfiles)
     }

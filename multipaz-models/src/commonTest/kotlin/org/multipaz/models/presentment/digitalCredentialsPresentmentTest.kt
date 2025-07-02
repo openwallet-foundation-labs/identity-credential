@@ -27,7 +27,8 @@ import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.openid.OpenID4VP
 import org.multipaz.request.Request
 import org.multipaz.sdjwt.SdJwtKb
-import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.trustmanagement.LocalTrustManager
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
@@ -97,7 +98,7 @@ class DigitalCredentialsPresentmentTest {
 
         val presentmentModel = PresentmentModel()
 
-        val readerTrustManager = TrustManager()
+        val readerTrustManager = LocalTrustManager(EphemeralStorage())
         val presentmentSource = SimplePresentmentSource(
             documentStore = documentStoreTestHarness.documentStore,
             documentTypeRepository = documentStoreTestHarness.documentTypeRepository,

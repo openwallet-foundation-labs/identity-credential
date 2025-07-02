@@ -7,6 +7,11 @@
     <string name="document_viewer_title">Document Viewer</string>
     <string name="credential_viewer_title">Credential</string>
     <string name="credential_claims_viewer_title">Credential Claims</string>
+
+    <string name="trusted_issuers_screen_title">Trusted Issuers</string>
+    <string name="trusted_verifiers_screen_title">Trusted Verifiers</string>
+    <string name="trust_point_viewer_screen_title">Trust Point</string>
+
     <string name="software_secure_area_screen_title">Software Secure Area</string>
     <string name="android_keystore_secure_area_screen_title">Android Keystore Secure Area</string>
     <string name="secure_enclave_secure_area_screen_title">Secure Enclave Secure Area</string>

@@ -92,6 +92,8 @@ import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
 import org.multipaz.request.RequestedClaim
 import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.trustmanagement.OriginTrustPoint
+import org.multipaz.trustmanagement.X509CertTrustPoint
 import org.multipaz.util.Logger
 import kotlin.math.min
 
@@ -320,8 +322,8 @@ private fun RelyingPartySection(
     ) {
         val (requesterName, requesterBitmap) = if (trustPoint != null) {
             Pair(
-                trustPoint.displayName,
-                trustPoint.displayIcon?.let { remember { it.decodeToImageBitmap() } }
+                trustPoint.metadata.displayName,
+                trustPoint.metadata.displayIcon?.let { remember { it.toByteArray().decodeToImageBitmap() } }
             )
         } else if (request.requester.websiteOrigin != null) {
             Pair(
@@ -344,11 +346,23 @@ private fun RelyingPartySection(
             )
         } else {
             if (trustPoint != null && request.requester.certChain != null) {
-                // If we have a trust point without `displayName`, use the name in the root certificate.
-                stringResource(
-                    Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
-                    trustPoint.certificate.subject.name
-                )
+                // If we have a trust point without `displayName` ...
+                when (trustPoint) {
+                    is X509CertTrustPoint -> {
+                        // ... use the name in the root certificate.
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
+                            trustPoint.certificate.subject.name
+                        )
+                    }
+                    is OriginTrustPoint -> {
+                        // ... use the origin in the trust point.
+                        stringResource(
+                            Res.string.consent_modal_bottom_sheet_headline_share_with_known_requester,
+                            trustPoint.origin
+                        )
+                    }
+                }
             } else {
                 if (request.requester.certChain != null) {
                     stringResource(Res.string.consent_modal_bottom_sheet_headline_share_with_unknown_requester)
@@ -446,11 +460,11 @@ private fun RequestSection(
     val sections = mutableListOf<@Composable () -> Unit>()
 
     // See if we should show a privacy policy link
-    var privacyPolicyText: String? = if (trustPoint?.privacyPolicyUrl != null) {
+    var privacyPolicyText: String? = if (trustPoint?.metadata?.privacyPolicyUrl != null) {
         stringResource(
             Res.string.consent_modal_bottom_sheet_privacy_policy,
-            trustPoint.displayName ?: "",
-            trustPoint.privacyPolicyUrl!!,
+            trustPoint.metadata.displayName ?: "",
+            trustPoint.metadata.privacyPolicyUrl!!,
         )
     } else {
         null
@@ -463,10 +477,10 @@ private fun RequestSection(
                 horizontalArrangement = Arrangement.Start
             ) {
                 Text(
-                    text = if (trustPoint?.displayName != null) {
+                    text = if (trustPoint?.metadata?.displayName != null) {
                         stringResource(
                             Res.string.consent_modal_bottom_sheet_share_with_known_requester,
-                            trustPoint.displayName!!
+                            trustPoint.metadata.displayName!!
                         )
                     } else if (request.requester.websiteOrigin != null) {
                         stringResource(
@@ -496,10 +510,10 @@ private fun RequestSection(
                 horizontalArrangement = Arrangement.Start
             ) {
                 Text(
-                    text = if (trustPoint?.displayName != null) {
+                    text = if (trustPoint?.metadata?.displayName != null) {
                         stringResource(
                             Res.string.consent_modal_bottom_sheet_share_and_stored_by_known_requester,
-                            trustPoint.displayName!!
+                            trustPoint.metadata.displayName!!
                         )
                     } else if (request.requester.websiteOrigin != null) {
                         stringResource(

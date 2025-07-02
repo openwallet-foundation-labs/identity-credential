@@ -383,6 +383,15 @@ class X509Cert(
 
     /**
      * Builder for X.509 certificate.
+     *
+     * @param publicKey the public key for the certificate.
+     * @param signingKey Tthe key to sign the TBSCertificate with.
+     * @param signatureAlgorithm the signature algorithm to sign with.
+     * @param serialNumber the serial number in the certificate.
+     * @param subject the subject of the certificate.
+     * @param issuer the issuer of the certificate.
+     * @param validFrom the point in time the certificate is valid from.
+     * @param validUntil the point in time the certificate is valid until.
      */
     class Builder(
         private val publicKey: EcPublicKey,
@@ -403,6 +412,14 @@ class X509Cert(
         private var includeSubjectKeyIdentifierFlag: Boolean = false
         private var includeAuthorityKeyIdentifierAsSubjectKeyIdentifierFlag: Boolean = false
 
+        /**
+         * Adds an X.509 extension to the certificate
+         *
+         * @param oid the OID for the extension.
+         * @param critical the criticality flag.
+         * @param value the bytes of the extension
+         * @return the builder.
+         */
         fun addExtension(oid: String, critical: Boolean, value: ByteArray): Builder {
             extensions.put(oid, Extension(critical, value))
             return this
@@ -414,6 +431,7 @@ class X509Cert(
          * The extension will be marked as non-critical.
          *
          * @param `true` to include the Subject Key Identifier, `false to not.
+         * @return the builder.
          */
         fun includeSubjectKeyIdentifier(value: Boolean = true): Builder {
             includeSubjectKeyIdentifierFlag = value
@@ -429,6 +447,7 @@ class X509Cert(
          * The extension will be marked as non-critical.
          *
          * @param `true` to include the Authority Key Identifier, `false to not.
+         * @return the builder.
          */
         fun includeAuthorityKeyIdentifierAsSubjectKeyIdentifier(value: Boolean = true): Builder {
             includeAuthorityKeyIdentifierAsSubjectKeyIdentifierFlag = value
@@ -436,9 +455,12 @@ class X509Cert(
         }
 
         /**
-         * Sets Authority Key Identifier extension to the given value.
+         * Sets Authority Key Identifier extension to the Subject Key Identifier of another certificate.
          *
          * The extension will be marked as non-critical.
+         *
+         * @param certificate the certificate to get the Subject Key Identifier from.
+         * @return the builder.
          */
         fun setAuthorityKeyIdentifierToCertificate(certificate: X509Cert): Builder {
             addExtension(
@@ -459,6 +481,12 @@ class X509Cert(
             return this
         }
 
+        /**
+         * Sets the key usage.
+         *
+         * @param keyUsage a set of [X509KeyUsage].
+         * @return the builder
+         */
         fun setKeyUsage(keyUsage: Set<X509KeyUsage>): Builder {
             addExtension(
                 OID.X509_EXTENSION_KEY_USAGE.oid,
@@ -468,6 +496,13 @@ class X509Cert(
             return this
         }
 
+        /**
+         * Sets the basic constraints of the certificate
+         *
+         * @param ca the CA flag.
+         * @param pathLenConstraint the path length constraint value.
+         * @return the builder.
+         */
         fun setBasicConstraints(
             ca: Boolean,
             pathLenConstraint: Int?,
@@ -486,6 +521,11 @@ class X509Cert(
             return this
         }
 
+        /**
+         * Builds the [X509Cert].
+         *
+         * @return the built [X509Cert].
+         */
         fun build(): X509Cert {
             val signatureAlgorithmSeq = signatureAlgorithm.getSignatureAlgorithmSeq(signingKey.curve)
 
@@ -680,4 +720,43 @@ private fun generateName(name: X500Name): ASN1Sequence {
         )
     }
     return ASN1Sequence(objs)
+}
+
+/**
+ * Builds a new [X509Cert].
+ *
+ * @param publicKey the public key for the certificate.
+ * @param signingKey Tthe key to sign the TBSCertificate with.
+ * @param signatureAlgorithm the signature algorithm to sign with.
+ * @param serialNumber the serial number in the certificate.
+ * @param subject the subject of the certificate.
+ * @param issuer the issuer of the certificate.
+ * @param validFrom the point in time the certificate is valid from.
+ * @param validUntil the point in time the certificate is valid until.
+ * @param builderAction the builder action.
+ * @return a [X509Cert].
+ */
+fun buildX509Cert(
+    publicKey: EcPublicKey,
+    signingKey: EcPrivateKey,
+    signatureAlgorithm: Algorithm,
+    serialNumber: ASN1Integer,
+    subject: X500Name,
+    issuer: X500Name,
+    validFrom: Instant,
+    validUntil: Instant,
+    builderAction: X509Cert.Builder.() -> Unit
+): X509Cert {
+    val builder = X509Cert.Builder(
+        publicKey = publicKey,
+        signingKey = signingKey,
+        signatureAlgorithm = signatureAlgorithm,
+        serialNumber = serialNumber,
+        subject = subject,
+        issuer = issuer,
+        validFrom = validFrom,
+        validUntil = validUntil
+    )
+    builder.builderAction()
+    return builder.build()
 }

@@ -93,7 +93,6 @@ import org.multipaz.testapp.ui.SoftwareSecureAreaScreen
 import org.multipaz.testapp.ui.StartScreen
 import org.multipaz.testapp.ui.VerifierType
 import org.multipaz.trustmanagement.TrustManager
-import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Logger
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.back_button
@@ -122,9 +121,17 @@ import org.multipaz.prompt.PromptModel
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
 import org.multipaz.storage.base.BaseStorageTable
-import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.Platform
+import org.multipaz.testapp.ui.TrustManagerScreen
+import org.multipaz.testapp.ui.TrustPointViewerScreen
+import org.multipaz.trustmanagement.CompositeTrustManager
 import org.multipaz.util.fromHex
+import org.multipaz.trustmanagement.LocalTrustManager
+import org.multipaz.trustmanagement.TrustPointAlreadyExistsException
+import org.multipaz.trustmanagement.TrustPointMetadata
+import org.multipaz.trustmanagement.X509CertTrustPoint
+import org.multipaz.trustmanagement.VicalTrustManager
+import org.multipaz.util.toHex
 
 /**
  * Application singleton.
@@ -441,26 +448,24 @@ class App private constructor (val promptModel: PromptModel) {
 
     @OptIn(ExperimentalResourceApi::class)
     private suspend fun generateTrustManagers() {
-        issuerTrustManager = TrustManager()
-        val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
-        for (certInfo in signedVical.vical.certificateInfos) {
-            issuerTrustManager.addTrustPoint(
-                TrustPoint(
-                    certInfo.certificate,
-                    null,
-                    null
-                )
+        val builtInIssuerTrustManager = LocalTrustManager(
+            storage = Platform.storage,
+            partitionId = "BuiltInTrustedIssuers",
+            identifier = "Built-in Trusted Issuers"
+        )
+        if (builtInIssuerTrustManager.getTrustPoints().isEmpty()) {
+            builtInIssuerTrustManager.addTrustPoint(
+                certificate = iacaCert,
+                metadata = TrustPointMetadata(displayName = "OWF IC TestApp Issuer"),
             )
         }
-        issuerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = iacaCert,
-                displayName = "OWF Multipaz TestApp",
-                displayIcon = null
-            )
-        )
+        val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
+        // TODO: validate the Vical is signed by someone we trust, probably force this
+        //   by having the caller parse in the public key
+        val vicalTrustManager = VicalTrustManager(signedVical)
+        issuerTrustManager = CompositeTrustManager(listOf(vicalTrustManager, builtInIssuerTrustManager))
 
-        readerTrustManager = TrustManager()
+
         val readerCertFileNames = listOf(
             "Animo Reader CA.cer",
             "Bundesdruckerei Reader CA.cer",
@@ -485,35 +490,61 @@ class App private constructor (val promptModel: PromptModel) {
             "Toppan Reader CA.cer",
             "Zetes Reader CA.cer"
         )
-        for (readerCertFileName in readerCertFileNames) {
-            val certData = Res.readBytes("files/20250225 Reader CA Certificates/" + readerCertFileName)
-            val x509Cert = X509Cert.fromPem(certData.decodeToString())
-            readerTrustManager.addTrustPoint(
-                TrustPoint(
-                    certificate = x509Cert,
-                    displayName = null,
-                    displayIcon = null
+        val builtInReaderTrustManager = LocalTrustManager(
+            partitionId = "BuiltInTrustedReaders",
+            storage = Platform.storage,
+            identifier = "Built-in Trusted Readers"
+        )
+        readerTrustManager = builtInReaderTrustManager
+        if (builtInReaderTrustManager.getTrustPoints().isEmpty()) {
+            for (readerCertFileName in readerCertFileNames) {
+                val certData = Res.readBytes("files/20250225 Reader CA Certificates/" + readerCertFileName)
+                val readerCert = X509Cert.fromPem(certData.decodeToString())
+                try {
+                    builtInReaderTrustManager.addTrustPoint(
+                        certificate = readerCert,
+                        metadata = TrustPointMetadata(
+                            displayName = readerCertFileName.substringBeforeLast(".")
+                        ),
+                    )
+                } catch (e: TrustPointAlreadyExistsException) {
+                    val existingTrustPoint = builtInIssuerTrustManager.getTrustPoints().first {
+                        it is X509CertTrustPoint && it.certificate.subjectKeyIdentifier!!.toHex() ==
+                                readerCert.subjectKeyIdentifier!!.toHex()
+                    } as X509CertTrustPoint
+                    Logger.w(TAG, "builtInReaderTrustManager: Error adding certificate with subject " +
+                            "${readerCert.subject.name} - already contains a certificate with " +
+                            "subject ${existingTrustPoint!!.certificate.subject.name} with the same " +
+                            "Subject Key Identifier", e)
+                }
+            }
+            try {
+                builtInReaderTrustManager.addTrustPoint(
+                    certificate = readerRootCert,
+                    metadata = TrustPointMetadata(
+                        displayName = "Multipaz TestApp",
+                        displayIcon = ByteString(Res.readBytes("files/utopia-brewery.png")),
+                        privacyPolicyUrl = "https://apps.multipaz.org"
+                    )
                 )
-            )
+            } catch (e: TrustPointAlreadyExistsException) {
+                // Do nothing, it's possible our certificate is in the list above.
+            }
+            try {
+                builtInReaderTrustManager.addTrustPoint(
+                    certificate = X509Cert(
+                        "30820269308201efa0030201020210b7352f14308a2d40564006785270b0e7300a06082a8648ce3d0403033037310b300906035504060c0255533128302606035504030c1f76657269666965722e6d756c746970617a2e6f726720526561646572204341301e170d3235303631393232313633325a170d3330303631393232313633325a3037310b300906035504060c0255533128302606035504030c1f76657269666965722e6d756c746970617a2e6f7267205265616465722043413076301006072a8648ce3d020106052b81040022036200046baa02cc2f2b7c77f054e9907fcdd6c87110144f07acb2be371b2e7c90eb48580c5e3851bcfb777c88e533244069ff78636e54c7db5783edbc133cc1ff11bbabc3ff150f67392264c38710255743fee7cde7df6e55d7e9d5445d1bde559dcba8a381bf3081bc300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff02010030560603551d1f044f304d304ba049a047864568747470733a2f2f6769746875622e636f6d2f6f70656e77616c6c65742d666f756e646174696f6e2d6c6162732f6964656e746974792d63726564656e7469616c2f63726c301d0603551d0e04160414b18439852f4a6eeabfea62adbc51d081f7488729301f0603551d23041830168014b18439852f4a6eeabfea62adbc51d081f7488729300a06082a8648ce3d040303036800306502302a1f3bb0afdc31bcee73d3c5bf289245e76bd91a0fd1fb852b45fc75d3a98ba84430e6a91cbfc6b3f401c91382a43a64023100db22d2243644bb5188f2e0a102c0c167024fb6fe4a1d48ead55a6893af52367fb3cdbd66369aa689ecbeb5c84f063666".fromHex()
+                    ),
+                    metadata = TrustPointMetadata(
+                        displayName = "Multipaz Verifier",
+                        displayIcon = ByteString(Res.readBytes("drawable/app_icon.webp")),
+                        privacyPolicyUrl = "https://apps.multipaz.org"
+                    )
+                )
+            } catch (e: TrustPointAlreadyExistsException) {
+                // Do nothing, it's possible our certificate is in the list above.
+            }
         }
-        readerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = readerRootCert,
-                displayName = "OWF Multipaz TestApp",
-                displayIcon = Res.readBytes("files/utopia-brewery.png"),
-                privacyPolicyUrl = "https://apps.multipaz.org"
-            )
-        )
-        readerTrustManager.addTrustPoint(
-            TrustPoint(
-                certificate = X509Cert(
-                    "30820269308201efa0030201020210b7352f14308a2d40564006785270b0e7300a06082a8648ce3d0403033037310b300906035504060c0255533128302606035504030c1f76657269666965722e6d756c746970617a2e6f726720526561646572204341301e170d3235303631393232313633325a170d3330303631393232313633325a3037310b300906035504060c0255533128302606035504030c1f76657269666965722e6d756c746970617a2e6f7267205265616465722043413076301006072a8648ce3d020106052b81040022036200046baa02cc2f2b7c77f054e9907fcdd6c87110144f07acb2be371b2e7c90eb48580c5e3851bcfb777c88e533244069ff78636e54c7db5783edbc133cc1ff11bbabc3ff150f67392264c38710255743fee7cde7df6e55d7e9d5445d1bde559dcba8a381bf3081bc300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff02010030560603551d1f044f304d304ba049a047864568747470733a2f2f6769746875622e636f6d2f6f70656e77616c6c65742d666f756e646174696f6e2d6c6162732f6964656e746974792d63726564656e7469616c2f63726c301d0603551d0e04160414b18439852f4a6eeabfea62adbc51d081f7488729301f0603551d23041830168014b18439852f4a6eeabfea62adbc51d081f7488729300a06082a8648ce3d040303036800306502302a1f3bb0afdc31bcee73d3c5bf289245e76bd91a0fd1fb852b45fc75d3a98ba84430e6a91cbfc6b3f401c91382a43a64023100db22d2243644bb5188f2e0a102c0c167024fb6fe4a1d48ead55a6893af52367fb3cdbd66369aa689ecbeb5c84f063666".fromHex()
-                ),
-                displayName = "Multipaz Verifier",
-                displayIcon = Res.readBytes("drawable/app_icon.webp"),
-                privacyPolicyUrl = "https://apps.multipaz.org"
-            )
-        )
     }
 
     /**
@@ -654,6 +685,8 @@ class App private constructor (val promptModel: PromptModel) {
                             documentModel = documentModel,
                             onClickAbout = { navController.navigate(AboutDestination.route) },
                             onClickDocumentStore = { navController.navigate(DocumentStoreDestination.route) },
+                            onClickTrustedIssuers = { navController.navigate(TrustedIssuersDestination.route) },
+                            onClickTrustedVerifiers = { navController.navigate(TrustedVerifiersDestination.route) },
                             onClickSoftwareSecureArea = { navController.navigate(SoftwareSecureAreaDestination.route) },
                             onClickAndroidKeystoreSecureArea = { navController.navigate(AndroidKeystoreSecureAreaDestination.route) },
                             onClickCloudSecureArea = { navController.navigate(CloudSecureAreaDestination.route) },
@@ -754,6 +787,46 @@ class App private constructor (val promptModel: PromptModel) {
                             documentTypeRepository = documentTypeRepository,
                             documentId = documentId,
                             credentialId = credentialId,
+                            showToast = ::showToast,
+                        )
+                    }
+                    composable(route = TrustedIssuersDestination.route) {
+                        TrustManagerScreen(
+                            trustManager = issuerTrustManager,
+                            onViewTrustPoint = { trustPoint ->
+                                navController.navigate(TrustPointViewerDestination.route + "/issuers/${trustPoint.identifier}")
+                            },
+                            showToast = ::showToast
+                        )
+                    }
+                    composable(route = TrustedVerifiersDestination.route) {
+                        TrustManagerScreen(
+                            trustManager = readerTrustManager,
+                            onViewTrustPoint = { trustPoint ->
+                                navController.navigate(TrustPointViewerDestination.route + "/readers/${trustPoint.identifier}")
+                            },
+                            showToast = ::showToast
+                        )
+                    }
+                    composable(
+                        route = TrustPointViewerDestination.routeWithArgs,
+                        arguments = TrustPointViewerDestination.arguments
+                    ) { backStackEntry ->
+                        val trustManagerId = backStackEntry.arguments?.getString(
+                            TrustPointViewerDestination.TRUST_MANAGER_ID
+                        )!!
+                        val trustPointId = backStackEntry.arguments?.getString(
+                            TrustPointViewerDestination.TRUST_POINT_ID
+                        )!!
+                        val trustManager = when (trustManagerId) {
+                            "issuers" -> issuerTrustManager
+                            "readers" -> readerTrustManager
+                            else -> throw IllegalStateException()
+                        }
+                        TrustPointViewerScreen(
+                            app = this@App,
+                            trustManager = trustManager,
+                            trustPointId = trustPointId,
                             showToast = ::showToast,
                         )
                     }

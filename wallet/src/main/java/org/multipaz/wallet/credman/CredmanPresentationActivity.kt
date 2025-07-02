@@ -241,6 +241,7 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                     // See if we recognize the reader/verifier
                     var trustPoint: TrustPoint? = null
+                    /*
                     if (docRequest.readerAuthenticated) {
                         val result = walletApp.readerTrustManager.verify(
                             docRequest.readerCertificateChain!!.certificates,
@@ -255,6 +256,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                             )
                         }
                     }
+                     */
                     Logger.i(TAG, "TrustPoint: $trustPoint")
 
                     val deviceResponse = showPresentmentFlowAndGetDeviceResponse(

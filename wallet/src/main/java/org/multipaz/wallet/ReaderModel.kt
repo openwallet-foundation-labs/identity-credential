@@ -243,6 +243,7 @@ class ReaderModel(
             val infoTexts = mutableListOf<String>()
             val warningTexts = mutableListOf<String>()
 
+            /*
             if (document.issuerSignedAuthenticated) {
                 val trustResult = trustManager.verify(
                     document.issuerCertificateChain.certificates,
@@ -258,6 +259,7 @@ class ReaderModel(
                     warningTexts.add(res.getString(R.string.reader_model_warning_not_in_trust_list, displayName))
                 }
             }
+             */
             if (!document.deviceSignedAuthenticated) {
                 warningTexts.add(res.getString(R.string.reader_model_warning_device_auth))
             }
