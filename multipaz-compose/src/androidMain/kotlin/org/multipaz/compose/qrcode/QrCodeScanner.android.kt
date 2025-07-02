@@ -22,7 +22,7 @@ actual fun QrCodeScanner(
     showCameraPreview: Boolean,
     onCodeScanned: (qrCode: String?) -> Unit
 ) {
-    var lastResult by remember { mutableStateOf<String?>(null) }
+    var lastCodeScanned by remember { mutableStateOf<String?>(null) }
     Camera(
         modifier = modifier,
         cameraSelection = cameraSelection,
@@ -50,14 +50,16 @@ actual fun QrCodeScanner(
             val bitmap = BinaryBitmap(HybridBinarizer(source));
             try {
                 val result = MultiFormatReader().decode(bitmap)
-                onCodeScanned(result.text)
-                lastResult = result.text
+                if (result.text != lastCodeScanned) {
+                    onCodeScanned(result.text)
+                    lastCodeScanned = result.text
+                }
             } catch (_ : Throwable) {
                 // QR code not found in this frame
-                if (lastResult != null) {
+                if (lastCodeScanned != null) {
                     onCodeScanned(null)
+                    lastCodeScanned = null
                 }
-                lastResult = null
             }
         }
     )

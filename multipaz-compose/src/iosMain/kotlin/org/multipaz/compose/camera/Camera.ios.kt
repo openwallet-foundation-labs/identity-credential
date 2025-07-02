@@ -445,6 +445,7 @@ private class CameraManager(
         GC.collect()
     }
 
+    var lastCodeScanned: String? = null
     override fun captureOutput(
         output: AVCaptureOutput,
         didOutputMetadataObjects: List<*>,
@@ -454,11 +455,17 @@ private class CameraManager(
             return
         }
         if (didOutputMetadataObjects.isEmpty()) {
-            onQrCodeScanned?.let { it(null) }
+            if (lastCodeScanned != null) {
+                onQrCodeScanned(null)
+                lastCodeScanned = null
+            }
         } else {
             val metadataObj = didOutputMetadataObjects[0] as AVMetadataMachineReadableCodeObject
             if (metadataObj.type == AVMetadataObjectTypeQRCode) {
-                onQrCodeScanned?.let { it(metadataObj.stringValue) }
+                if (lastCodeScanned != metadataObj.stringValue) {
+                    onQrCodeScanned(metadataObj.stringValue)
+                    lastCodeScanned = metadataObj.stringValue
+                }
             }
 
         }
