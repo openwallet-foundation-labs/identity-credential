@@ -33,6 +33,7 @@ import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.selfie_check_title
 import multipazproject.samples.testapp.generated.resources.settings_screen_title
+import multipazproject.samples.testapp.generated.resources.face_match_title
 import org.jetbrains.compose.resources.StringResource
 
 sealed interface Destination {
@@ -226,6 +227,11 @@ data object SelfieCheckScreenDestination : Destination {
     override val title = Res.string.selfie_check_title
 }
 
+data object FaceMatchScreenDestination : Destination {
+    override val route = "FaceMatch"
+    override val title = Res.string.face_match_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -257,5 +263,6 @@ val appDestinations = listOf(
     CameraDestination,
     FaceDetectionDestination,
     BarcodeScanningDestination,
-    SelfieCheckScreenDestination
+    SelfieCheckScreenDestination,
+    FaceMatchScreenDestination,
 )
