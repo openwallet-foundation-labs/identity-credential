@@ -43,9 +43,15 @@ suspend fun finishAuthorization(call: ApplicationCall) {
                     <html>
                     <head>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>Redirecting...</title>
                     </head>
                     <body>
-                    <a href="$parameterizedUri">Continue</a>
+                    <p>Redirecting to your app...</p>
+                    <script>
+                        // Automatically trigger the URI redirect
+                        window.location.href = "$parameterizedUri";
+                    </script>
+                    <p>If you are not redirected automatically, <a href="$parameterizedUri">click here</a>.</p>
                     </body>
                     </html>
                 """.trimIndent(),
