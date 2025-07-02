@@ -43,7 +43,9 @@ import org.multipaz.testapp.provisioning.model.ProvisioningModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -626,11 +628,12 @@ fun EvidenceRequestOpenid4VpView(
                             }.toString(),
                             document = viableCredentials.first().document
                         ) {
-                            override fun sendResponse(response: String) {
+                            override fun sendResponse(protocol: String, data: JsonObject) {
                                 coroutineScope.launch {
-                                    val json = Json.parseToJsonElement(response).jsonObject
                                     provisioningModel.provideEvidence(
-                                        EvidenceResponseOpenid4Vp(json["response"]!!.jsonPrimitive.content)
+                                        EvidenceResponseOpenid4Vp(
+                                            Json.encodeToString(data)
+                                        )
                                     )
                                 }
                             }

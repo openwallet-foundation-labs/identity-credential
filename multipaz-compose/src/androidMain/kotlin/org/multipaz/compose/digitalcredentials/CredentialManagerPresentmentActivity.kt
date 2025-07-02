@@ -18,6 +18,11 @@ import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.json.JSONObject
@@ -124,12 +129,22 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
                 data = firstRequest.getString("data"),
                 document = document
             ) {
-                override fun sendResponse(response: String) {
+                override fun sendResponse(
+                    protocol: String,
+                    data: JsonObject
+                ) {
                     val resultData = Intent()
                     PendingIntentHandler.setGetCredentialResponse(
                         resultData,
                         GetCredentialResponse(
-                            DigitalCredential(response)
+                            DigitalCredential(
+                                Json.encodeToString(
+                                    buildJsonObject {
+                                        put("protocol", protocol)
+                                        put("data", data)
+                                    }
+                                )
+                            )
                         )
                     )
                     setResult(RESULT_OK, resultData)
