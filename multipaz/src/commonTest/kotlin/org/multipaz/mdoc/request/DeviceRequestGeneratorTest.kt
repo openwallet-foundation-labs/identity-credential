@@ -15,6 +15,7 @@
  */
 package org.multipaz.mdoc.request
 
+import kotlinx.coroutines.test.runTest
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
@@ -28,6 +29,13 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.securearea.software.SoftwareCreateKeySettings
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -135,6 +143,65 @@ class DeviceRequestGeneratorTest {
         assertEquals(1, docRequest.readerCertificateChain!!.certificates.size.toLong())
         assertEquals(readerCertChain, docRequest.readerCertificateChain)
         assertEquals(0, docRequest.requestInfo.size.toLong())
+    }
+
+    @Test
+    fun testDeviceRequestBuilderSecureArea() = runTest {
+        val encodedSessionTranscript = Cbor.encode(Bstr(byteArrayOf(0x01, 0x02)))
+        val mdlItemsToRequest =  mutableMapOf<String, Map<String, Boolean>>()
+        val mdlNsItems = mutableMapOf<String, Boolean>()
+        mdlNsItems["family_name"] = true
+        mdlNsItems["portrait"] = false
+        mdlItemsToRequest[MDL_NAMESPACE] = mdlNsItems
+        val aamvaNsItems = mutableMapOf<String, Boolean>()
+        aamvaNsItems["real_id"] = false
+        mdlItemsToRequest[AAMVA_NAMESPACE] = aamvaNsItems
+
+        val secureArea = SoftwareSecureArea.create(EphemeralStorage())
+        val testKeyInfo = secureArea.createKey(
+            alias = "testKey",
+            createKeySettings = SoftwareCreateKeySettings.Builder().build()
+        )
+
+        val readerRootKey = Crypto.createEcPrivateKey(EcCurve.P384)
+        val readerRootCert = MdocUtil.generateReaderRootCertificate(
+            readerRootKey = readerRootKey,
+            subject = X500Name.fromName("CN=TEST Reader Root,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            crlUrl = "http://www.example.com/issuer/crl"
+        )
+        val readerCert = MdocUtil.generateReaderCertificate(
+            readerRootCert = readerRootCert,
+            readerRootKey = readerRootKey,
+            readerKey = testKeyInfo.publicKey,
+            subject = X500Name.fromName("CN=TEST Reader Certificate,C=XG-US,ST=MA"),
+            serial = ASN1Integer(1),
+            validFrom = LocalDateTime(2024, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+            validUntil = LocalDateTime(2029, 1, 1, 0, 0, 0, 0).toInstant(TimeZone.UTC),
+        )
+        val readerCertChain = X509CertChain(listOf(readerCert, readerRootCert))
+
+        val encodedDeviceRequest = DeviceRequestGenerator(encodedSessionTranscript)
+            .addDocumentRequest(
+                docType = MDL_DOCTYPE,
+                itemsToRequest = mdlItemsToRequest,
+                requestInfo = null,
+                readerKeySecureArea = secureArea,
+                readerKeyAlias = "testKey",
+                readerKeyCertificateChain = readerCertChain,
+                keyUnlockData = null
+            )
+            .generate()
+        val deviceRequest = DeviceRequestParser(
+            encodedDeviceRequest,
+            encodedSessionTranscript
+        )
+            .parse()
+        var docRequest = deviceRequest.docRequests[0]
+        assertTrue(docRequest.readerAuthenticated)
+        assertEquals(readerCertChain, docRequest.readerCertificateChain)
     }
 
     companion object {
