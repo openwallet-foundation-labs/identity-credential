@@ -11,6 +11,11 @@ import org.multipaz.compose.camera.CameraSelection
  * On iOS this is implemented using the platform Vision API and on Android it's using the
  * [ZXing](https://github.com/zxing/zxing) library.
  *
+ * This provides the guarantee that [onCodeScanned] will never be called with `null` multiple
+ * times in a row and will never be called with the same QR Code multiple times in a row. However
+ * do note that in some situations the underlying QR code scanner might flicker so [onCodeScanned]
+ * will be called with the QR code, then `null`, the QR code, then `null`, many times in a row.
+ *
  * This requires camera permission, see [org.multipaz.compose.permissions.rememberCameraPermissionState].
  *
  * @param modifier The composition modifier to apply to the composable.
@@ -19,7 +24,7 @@ import org.multipaz.compose.camera.CameraSelection
  * @param showCameraPreview Whether to show the preview of the captured frame within the composable.
  * @param onCodeScanned a callback which will be called when a QR code has been detected (in which
  *   case the contents are passed) and when a QR code is no longer detected (in which case `null`
- *   is passed). Will never be called with `null` multiple times in a row.
+ *   is passed).
  */
 @Composable
 expect fun QrCodeScanner(
