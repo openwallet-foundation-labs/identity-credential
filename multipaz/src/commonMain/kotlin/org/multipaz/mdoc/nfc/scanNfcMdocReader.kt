@@ -36,7 +36,9 @@ private data class ScanNfcMdocReaderResult(
  * `updateMessage` set to `null`. In either case, any exception thrown in [onHandover] will be thrown
  * from this method.
  *
- * @param message the message to display in the NFC tag scanning dialog.
+ * @param message the message to display in the NFC tag scanning dialog or `null` to not show a dialog. Not all
+ *   platforms supports not showing a dialog, use [org.multipaz.nfc.nfcTagSupportsScanningWithoutDialog] to check at
+ *   runtime if the platform supports this.
  * @param options the [MdocTransportOptions] used to create new [MdocTransport] instances.
  * @param transportFactory the factory used to create [MdocTransport] instances.
  * @param selectConnectionMethod used to choose a connection method if the remote mdoc is using NFC static handover.
@@ -46,7 +48,7 @@ private data class ScanNfcMdocReaderResult(
  * @return `true` if [onHandover] was invoked, `false` if no handover happened.
  */
 suspend fun scanNfcMdocReader(
-    message: String,
+    message: String?,
     options: MdocTransportOptions,
     transportFactory: MdocTransportFactory = MdocTransportFactory.Default,
     selectConnectionMethod: suspend (connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod?,
@@ -56,7 +58,7 @@ suspend fun scanNfcMdocReader(
         encodedDeviceEngagement: ByteString,
         handover: DataItem,
         updateMessage: ((message: String) -> Unit)?
-    ) -> Unit,
+    ) -> Unit
 ): Boolean {
     // Start creating transports for Negotiated Handover and start advertising these
     // immediately. This helps with connection time because the holder's device will

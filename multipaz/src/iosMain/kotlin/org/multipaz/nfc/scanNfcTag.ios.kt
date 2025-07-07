@@ -22,6 +22,8 @@ import platform.CoreNFC.NFCReaderSessionInvalidationErrorUserCanceled
 import platform.darwin.NSObject
 import kotlin.coroutines.resumeWithException
 
+actual val nfcTagSupportsScanningWithoutDialog: Boolean = false
+
 private class NfcTagReader<T> {
 
     companion object {
@@ -104,7 +106,6 @@ private class NfcTagReader<T> {
         ) -> T?
     ): T {
         check(NFCTagReaderSession.readingAvailable) { "The device doesn't support NFC tag reading" }
-
         try {
             val ret = suspendCancellableCoroutine { continuation ->
                 this.continuation = continuation
@@ -115,6 +116,7 @@ private class NfcTagReader<T> {
             session.invalidateSession()
             return ret
         } catch (e: CancellationException) {
+            session.invalidateSessionWithErrorMessage("Dialog was canceled")
             throw e
         } catch (e: Throwable) {
             session.invalidateSessionWithErrorMessage(e.message!!)
@@ -124,12 +126,13 @@ private class NfcTagReader<T> {
 }
 
 actual suspend fun<T: Any> scanNfcTag(
-    message: String,
+    message: String?,
     tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
     ) -> T?
 ): T {
+    require(message != null) { "Cannot not show the NFC tag scanning dialog on iOS" }
     val reader = NfcTagReader<T>()
     return reader.beginSession(message, tagInteractionFunc)
 }

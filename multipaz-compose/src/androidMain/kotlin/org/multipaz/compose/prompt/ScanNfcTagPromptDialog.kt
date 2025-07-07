@@ -75,16 +75,18 @@ private fun ScanNfcTagPromptDialogShown(
         ScanNfcTagDialogIcon.ERROR -> R.drawable.nfc_tag_reader_icon_error
     }
     val messageText = message.collectAsState().value
-    NfcTagReaderModalBottomSheet(
-        dialogMessage = messageText,
-        dialogIconPainter = painterResource(iconId),
-        onDismissed = {
-            coroutineScope.launch {
-                // This will dismiss the dialog and cancel LaunchedEffect below.
-                dialogStateValue.resultChannel.close(PromptDismissedException())
+    if (messageText != null) {
+        NfcTagReaderModalBottomSheet(
+            dialogMessage = messageText,
+            dialogIconPainter = painterResource(iconId),
+            onDismissed = {
+                coroutineScope.launch {
+                    // This will dismiss the dialog and cancel LaunchedEffect below.
+                    dialogStateValue.resultChannel.close(PromptDismissedException())
+                }
             }
-        }
-    )
+        )
+    }
     val activity = LocalContext.current.getActivity() as FragmentActivity
     LaunchedEffect(dialogStateValue) {
         Logger.i(TAG, "NFC: NFC dialog is shown")
@@ -147,12 +149,12 @@ private fun vibrateSuccess(context: Context) {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NfcReaderCallback<T>(
-    val initialMessage: String,
+    val initialMessage: String?,
     val tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
     ) -> T?,
-    val dialogMessage: MutableStateFlow<String>,
+    val dialogMessage: MutableStateFlow<String?>,
     val continuation: CancellableContinuation<T>
 ) : NfcAdapter.ReaderCallback {
     override fun onTagDiscovered(tag: Tag?) {
@@ -173,7 +175,9 @@ class NfcReaderCallback<T>(
                         val isoTag = NfcIsoTagAndroid(isoDep, coroutineContext)
                         tagInteractionFunc(isoTag) { message ->
                             Logger.i(TAG, "NFC dialog message: $message")
-                            dialogMessage.value = message
+                            if (initialMessage != null) {
+                                dialogMessage.value = message
+                            }
                         }
                     }
                     Logger.i(TAG, "Tag processed")
