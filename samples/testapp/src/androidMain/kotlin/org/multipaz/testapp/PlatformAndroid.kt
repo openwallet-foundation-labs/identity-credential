@@ -28,6 +28,8 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.compose.notifications.NotificationManagerAndroid
 import org.multipaz.context.getActivity
 import org.multipaz.crypto.Algorithm
+import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.mdoc.zkp.longfellow.util.LongfellowZkSystem
 import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
@@ -68,6 +70,12 @@ actual suspend fun platformCryptoInit(settingsModel: TestAppSettingsModel) {
 
 actual fun platformRestartApp() {
     ProcessPhoenix.triggerRebirth(applicationContext)
+}
+
+actual fun createZkSystemRepository(): ZkSystemRepository {
+    return ZkSystemRepository().apply {
+        add(LongfellowZkSystem(applicationContext.assets))
+    }
 }
 
 actual fun getLocalIpAddress(): String {
