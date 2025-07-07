@@ -86,6 +86,14 @@
                 <data android:host="*"/>
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Custom URI scheme -->
+                <data android:scheme="multipaz-test-app"/>
+                <data android:host="landing"/>
+            </intent-filter>
         </activity>
 
         <activity
