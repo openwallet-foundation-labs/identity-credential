@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import kotlin.time.Duration
 
 /**

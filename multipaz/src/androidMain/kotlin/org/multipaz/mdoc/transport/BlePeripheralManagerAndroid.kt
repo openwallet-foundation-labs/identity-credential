@@ -539,20 +539,26 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
         device = null
         advertiser?.stopAdvertising(advertiseCallback)
         advertiser = null
-        gattServer?.removeService(service)
-        gattServer?.close()
-        gattServer = null
-        service = null
-        l2capServerSocket?.close()
-        l2capServerSocket = null
-        incomingMessages.close()
         l2capSocket?.let {
-            CoroutineScope(Dispatchers.IO).launch() {
-                delay(5000)
+            CoroutineScope(Dispatchers.IO).launch()  {
+                try {
+                    it.outputStream?.flush()
+                    delay(5000)
+                } catch (e: Exception) {
+                    Logger.w("LongfellowZkSystem", "Error flushing", e)
+                }
+
+                gattServer?.removeService(service)
+                gattServer?.close()
+                gattServer = null
+                service = null
+                l2capServerSocket?.close()
+                l2capServerSocket = null
+                incomingMessages.close()
                 it.close()
+                l2capSocket = null
             }
         }
-        l2capSocket = null
     }
 
     override val usingL2cap: Boolean

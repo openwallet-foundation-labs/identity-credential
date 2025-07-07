@@ -115,6 +115,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.prompt.PromptModel
@@ -166,6 +167,8 @@ class App private constructor (val promptModel: PromptModel) {
 
     private val provisioningBackendProviderLocal = ProvisioningBackendProviderLocal()
 
+    lateinit var zkSystemRepository: ZkSystemRepository
+
     private val initLock = Mutex()
     private var initialized = false
 
@@ -212,8 +215,10 @@ class App private constructor (val promptModel: PromptModel) {
                 Pair(::readerRootInit, "readerRootInit"),
                 Pair(::readerInit, "readerInit"),
                 Pair(::trustManagersInit, "trustManagersInit"),
-                Pair(::provisioningModelInit, "provisioningModelInit")
+                Pair(::provisioningModelInit, "provisioningModelInit"),
+                Pair(::zkSystemRepositoryInit, "zkSystemRepositoryInit")
             )
+
             val begin = Clock.System.now()
             for ((func, name) in initFuncs) {
                 val funcBegin = Clock.System.now()
@@ -308,6 +313,11 @@ class App private constructor (val promptModel: PromptModel) {
             promptModel,
             secureAreaRepository
         )
+    }
+
+    private suspend fun zkSystemRepositoryInit() {
+        zkSystemRepository = createZkSystemRepository()
+        presentmentModel.setZkSystemRepository(zkSystemRepository)
     }
 
     private val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
@@ -617,7 +627,9 @@ class App private constructor (val promptModel: PromptModel) {
 
     private lateinit var snackbarHostState: SnackbarHostState
 
-    private val presentmentModel = PresentmentModel().apply { setPromptModel(promptModel) }
+    private val presentmentModel = PresentmentModel().apply {
+        setPromptModel(promptModel)
+    }
 
     @Composable
     @Preview

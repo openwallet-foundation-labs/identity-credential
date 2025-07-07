@@ -39,6 +39,7 @@ import multipazproject.samples.testapp.generated.resources.app_icon
 import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.decodeImage
 import org.multipaz.crypto.Algorithm
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.prompt.IosPromptModel
 import org.multipaz.prompt.PromptModel
 import platform.Foundation.NSDocumentDirectory
@@ -77,6 +78,10 @@ actual suspend fun platformCryptoInit(settingsModel: TestAppSettingsModel) {
 actual fun platformRestartApp() {
     // Currently only needed on Android
     TODO()
+}
+
+actual fun createZkSystemRepository(): ZkSystemRepository {
+    return ZkSystemRepository()
 }
 
 @OptIn(ExperimentalForeignApi::class)

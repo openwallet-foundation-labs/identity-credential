@@ -18,12 +18,13 @@ package org.multipaz.mdoc.request
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.putCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
@@ -33,6 +34,7 @@ import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.mdoc.zkp.ZkSystemSpec
 
 /**
  * Helper class for building `DeviceRequest` [CBOR](http://cbor.io/)
@@ -59,6 +61,8 @@ class DeviceRequestGenerator(
      * @param signatureAlgorithm [Algorithm.UNSET] if readerKey is null, otherwise algorithm to use.
      * @param readerKeyCertificateChain null if readerKey is null, otherwise the certificate chain
      * for readerKey.
+     * @param zkSystemSpecs the list of ZK System Specs supported by the requester. This will be
+     * added to the requestInfo and turn the interaction into a ZK interaction.
      * @return the [DeviceRequestGenerator].
      */
     fun addDocumentRequest(
@@ -67,9 +71,33 @@ class DeviceRequestGenerator(
         requestInfo: Map<String, ByteArray>?,
         readerKey: EcPrivateKey?,
         signatureAlgorithm: Algorithm,
-        readerKeyCertificateChain: X509CertChain?
+        readerKeyCertificateChain: X509CertChain?,
+        zkSystemSpecs: List<ZkSystemSpec>? = null
     ): DeviceRequestGenerator = apply {
         // TODO: Add variant that can sign with SecureArea readerKey
+        val requestInfoMutableMap = requestInfo?.toMutableMap() ?: mutableMapOf()
+        if (zkSystemSpecs != null) {
+            requestInfoMutableMap["zkRequest"] = Cbor.encode(
+                buildCborMap {
+                    putCborArray("systemSpecs") {
+                        for (zkSpec in zkSystemSpecs) {
+                            addCborMap {
+                                put("id", zkSpec.id)
+                                put("system", zkSpec.system)
+                                if (zkSpec.params.isNotEmpty()) {
+                                    putCborMap("params") {
+                                        for (param in zkSpec.params) {
+                                            put(param.key, param.value.toDataItem())
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         val encodedItemsRequest = Cbor.encode(
             buildCborMap {
                 put("docType", docType)
@@ -82,9 +110,9 @@ class DeviceRequestGenerator(
                         }
                     }
                 }
-                if (requestInfo != null) {
+                if (requestInfoMutableMap.isNotEmpty()) {
                     putCborMap("requestInfo") {
-                        for ((key, value) in requestInfo) {
+                        for ((key, value) in requestInfoMutableMap) {
                             put(key, RawCbor(value))
                         }
                     }

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
@@ -34,6 +35,15 @@ import kotlin.time.Duration.Companion.seconds
 class PresentmentModel {
     companion object {
         private const val TAG = "PresentmentModel"
+    }
+
+    private var zkSystemRepository: ZkSystemRepository? = null
+
+    /**
+     * Sets the ZK System Repository to use for generating ZK proofs.
+     */
+    fun setZkSystemRepository(zkSystemRepository: ZkSystemRepository) {
+        this.zkSystemRepository = zkSystemRepository
     }
 
     /**
@@ -321,6 +331,7 @@ class PresentmentModel {
             is MdocPresentmentMechanism -> {
                 mdocPresentment(
                     documentTypeRepository = source!!.documentTypeRepository,
+                    zkSystemRepository = this.zkSystemRepository,
                     source = source!!,
                     model = this,
                     mechanism = mechanism as MdocPresentmentMechanism,

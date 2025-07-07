@@ -24,6 +24,7 @@ import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509CertChain
+import org.multipaz.mdoc.zkp.ZkSystemSpec
 
 /**
  * Helper class for parsing the bytes of `DeviceRequest`
@@ -295,6 +296,37 @@ class DeviceRequestParser(
             val innerMap = requestMap[namespaceName]
                 ?: throw IllegalArgumentException("Namespace wasn't requested")
             return innerMap.keys.toList()
+        }
+
+        /**
+         * Gets the list of supported ZkSystemSpecs by the requester.
+         *
+         * @return A list of the ZkSystemSpecs.
+         */
+        fun getZkSystemSpecs(): List<ZkSystemSpec> {
+            val result = mutableListOf<ZkSystemSpec>()
+            val zkSystemSpecs = requestInfo["zkRequest"]
+            if(zkSystemSpecs != null) {
+                val zkSystemSpecsDataItem = Cbor.decode(zkSystemSpecs)
+                val systemSpecs = zkSystemSpecsDataItem.getOrNull("systemSpecs") ?: return result
+
+                for (specDataItem in systemSpecs.asArray) {
+                    val id = specDataItem.getOrNull("id") ?: continue
+                    val system = specDataItem.getOrNull("system") ?: continue
+
+                    val spec = ZkSystemSpec(id.asTstr, system.asTstr)
+                    val paramsRaw = specDataItem.getOrNull("params")
+                    if (paramsRaw != null) {
+                        for ((k,v) in paramsRaw.asMap) {
+                            spec.addParam(k.asTstr, v)
+                        }
+                    }
+
+                    result.add(spec)
+                }
+            }
+
+            return result
         }
 
         /**
