@@ -7,6 +7,7 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.request.JsonRequest
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
@@ -35,6 +36,7 @@ class SimplePresentmentSource(
     override val documentStore: DocumentStore,
     override val documentTypeRepository: DocumentTypeRepository,
     override val readerTrustManager: TrustManager,
+    override val zkSystemRepository: ZkSystemRepository? = null,
     val preferSignatureToKeyAgreement: Boolean = true,
     val domainMdocSignature: String? = null,
     val domainMdocKeyAgreement: String? = null,
@@ -44,6 +46,7 @@ class SimplePresentmentSource(
     documentStore = documentStore,
     documentTypeRepository = documentTypeRepository,
     readerTrustManager = readerTrustManager,
+    zkSystemRepository = zkSystemRepository
 ) {
     override suspend fun selectCredential(
         document: Document?,

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 

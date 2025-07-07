@@ -22,8 +22,10 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.putCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
@@ -33,6 +35,7 @@ import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.securearea.KeyUnlockData
 import org.multipaz.securearea.SecureArea
 
@@ -158,8 +161,32 @@ class DeviceRequestGenerator(
         requestInfo: Map<String, ByteArray>?,
         readerKey: EcPrivateKey?,
         signatureAlgorithm: Algorithm,
-        readerKeyCertificateChain: X509CertChain?
+        readerKeyCertificateChain: X509CertChain?,
+        zkSystemSpecs: List<ZkSystemSpec> = emptyList()
     ): DeviceRequestGenerator = apply {
+        val requestInfoMutableMap = requestInfo?.toMutableMap() ?: mutableMapOf()
+        if (zkSystemSpecs.isNotEmpty()) {
+            requestInfoMutableMap["zkRequest"] = Cbor.encode(
+                buildCborMap {
+                    putCborArray("systemSpecs") {
+                        for (zkSpec in zkSystemSpecs) {
+                            addCborMap {
+                                put("id", zkSpec.id)
+                                put("system", zkSpec.system)
+                                if (zkSpec.params.isNotEmpty()) {
+                                    putCborMap("params") {
+                                        for (param in zkSpec.params) {
+                                            put(param.key, param.value.toDataItem())
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         val encodedItemsRequest = Cbor.encode(
             buildCborMap {
                 put("docType", docType)
@@ -172,9 +199,9 @@ class DeviceRequestGenerator(
                         }
                     }
                 }
-                if (requestInfo != null) {
+                if (requestInfoMutableMap.isNotEmpty()) {
                     putCborMap("requestInfo") {
-                        for ((key, value) in requestInfo) {
+                        for ((key, value) in requestInfoMutableMap) {
                             put(key, RawCbor(value))
                         }
                     }

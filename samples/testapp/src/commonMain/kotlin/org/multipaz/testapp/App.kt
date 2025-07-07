@@ -115,6 +115,8 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
 import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.prompt.PromptModel
@@ -166,6 +168,8 @@ class App private constructor (val promptModel: PromptModel) {
 
     private val provisioningBackendProviderLocal = ProvisioningBackendProviderLocal()
 
+    lateinit var zkSystemRepository: ZkSystemRepository
+
     private val initLock = Mutex()
     private var initialized = false
 
@@ -175,6 +179,7 @@ class App private constructor (val promptModel: PromptModel) {
             documentStore = documentStore,
             documentTypeRepository = documentTypeRepository,
             readerTrustManager = readerTrustManager,
+            zkSystemRepository = zkSystemRepository,
             preferSignatureToKeyAgreement = settingsModel.presentmentPreferSignatureToKeyAgreement.value,
             domainMdocSignature = if (useAuth) {
                 TestAppUtils.CREDENTIAL_DOMAIN_MDOC_USER_AUTH
@@ -212,8 +217,10 @@ class App private constructor (val promptModel: PromptModel) {
                 Pair(::readerRootInit, "readerRootInit"),
                 Pair(::readerInit, "readerInit"),
                 Pair(::trustManagersInit, "trustManagersInit"),
-                Pair(::provisioningModelInit, "provisioningModelInit")
+                Pair(::provisioningModelInit, "provisioningModelInit"),
+                Pair(::zkSystemRepositoryInit, "zkSystemRepositoryInit")
             )
+
             val begin = Clock.System.now()
             for ((func, name) in initFuncs) {
                 val funcBegin = Clock.System.now()
@@ -308,6 +315,26 @@ class App private constructor (val promptModel: PromptModel) {
             promptModel,
             secureAreaRepository
         )
+    }
+
+    @OptIn(ExperimentalResourceApi::class)
+    private suspend fun zkSystemRepositoryInit() {
+        val circuitsToAdd = listOf(
+            "files/longfellow-libzk-v1/3_1_bd3168ea0a9096b4f7b9b61d1c210dac1b7126a9ec40b8bc770d4d485efce4e9",
+            "files/longfellow-libzk-v1/3_2_40b2b68088f1d4c93a42edf01330fed8cac471cdae2b192b198b4d4fc41c9083",
+            "files/longfellow-libzk-v1/3_3_99a5da3739df68c87c7a380cc904bb275dbd4f1b916c3d297ba9d15ee86dd585",
+            "files/longfellow-libzk-v1/3_4_5249dac202b61e03361a2857867297ee7b1d96a8a4c477d15a4560bde29f704f",
+        )
+
+        val longfellowSystem = LongfellowZkSystem()
+        for (circuit in circuitsToAdd) {
+            val circuitBytes = Res.readBytes(circuit)
+            val pathParts = circuit.split("/")
+            longfellowSystem.addCircuit(pathParts[pathParts.size - 1], ByteString(circuitBytes))
+        }
+        zkSystemRepository = ZkSystemRepository().apply {
+            add(longfellowSystem)
+        }
     }
 
     private val certsValidFrom = LocalDate.parse("2024-12-01").atStartOfDayIn(TimeZone.UTC)
@@ -633,7 +660,9 @@ class App private constructor (val promptModel: PromptModel) {
 
     private lateinit var snackbarHostState: SnackbarHostState
 
-    private val presentmentModel = PresentmentModel().apply { setPromptModel(promptModel) }
+    private val presentmentModel = PresentmentModel().apply {
+        setPromptModel(promptModel)
+    }
 
     @Composable
     @Preview

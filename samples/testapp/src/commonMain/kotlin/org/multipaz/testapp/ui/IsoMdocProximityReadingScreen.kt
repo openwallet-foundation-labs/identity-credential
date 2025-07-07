@@ -18,6 +18,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -69,6 +70,7 @@ import org.multipaz.mdoc.transport.NfcTransportMdocReader
 import org.multipaz.nfc.scanNfcTag
 import org.multipaz.testapp.App
 import org.multipaz.testapp.TestAppUtils
+import org.multipaz.testapp.ui.DocumentData.Companion.fromZkMdocDeviceResponseDocument
 import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
@@ -92,6 +94,9 @@ import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.testapp.ui.ScanQrCodeDialog
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.mdoc.zkp.ZkDocument
+import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.util.toHex
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
@@ -136,6 +141,7 @@ fun IsoMdocProximityReadingScreen(
             ))
         }
     }
+    val useZeroKnowledge = remember { mutableStateOf(false) }
     val dropdownExpanded = remember { mutableStateOf(false) }
     val selectedRequest = remember { mutableStateOf(availableRequests[0]) }
     val blePermissionState = rememberBluetoothPermissionState()
@@ -240,6 +246,7 @@ fun IsoMdocProximityReadingScreen(
                                 readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
                                 eReaderKey = eReaderKey,
                                 selectedRequest = selectedRequest,
+                                useZeroKnowledge = useZeroKnowledge,
                                 selectConnectionMethod = { connectionMethods ->
                                     if (app.settingsModel.readerAutomaticallySelectTransport.value) {
                                         showToast("Auto-selected first from $connectionMethods")
@@ -321,7 +328,8 @@ fun IsoMdocProximityReadingScreen(
                                             encodedSessionTranscript = readerSessionTranscript.value!!,
                                             readerKey = app.readerKey,
                                             readerCert = app.readerCert,
-                                            readerRootCert = app.readerRootCert
+                                            readerRootCert = app.readerRootCert,
+                                            useZeroKnowledge = useZeroKnowledge.value
                                         )
                                     readerMostRecentDeviceResponse.value = byteArrayOf()
                                     readerTransport.value!!.sendMessage(
@@ -507,6 +515,7 @@ fun IsoMdocProximityReadingScreen(
                                                 readerMostRecentDeviceResponse = readerMostRecentDeviceResponse,
                                                 eReaderKey = eReaderKey,
                                                 selectedRequest = selectedRequest,
+                                                useZeroKnowledge = useZeroKnowledge,
                                                 selectConnectionMethod = { connectionMethods ->
                                                     if (app.settingsModel.readerAutomaticallySelectTransport.value) {
                                                         showToast("Auto-selected first from $connectionMethods")
@@ -532,6 +541,29 @@ fun IsoMdocProximityReadingScreen(
                         content = { Text("Request mdoc via NFC") }
                     )
                 }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                            .selectable (
+                                selected = useZeroKnowledge.value,
+                                onClick = { useZeroKnowledge.value = !useZeroKnowledge.value },
+                                role = Role.Checkbox
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = useZeroKnowledge.value,
+                            onCheckedChange = { useZeroKnowledge.value = it }
+                        )
+                        Text(
+                            text = "Use Zero Knowledge",
+                            modifier = Modifier.padding(start = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
     }
@@ -552,6 +584,7 @@ private suspend fun doReaderFlow(
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
     eReaderKey: MutableState<EcPrivateKey?>,
     selectedRequest: MutableState<RequestPickerEntry>,
+    useZeroKnowledge: MutableState<Boolean>,
     selectConnectionMethod: suspend (connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod?
 ) {
     val deviceEngagement = EngagementParser(encodedDeviceEngagement.toByteArray()).parse()
@@ -601,6 +634,7 @@ private suspend fun doReaderFlow(
                         selectedRequest = selectedRequest,
                         eDeviceKey = eDeviceKey,
                         eReaderKey = eReaderKey.value!!,
+                        useZeroKnowledge = useZeroKnowledge
                     )
                 }
             )
@@ -624,6 +658,7 @@ private suspend fun doReaderFlow(
         selectedRequest = selectedRequest,
         eDeviceKey = eDeviceKey,
         eReaderKey = eReaderKey.value!!,
+        useZeroKnowledge = useZeroKnowledge
     )
 }
 
@@ -643,6 +678,7 @@ private suspend fun doReaderFlowWithTransport(
     selectedRequest: MutableState<RequestPickerEntry>,
     eDeviceKey: EcPublicKey,
     eReaderKey: EcPrivateKey,
+    useZeroKnowledge: MutableState<Boolean>
 ) {
     if (updateNfcDialogMessage != null) {
         updateNfcDialogMessage("Transferring data, don't move your phone")
@@ -666,7 +702,9 @@ private suspend fun doReaderFlowWithTransport(
         encodedSessionTranscript = readerSessionTranscript.value!!,
         readerKey = app.readerKey,
         readerCert = app.readerCert,
-        readerRootCert = app.readerRootCert
+        readerRootCert = app.readerRootCert,
+        zkSystemRepository = app.zkSystemRepository,
+        useZeroKnowledge = useZeroKnowledge.value
     )
     try {
         transport.open(eDeviceKey)
@@ -802,6 +840,25 @@ private fun ShowReaderResults(
         )
         parser.setEphemeralReaderKey(eReaderKey)
         val deviceResponse2 = parser.parse()
+
+        if (deviceResponse2.documents.isNotEmpty()) {
+            // TODO: show multiple documents
+            val documentData = DocumentData.fromMdocDeviceResponseDocument(
+                deviceResponse2.documents[0],
+                app.documentTypeRepository,
+                app.issuerTrustManager
+            )
+            ShowDocumentData(documentData, 0, deviceResponse2.documents.size)
+        } else if (deviceResponse2.zkDocuments.isNotEmpty()) {
+            // TODO: show multiple documents
+            val documentData =  fromZkMdocDeviceResponseDocument(
+                deviceResponse2.zkDocuments[0],
+                readerSessionTranscript.value!!,
+                app.zkSystemRepository
+            )
+            ShowDocumentData(documentData, 0, deviceResponse2.zkDocuments.size)
+        }
+
         if (deviceResponse2.documents.isEmpty()) {
             Text(
                 text = "No documents in response",
@@ -901,6 +958,45 @@ private data class DocumentData(
     val kvPairs: List<DocumentKeyValuePair>
 ) {
     companion object {
+
+        fun fromZkMdocDeviceResponseDocument(
+            zkDocument: ZkDocument,
+            encodedSessionTranscript: ByteArray,
+            zkSystemRepository: ZkSystemRepository
+        ): DocumentData {
+            val infos = mutableListOf<String>()
+            val warnings = mutableListOf<String>()
+            val kvPairs = mutableListOf<DocumentKeyValuePair>()
+
+            try {
+                val zkSystemSpec = zkSystemRepository.getAllZkSystemSpecs().find {
+                    it.id == zkDocument.zkDocumentData.zkSystemSpecId
+                }
+                if (zkSystemSpec == null) {
+                    throw IllegalArgumentException("ZK System Spec ID ${zkDocument.zkDocumentData.zkSystemSpecId} was not found.")
+                }
+
+                zkSystemRepository.lookup(zkSystemSpec.system)
+                    ?.verifyProof(zkDocument, zkSystemSpec, ByteString(encodedSessionTranscript))
+                    ?: throw IllegalStateException("Zk System '${zkSystemSpec.system}' was not found.")
+                infos.add("ZK verification succeeded.")
+            } catch (e: Exception) {
+                warnings.add("ZK verification failed with error ${e.message}.")
+            }
+
+            for (da in zkDocument.zkDocumentData.issuerSignedItems) {
+                val dataElement = Cbor.decode(da.asTagged.asBstr)
+                val value = Cbor.toDiagnostics(
+                    dataElement["elementValue"], setOf(
+                        DiagnosticOption.PRETTY_PRINT,
+                        DiagnosticOption.EMBEDDED_CBOR,
+                        DiagnosticOption.BSTR_PRINT_LENGTH,
+                    )
+                    )
+                kvPairs.add(DocumentKeyValuePair(dataElement["elementIdentifier"].asTstr, value))
+            }
+            return DocumentData(infos, warnings, kvPairs)
+        }
 
         fun fromMdocDeviceResponseDocument(
             document: DeviceResponseParser.Document,

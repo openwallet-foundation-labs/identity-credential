@@ -36,6 +36,7 @@ import org.multipaz.util.toHex
 import kotlinx.datetime.Instant
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.SignatureVerificationException
+import org.multipaz.mdoc.zkp.ZkDocument
 
 /**
  * Helper class for parsing the bytes of `DeviceResponse`
@@ -100,14 +101,21 @@ class DeviceResponseParser(
      */
     class DeviceResponse {
 
-        // backing field
+        // backing fields
         private val _documents = mutableListOf<Document>()
+        private val _zkDocuments = mutableListOf<ZkDocument>()
 
         /**
          * The documents in the device response.
          */
         val documents: List<Document>
             get() = _documents
+
+        /**
+         * The ZK documents in the device response.
+         */
+        val zkDocuments: List<ZkDocument>
+            get() = _zkDocuments
 
         /**
          * The version string set in the `DeviceResponse` CBOR.
@@ -319,6 +327,8 @@ class DeviceResponseParser(
             val deviceResponse = Cbor.decode(encodedDeviceResponse!!)
             version = deviceResponse["version"].asTstr
             require(version.compareTo("1.0") >= 0) { "Given version '$version' not >= '1.0'" }
+
+            // Try to get documents, either documents or zkDocuments can be populated, not both.
             val documentsDataItem = deviceResponse.getOrNull("documents")
             if (documentsDataItem != null) {
                 for (documentItem in documentsDataItem.asArray) {
@@ -337,6 +347,16 @@ class DeviceResponseParser(
                         builder
                     )
                     _documents.add(builder.build())
+                }
+            }
+
+            val zkDocumentDataItem = deviceResponse.getOrNull("zkDocuments")
+            if (zkDocumentDataItem != null) {
+                val zkDocumentsArray = zkDocumentDataItem.asArray
+
+                for (zkDocumentDataItem in zkDocumentsArray) {
+                    val zkDocument = ZkDocument.fromDataItem(zkDocumentDataItem)
+                    _zkDocuments.add(zkDocument)
                 }
             }
             status = deviceResponse["status"].asNumber

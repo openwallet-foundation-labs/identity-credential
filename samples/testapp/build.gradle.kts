@@ -95,6 +95,7 @@ kotlin {
                 implementation(libs.semver)
 
                 implementation(project(":multipaz"))
+                implementation(project(":multipaz-longfellow"))
                 implementation(project(":multipaz-models"))
                 implementation(project(":multipaz-doctypes"))
                 implementation(project(":multipaz-provisioning-api"))
