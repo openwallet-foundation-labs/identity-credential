@@ -89,11 +89,11 @@ suspend fun showBiometricPrompt(
  * Parameters needed for UI to display and run NFC dialog. See
  * [org.multipaz.nfc.scanNfcTag] for more information.
  *
- * @param message the message to initially show in the dialog.
- * @param tagInteractionFunc the function which is called when the tag is in the field.
+ * @param initialMessage the message to initially show in the dialog or `null` to not show a dialog at all.
+ * @param interactionFunction the function which is called when the tag is in the field.
  */
 class NfcDialogParameters<out T>(
-    val initialMessage: String,
+    val initialMessage: String?,
     val interactionFunction: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit

@@ -1,7 +1,9 @@
 package org.multipaz.nfc
 
+actual val nfcTagSupportsScanningWithoutDialog: Boolean = false
+
 actual suspend fun<T: Any> scanNfcTag(
-    message: String,
+    message: String?,
     tagInteractionFunc: suspend (
         tag: NfcIsoTag,
         updateMessage: (message: String) -> Unit
