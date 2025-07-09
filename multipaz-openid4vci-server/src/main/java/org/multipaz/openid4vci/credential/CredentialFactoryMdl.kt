@@ -124,12 +124,14 @@ internal class CredentialFactoryMdl : CredentialFactory {
                 addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
                 addDataElement( "age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
 
-                val useMalePhoto = source.hasDataElement(EUPersonalID.EUPID_NAMESPACE, "sex") &&
-                        source.getDataElementNumber(EUPersonalID.EUPID_NAMESPACE, "sex") == 1L
-                val photoResource = if (useMalePhoto) "male.jpg" else "female.jpg"
-                val photoBytes = resources.getRawResource(photoResource)
-                addDataElement("portrait", Bstr(photoBytes!!.toByteArray()))
-                added.add("portrait")
+                if (!added.contains("portrait")) {
+                    val useMalePhoto = source.hasDataElement(EUPersonalID.EUPID_NAMESPACE, "sex") &&
+                            source.getDataElementNumber(EUPersonalID.EUPID_NAMESPACE, "sex") == 1L
+                    val photoResource = if (useMalePhoto) "male.jpg" else "female.jpg"
+                    val photoBytes = resources.getRawResource(photoResource)
+                    addDataElement("portrait", Bstr(photoBytes!!.toByteArray()))
+                    added.add("portrait")
+                }
 
                 addDataElement(
                     "driving_privileges",

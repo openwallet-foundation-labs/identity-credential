@@ -12,7 +12,7 @@
     <input type="hidden" name="pidData" id="pidData" value=""/>
     <button id="verify" data-code="$pidReadingCode">Verify PID</button>
 </form>
-<h4>Option2: just tell us who you are</h4>
+<h4>Option2: tell us who you are</h4>
 <form action="authorize" method="post">
     <input type="hidden" name="authorizationCode" value="$authorizationCode"/>
     <label for="given_name">First name:</label>
@@ -21,10 +21,6 @@
     <input type="text" id="family_name" name="family_name" value="Ksiva"/><br/>
     <label for="birth_date">Last name:</label>
     <input type="date" id="birth_date" name="birth_date" value="1998-09-04"/><br/>
-    <label for="gender_male">Male:</label>
-    <input id="gender_male" type="radio" name="gender" value="M"/>
-    <label for="gender_female">Female:</label>
-    <input id="gender_female" type="radio" name="gender" value="F"/><br/>
     <button>Verify</button>
 </form>
 <script src="authorize.js"></script>
