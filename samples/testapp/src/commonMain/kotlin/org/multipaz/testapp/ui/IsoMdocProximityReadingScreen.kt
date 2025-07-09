@@ -70,6 +70,11 @@ import org.multipaz.nfc.scanNfcTag
 import org.multipaz.testapp.App
 import org.multipaz.testapp.TestAppUtils
 import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.trustmanagement.X509CertTrustPoint
+import org.multipaz.trustmanagement.OriginTrustPoint
+import org.multipaz.trustmanagement.LocalTrustManager
+import org.multipaz.trustmanagement.VicalTrustManager
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
@@ -78,6 +83,7 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -810,11 +816,13 @@ private fun ShowReaderResults(
             )
         } else {
             // TODO: show multiple documents
-            val documentData = DocumentData.fromMdocDeviceResponseDocument(
-                deviceResponse2.documents[0],
-                app.documentTypeRepository,
-                app.issuerTrustManager
-            )
+            val documentData = runBlocking {
+                DocumentData.fromMdocDeviceResponseDocument(
+                    deviceResponse2.documents[0],
+                    app.documentTypeRepository,
+                    app.issuerTrustManager
+                )
+            }
             ShowDocumentData(documentData, 0, deviceResponse2.documents.size)
         }
     }
@@ -902,7 +910,7 @@ private data class DocumentData(
 ) {
     companion object {
 
-        fun fromMdocDeviceResponseDocument(
+        suspend fun fromMdocDeviceResponseDocument(
             document: DeviceResponseParser.Document,
             documentTypeRepository: DocumentTypeRepository,
             issuerTrustManager: TrustManager
@@ -910,22 +918,37 @@ private data class DocumentData(
             val infos = mutableListOf<String>()
             val warnings = mutableListOf<String>()
             val kvPairs = mutableListOf<DocumentKeyValuePair>()
-
             if (document.issuerSignedAuthenticated) {
-                /*
                 val trustResult = issuerTrustManager.verify(document.issuerCertificateChain.certificates)
                 if (trustResult.isTrusted) {
-                    if (trustResult.trustPoints[0].displayName != null) {
-                        infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
-                    } else {
-                        infos.add("Issuer with name '${trustResult.trustPoints[0].certificate.subject.name}' " +
-                                "is in a trust list")
+                    val primaryTrustPoint = trustResult.trustPoints[0]
+                    val trustPointInfo = buildTrustPointInfo(primaryTrustPoint)
+                    infos.add(trustPointInfo)
+
+                    if (trustResult.trustPoints.size > 1) {
+                        infos.add("${trustResult.trustPoints.size} trust points matched this issuer")
+                        for (i in 1 until trustResult.trustPoints.size) {
+                            val additionalInfo = buildTrustPointInfo(trustResult.trustPoints[i], isAdditional = true)
+                            infos.add(additionalInfo)
+                        }
+                    }
+
+                    if (trustResult.trustChain != null) {
+                        val chainLength = trustResult.trustChain!!.certificates.size
+                        infos.add("Certificate chain validated with $chainLength certificate(s)")
                     }
                 } else {
-                    warnings.add("Issuer is not in trust list")
+                    warnings.add("Issuer is not in any trust list")
+
+                    val issuerSubject = document.issuerCertificateChain.certificates.firstOrNull()?.subject
+                    if (issuerSubject != null) {
+                        warnings.add("Untrusted issuer: $issuerSubject")
+                    }
+
+                    if (trustResult.error != null) {
+                        warnings.add("Trust verification error: ${trustResult.error!!.message}")
+                    }
                 }
-                 */
-                warnings.add("TODO: trustlist")
             }
             if (!document.deviceSignedAuthenticated) {
                 warnings.add("Device Authentication failed")
@@ -1018,4 +1041,51 @@ private fun formatTime(instant: Instant): String {
     return isoStr.substring(0, 10) + " " + isoStr.substring(11)
 }
 
+/**
+ * Build comprehensive trust point information string for display
+ */
+private fun buildTrustPointInfo(trustPoint: TrustPoint, isAdditional: Boolean = false): String {
+    val prefix = if (isAdditional) "Additional trust point: " else "Trusted issuer: "
+    val displayName = trustPoint.metadata.displayName
+    val trustManagerType = when (trustPoint.trustManager) {
+        is LocalTrustManager -> "Local Trust Store"
+        is VicalTrustManager -> "VICAL Trust List"
+        else -> "Trust Manager"
+    }
 
+    return when (trustPoint) {
+        is X509CertTrustPoint -> {
+            val certSubject = trustPoint.certificate.subject
+            val certIssuer = trustPoint.certificate.issuer
+            val validFrom = formatTime(trustPoint.certificate.validityNotBefore)
+            val validUntil = formatTime(trustPoint.certificate.validityNotAfter)
+
+            buildString {
+                append(prefix)
+                if (displayName != null) {
+                    append("'$displayName' ")
+                } else {
+                    append("Certificate with subject '$certSubject' ")
+                }
+                append("(Source: $trustManagerType)")
+                if (!isAdditional) {
+                    append("\nCertificate valid from $validFrom to $validUntil")
+                    if (certIssuer != certSubject) {
+                        append("\nIssued by: $certIssuer")
+                    }
+                }
+            }
+        }
+        is OriginTrustPoint -> {
+            buildString {
+                append(prefix)
+                if (displayName != null) {
+                    append("'$displayName' ")
+                } else {
+                    append("Origin '${trustPoint.origin}' ")
+                }
+                append("(Source: $trustManagerType)")
+            }
+        }
+    }
+}
