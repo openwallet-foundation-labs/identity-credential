@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <title>Utopia Registry - individual's records</title>
+    <style>
+        /* this is for left-to-right languages only */
+        .controls { display: table; }
+        .row { display: table-row; }
+        .row * { display: table-cell; margin-bottom: 8px;}
+        .row label { text-align: end; }
+        .actions { margin-top: 1em; padding-top: 1em; }
+        .record { margin: 1em; background: #EFF; }
+        .core { margin: 1em; background: #EEF; }
+    </style>
+</head>
+<body>
+<h1>Utopia Registry - individual's records</h1>
+<div id="core"></div>
+<h2>Records</h2>
+<div>
+<label for="recordType">New record type:</label>
+<select id="recordType">
+    <option value="">Not selected</option>
+</select>
+<button id="addRecord">Add</button>
+</div>
+<div id="records"></div>
+<div class="actions">
+    <button id="save">Save</button>
+    <button id="delete">Delete</button>
+</div>
+</body>
+<script src="person.js"></script>
+</html>

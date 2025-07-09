@@ -1,14 +1,28 @@
 package org.multipaz.openid4vci.request
 
+import io.ktor.client.HttpClient
+import io.ktor.client.request.headers
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tstr
-import org.multipaz.cbor.Uint
+import org.multipaz.cbor.toDataItem
 import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.document.NameSpacedData
 import org.multipaz.documenttype.knowntypes.EUPersonalID
@@ -21,11 +35,12 @@ import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.codeToId
 import org.multipaz.server.getBaseUrl
 import org.multipaz.openid4vci.util.getReaderIdentity
+import org.multipaz.openid4vci.util.getSystemOfRecordUrl
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.util.fromBase64
 import java.net.URI
 import kotlin.time.Duration.Companion.minutes
 
@@ -88,8 +103,8 @@ suspend fun authorizePost(call: ApplicationCall)  {
     val code = parameters["authorizationCode"]
         ?: throw InvalidRequestException("'authorizationCode' missing")
     val id = codeToId(OpaqueIdType.AUTHORIZATION_STATE, code)
-    val data = NameSpacedData.Builder()
     val state = IssuanceState.getIssuanceState(id)
+    val data = NameSpacedData.Builder()
 
     val baseUrl = BackendEnvironment.getBaseUrl()
     val pidData = parameters["pidData"]
@@ -127,27 +142,83 @@ suspend fun authorizePost(call: ApplicationCall)  {
         if (givenName == null || familyName == null || birthDate == null) {
             throw IllegalArgumentException("Authorization failed")
         }
-        data.putEntry(
-            nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
-            dataElementName = "given_name",
-            value = Cbor.encode(Tstr(givenName))
-        )
-        data.putEntry(
-            nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
-            dataElementName = "family_name",
-            value = Cbor.encode(Tstr(familyName))
-        )
-        data.putEntry(
-            nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
-            dataElementName = "birth_date",
-            value = Cbor.encode(LocalDate.parse(birthDate).toDataItemFullDate())
-        )
-        val gender = parameters["gender"]
-        if (gender != null) {
+        val systemOfRecordUrl = BackendEnvironment.getSystemOfRecordUrl()
+        if (systemOfRecordUrl != null) {
+            // Authorize with the system of record
+            val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
+            val authRequest = httpClient.post("$systemOfRecordUrl/identity/authorize") {
+                headers {
+                    append("Content-Type", "application/json")
+                }
+                setBody(buildJsonObject {
+                    put("family_name", familyName)
+                    put("given_name", givenName)
+                    put("birth_date", birthDate)
+                }.toString())
+            }
+            val response = Json.parseToJsonElement(String(authRequest.readBytes())).jsonArray
+            if (response.isEmpty()) {
+                throw IllegalArgumentException("Authorization failed: no such person")
+            }
+            if (response.size > 1) {
+                throw IllegalArgumentException("Authorization failed: multiple matches")
+            }
+            val accessToken = response[0].jsonObject["access_token"]!!.jsonPrimitive.content
+
+            // For now, fetch the data from the system of record right away. This should
+            // really happen when minting the credentials
+            val recordRequest = httpClient.post("$systemOfRecordUrl/identity/get") {
+                headers {
+                    append("Content-Type", "application/json")
+                }
+                setBody(buildJsonObject {
+                    put("access_token", accessToken)
+                    putJsonArray("core") {
+                        add("portrait")
+                    }
+                    putJsonObject("records") {
+                        putJsonArray("mDL") {}
+                    }
+                }.toString())
+            }
+            val identityData = Json.parseToJsonElement(String(recordRequest.readBytes())).jsonObject
+            val portrait = identityData["core"]!!.jsonObject["portrait"]!!.jsonPrimitive.content
             data.putEntry(
                 nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
-                dataElementName = "sex",
-                value = Cbor.encode(Uint(if (gender == "M") 1UL else 2UL))
+                dataElementName = "given_name",
+                value = Cbor.encode(Tstr(givenName))
+            )
+            data.putEntry(
+                nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
+                dataElementName = "family_name",
+                value = Cbor.encode(Tstr(familyName))
+            )
+            data.putEntry(
+                nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
+                dataElementName = "birth_date",
+                value = Cbor.encode(LocalDate.parse(birthDate).toDataItemFullDate())
+            )
+            data.putEntry(
+                nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
+                dataElementName = "portrait",
+                value = Cbor.encode(portrait.fromBase64().toDataItem())
+            )
+        } else {
+            // No system of record, just make up a record
+            data.putEntry(
+                nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
+                dataElementName = "given_name",
+                value = Cbor.encode(Tstr(givenName))
+            )
+            data.putEntry(
+                nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
+                dataElementName = "family_name",
+                value = Cbor.encode(Tstr(familyName))
+            )
+            data.putEntry(
+                nameSpaceName = EUPersonalID.EUPID_NAMESPACE,
+                dataElementName = "birth_date",
+                value = Cbor.encode(LocalDate.parse(birthDate).toDataItemFullDate())
             )
         }
     }
