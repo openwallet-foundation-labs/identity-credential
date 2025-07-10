@@ -3,12 +3,19 @@ package org.multipaz.nfc
 import org.multipaz.prompt.PromptDismissedException
 
 /**
- * Is set to true if [scanNfcTag] works without showing a dialog.
+ * Is set to true if the device supports NFC scanning.
  */
-expect val nfcTagSupportsScanningWithoutDialog: Boolean
+expect val nfcTagScanningSupported: Boolean
+
+/**
+ * Is set to true if the device supports NFC scanning and [scanNfcTag] works without showing a dialog.
+ */
+expect val nfcTagScanningSupportedWithoutDialog: Boolean
 
 /**
  * Shows a dialog prompting the user to scan a NFC tag.
+ *
+ * This only works if [nfcTagScanningSupported] is `true`.
  *
  * When a tag is in the field, [tagInteractionFunc] is called and is passed a [NfcIsoTag] which can be
  * used to communicate with the remote tag and also a function to update the message shown in the dialog.
@@ -32,12 +39,12 @@ expect val nfcTagSupportsScanningWithoutDialog: Boolean
  * or programmatically dismissed by canceling the coroutine this is launched from.
  *
  * @param message the message to initially show in the dialog or `null` to not show a dialog. Not all
- *   platforms supports not showing a dialog, use [nfcTagSupportsScanningWithoutDialog] to check at runtime
+ *   platforms supports not showing a dialog, use [nfcTagScanningSupportedWithoutDialog] to check at runtime
  *   if the platform supports this.
  * @param tagInteractionFunc the function which is called when the tag is in the field, see above.
  * @return return value of [tagInteractionFunc]
  * @throws PromptDismissedException if the user canceled the dialog
- * @throws IllegalArgumentException if [message] is `null` and [nfcTagSupportsScanningWithoutDialog] is `false`.
+ * @throws IllegalArgumentException if [message] is `null` and [nfcTagScanningSupportedWithoutDialog] is `false`.
  * @throws Throwable exceptions thrown in [tagInteractionFunc] are rethrown.
  */
 expect suspend fun<T: Any> scanNfcTag(
