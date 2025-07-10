@@ -26,7 +26,6 @@ data class IssuanceState(
     var codeChallenge: ByteString?,
     var clientState: String? = null,
     var dpopNonce: ByteString? = null,
-    var cNonce: ByteString? = null,
     var openid4VpVerifierModel: Openid4VpVerifierModel? = null,
     var credentialData: NameSpacedData? = null
 ) {
