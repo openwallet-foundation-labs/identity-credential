@@ -37,7 +37,7 @@ private data class ScanNfcMdocReaderResult(
  * from this method.
  *
  * @param message the message to display in the NFC tag scanning dialog or `null` to not show a dialog. Not all
- *   platforms supports not showing a dialog, use [org.multipaz.nfc.nfcTagSupportsScanningWithoutDialog] to check at
+ *   platforms supports not showing a dialog, use [org.multipaz.nfc.nfcTagScanningSupportedWithoutDialog] to check at
  *   runtime if the platform supports this.
  * @param options the [MdocTransportOptions] used to create new [MdocTransport] instances.
  * @param transportFactory the factory used to create [MdocTransport] instances.

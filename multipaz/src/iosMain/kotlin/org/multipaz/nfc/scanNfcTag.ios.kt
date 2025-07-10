@@ -22,7 +22,9 @@ import platform.CoreNFC.NFCReaderSessionInvalidationErrorUserCanceled
 import platform.darwin.NSObject
 import kotlin.coroutines.resumeWithException
 
-actual val nfcTagSupportsScanningWithoutDialog: Boolean = false
+actual val nfcTagScanningSupported = true
+
+actual val nfcTagScanningSupportedWithoutDialog: Boolean = false
 
 private class NfcTagReader<T> {
 

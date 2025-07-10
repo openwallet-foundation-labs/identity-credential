@@ -76,6 +76,7 @@ object OpenID4VP {
                                 .toJwk(additionalClaims = buildJsonObject {
                                     put("kid", "response-encryption-key")
                                     put("alg", "ECDH-ES")
+                                    put("use", "enc")
                                 }))
                         }
                     }
@@ -154,6 +155,8 @@ object OpenID4VP {
                                 responseEncryptionKey
                                 .toJwk(additionalClaims = buildJsonObject {
                                     put("kid", "response-encryption-key")
+                                    put("alg", "ECDH-ES")
+                                    put("use", "enc")
                                 })
                             )
                         }
