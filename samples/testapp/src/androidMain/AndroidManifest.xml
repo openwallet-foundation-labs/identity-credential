@@ -82,10 +82,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!--  OpenId Credential Offer scheme (OID4VCI) -->
                 <data android:scheme="openid-credential-offer"/>
+                <!--  High Assurance Interoperability Profile -->
+                <data android:scheme="haip"/>
                 <!-- Accept all hosts for any of the defined schemes above -->
                 <data android:host="*"/>
             </intent-filter>
-
+            
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

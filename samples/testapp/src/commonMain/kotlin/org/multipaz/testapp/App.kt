@@ -581,7 +581,8 @@ class App private constructor (val promptModel: PromptModel) {
      * Handle a link (either a app link, universal link, or custom URL schema link).
      */
     fun handleUrl(url: String) {
-        if (url.startsWith(OID4VCI_CREDENTIAL_OFFER_URL_SCHEME)) {
+        if (url.startsWith(OID4VCI_CREDENTIAL_OFFER_URL_SCHEME)
+            || url.startsWith(HAIP_URL_SCHEME)) {
             val queryIndex = url.indexOf('?')
             if (queryIndex >= 0) {
                 val query = url.substring(queryIndex + 1)
@@ -608,6 +609,7 @@ class App private constructor (val promptModel: PromptModel) {
 
         // OID4VCI url scheme used for filtering OID4VCI Urls from all incoming URLs (deep links or QR)
         private const val OID4VCI_CREDENTIAL_OFFER_URL_SCHEME = "openid-credential-offer://"
+        private const val HAIP_URL_SCHEME = "haip://"
 
         private var app: App? = null
         fun getInstance(): App {

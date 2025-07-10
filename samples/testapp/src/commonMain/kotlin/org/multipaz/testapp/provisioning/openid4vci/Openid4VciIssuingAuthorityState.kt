@@ -307,24 +307,8 @@ class Openid4VciIssuingAuthorityState(
         refreshAccessIfNeeded(documentId, document)
 
         // obtain c_nonce (serves as challenge for the device-bound key)
-        val access = document.access!!
-        val dpop = OpenidUtil.generateDPoP(
-            clientId,
-            metadata.nonceEndpoint,
-            access.dpopNonce,
-            access.accessToken
-        )
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
-        val nonceResponse = httpClient.post(metadata.nonceEndpoint) {
-            headers {
-                append("Authorization", "DPoP ${access.accessToken}")
-                append("DPoP", dpop)
-            }
-        }
-        if (nonceResponse.headers.contains("DPoP-Nonce")) {
-            access.dpopNonce = nonceResponse.headers["DPoP-Nonce"]!!
-            updateIssuerDocument(documentId, document, false)
-        }
+        val nonceResponse = httpClient.post(metadata.nonceEndpoint) {}
         if (nonceResponse.status != HttpStatusCode.OK) {
             throw IssuingAuthorityException("Error getting a nonce")
         }

@@ -62,9 +62,7 @@ suspend fun credential(call: ApplicationCall) {
         call.respondText(status = HttpStatusCode.Unauthorized, text = "")
         return
     }
-    val nonce = state.cNonce?.toByteArray()?.toBase64Url()  // credential nonce
     state.dpopNonce = null
-    state.cNonce = null
     IssuanceState.updateIssuanceState(id, state)
     val requestString = call.receiveText()
     val json = Json.parseToJsonElement(requestString) as JsonObject
@@ -93,10 +91,6 @@ suspend fun credential(call: ApplicationCall) {
             contentType = ContentType.Application.Json
         )
         return
-    }
-
-    if (nonce == null) {
-        throw InvalidRequestException("fresh c_nonce was not requested by the client")
     }
 
     val proofsObj = json["proofs"]?.jsonObject
@@ -131,10 +125,10 @@ suspend fun credential(call: ApplicationCall) {
                     publicKey = null,
                     checks = mapOf(
                         JwtCheck.TYP to "keyattestation+jwt",
-                        JwtCheck.TRUST to "key_attestation",
-                        JwtCheck.NONCE to nonce
+                        JwtCheck.TRUST to "key_attestation"
                     )
                 )
+                validateAndConsumeCredentialChallenge(body["nonce"]!!.jsonPrimitive.content)
                 body["attested_keys"]!!.jsonArray.map { key ->
                     EcPublicKey.fromJwk(key.jsonObject)
                 }
@@ -145,6 +139,7 @@ suspend fun credential(call: ApplicationCall) {
                 throw InvalidRequestException("jwt proof cannot be used for this credential")
             }
             val baseUrl = BackendEnvironment.getBaseUrl()
+            var expectedNonce: String? = null
             proofs.map { proof ->
                 val jwt = proof.jsonPrimitive.content
                 val parts = jwt.split(".")
@@ -153,16 +148,22 @@ suspend fun credential(call: ApplicationCall) {
                 }
                 val head = Json.parseToJsonElement(String(parts[0].fromBase64Url())) as JsonObject
                 val authenticationKey = EcPublicKey.fromJwk(head["jwk"]!!.jsonObject)
-                validateJwt(
+                val body = validateJwt(
                     jwt = proof.jsonPrimitive.content,
                     jwtName = "Key attestation",
                     publicKey = authenticationKey,
                     checks = mapOf(
                         JwtCheck.TYP to "openid4vci-proof+jwt",
-                        JwtCheck.NONCE to nonce,
                         JwtCheck.AUD to baseUrl
                     )
                 )
+                val nonce = body["nonce"]!!.jsonPrimitive.content
+                if (expectedNonce == null) {
+                    expectedNonce = nonce
+                    validateAndConsumeCredentialChallenge(nonce)
+                } else if (nonce != expectedNonce) {
+                    throw InvalidRequestException("nonce mismatch")
+                }
                 authenticationKey
             }
         }
