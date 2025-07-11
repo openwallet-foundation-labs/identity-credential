@@ -6,7 +6,6 @@ import org.multipaz.cbor.CborArray
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.util.fromBase64Url
-import org.multipaz.compose.certificateviewer.CertificateViewer
 
 /**
  * Populate and compose the certificate chain screen.

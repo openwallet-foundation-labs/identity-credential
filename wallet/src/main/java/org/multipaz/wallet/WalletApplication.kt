@@ -20,7 +20,6 @@ import android.preference.PreferenceManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.res.ResourcesCompat
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -29,8 +28,6 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import io.ktor.client.engine.android.Android
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import org.multipaz.android.direct_access.DirectAccessCredential
 import org.multipaz.context.initializeApplication
 import org.multipaz.securearea.AndroidKeystoreSecureArea
@@ -40,7 +37,6 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
-import org.multipaz.crypto.X509Cert
 import org.multipaz.documenttype.knowntypes.EUCertificateOfResidence
 import org.multipaz.documenttype.knowntypes.GermanPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
@@ -49,30 +45,22 @@ import org.multipaz.documenttype.knowntypes.UtopiaNaturalization
 import org.multipaz.provisioning.WalletApplicationCapabilities
 import org.multipaz.wallet.provisioning.WalletDocumentMetadata
 import org.multipaz.wallet.provisioning.remote.WalletServerProvider
-import org.multipaz.mdoc.credential.MdocCredential
-import org.multipaz.mdoc.vical.SignedVical
 import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.prompt.PromptModel
-import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
-import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
-import org.multipaz.trustmanagement.TrustManager
-import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Logger
 import org.multipaz.wallet.dynamicregistration.PowerOffReceiver
 import org.multipaz.wallet.logging.EventLogger
-import org.multipaz.wallet.util.toByteArray
 import kotlinx.datetime.Clock
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.storage.ephemeral.EphemeralStorage
-import org.multipaz.trustmanagement.LocalTrustManager
+import org.multipaz.trustmanagement.TrustManagerLocal
 import java.io.File
 import java.net.URLDecoder
-import java.security.Security
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.hours
@@ -111,8 +99,8 @@ class WalletApplication : Application() {
 
 
     // immediate instantiations
-    val readerTrustManager = LocalTrustManager(EphemeralStorage())
-    val issuerTrustManager = LocalTrustManager(EphemeralStorage())
+    val readerTrustManager = TrustManagerLocal(EphemeralStorage())
+    val issuerTrustManager = TrustManagerLocal(EphemeralStorage())
 
     // lazy instantiations
     private val sharedPreferences: SharedPreferences by lazy {

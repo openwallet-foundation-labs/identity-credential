@@ -49,7 +49,6 @@ actual fun encodeImageToPng(image: ImageBitmap): ByteString {
 }
 
 
-@OptIn(ExperimentalForeignApi::class)
 actual fun cropRotateScaleImage(
     frameData: CameraFrame,
     cx: Double, // ASSUMED: from top-left of image data, Y increases downwards
@@ -59,7 +58,29 @@ actual fun cropRotateScaleImage(
     outputHeightPx: Int,
     targetWidthPx: Int
 ): ImageBitmap {
-    val originalUIImage = frameData.cameraImage.uiImage
+    return cropRotateScaleImage(
+        originalUIImage = frameData.cameraImage.uiImage,
+        isLandscape = frameData.isLandscape,
+        cx = cx,
+        cy = cy,
+        angleDegrees = angleDegrees,
+        outputWidthPx = outputWidthPx,
+        outputHeightPx = outputHeightPx,
+        targetWidthPx = targetWidthPx
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun cropRotateScaleImage(
+    originalUIImage: UIImage,
+    isLandscape: Boolean,
+    cx: Double, // ASSUMED: from top-left of image data, Y increases downwards
+    cy: Double, // ASSUMED: from top-left of image data, Y increases downwards
+    angleDegrees: Double,
+    outputWidthPx: Int,
+    outputHeightPx: Int,
+    targetWidthPx: Int
+): ImageBitmap {
     val originalImageWidth = originalUIImage.size.useContents { width }
     val originalImageHeight = originalUIImage.size.useContents { height }
 
@@ -82,7 +103,7 @@ actual fun cropRotateScaleImage(
         // Goal: Make the context effectively (0,0) at top-left, Y increases downwards
         // for subsequent drawing of UIImage.
 
-        if (!frameData.isLandscape) { // PORTRAIT
+        if (!isLandscape) { // PORTRAIT
             // Standard flip for portrait: UIImage (0,0) is top-left, CGContext default is often bottom-left.
             CGContextTranslateCTM(cgContext, 0.0, finalCanvasHeight)
             CGContextScaleCTM(cgContext, 1.0, -1.0)
@@ -191,4 +212,24 @@ fun ImageBitmap.toUIImage(): UIImage? {
 
     val cgImage = CGBitmapContextCreateImage(context)
     return cgImage?.let { UIImage.imageWithCGImage(it) }
+}
+
+actual fun ImageBitmap.cropRotateScaleImage(
+    cx: Double,
+    cy: Double,
+    angleDegrees: Double,
+    outputWidthPx: Int,
+    outputHeightPx: Int,
+    targetWidthPx: Int
+): ImageBitmap {
+    return cropRotateScaleImage(
+        originalUIImage = toUIImage()!!,
+        isLandscape = false,
+        cx = cx,
+        cy = cy,
+        angleDegrees = angleDegrees,
+        outputWidthPx = outputWidthPx,
+        outputHeightPx = outputHeightPx,
+        targetWidthPx = targetWidthPx
+    )
 }

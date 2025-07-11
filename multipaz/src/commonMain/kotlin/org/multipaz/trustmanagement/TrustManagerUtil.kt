@@ -97,7 +97,7 @@ internal object TrustManagerUtil {
     internal fun verifyX509TrustChain(
         chain: List<X509Cert>,
         atTime: Instant,
-        skiToTrustPoint: Map<String, X509CertTrustPoint>
+        skiToTrustPoint: Map<String, TrustPoint>
     ): TrustResult {
         // TODO: add support for customValidators similar to PKIXCertPathChecker
         try {
@@ -148,12 +148,12 @@ internal object TrustManagerUtil {
 
     private fun getAllTrustPointsForX509Cert(
         chain: List<X509Cert>,
-        skiToTrustPoint: Map<String, X509CertTrustPoint>
-    ): List<X509CertTrustPoint> {
-        val result = mutableListOf<X509CertTrustPoint>()
+        skiToTrustPoint: Map<String, TrustPoint>
+    ): List<TrustPoint> {
+        val result = mutableListOf<TrustPoint>()
 
         // only an exception if not a single CA certificate is found
-        var caCertificate: X509CertTrustPoint? = findCaCertificate(chain, skiToTrustPoint)
+        var caCertificate: TrustPoint? = findCaCertificate(chain, skiToTrustPoint)
             ?: throw IllegalStateException("No trusted root certificate could not be found")
         result.add(caCertificate!!)
         while (caCertificate != null && !isSelfSigned(caCertificate.certificate)) {
@@ -170,8 +170,8 @@ internal object TrustManagerUtil {
      */
     private fun findCaCertificate(
         chain: List<X509Cert>,
-        skiToTrustPoint: Map<String, X509CertTrustPoint>
-    ): X509CertTrustPoint? {
+        skiToTrustPoint: Map<String, TrustPoint>
+    ): TrustPoint? {
         chain.forEach { cert ->
             cert.authorityKeyIdentifier?.toHex().let {
                 if (skiToTrustPoint.containsKey(it)) {
