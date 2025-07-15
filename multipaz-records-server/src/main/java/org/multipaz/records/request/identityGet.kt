@@ -21,12 +21,10 @@ import org.multipaz.records.data.tokenToId
  *
  * Fetches requested data for identity with the given token (see [tokenToId]).
  *
- * This handler accepts either `token` or `access_token` to identify an [Identity].
- *
  * Request format:
  * ```
  * {
- *     "token": "...."  // or "access_token"
+ *     "token": "...."
  *     "core": ["field1", "field2", ...],
  *     "records": { "recordType1": [ "recordId1", ... ], ... }
  * }
@@ -48,14 +46,8 @@ import org.multipaz.records.data.tokenToId
  */
 suspend fun identityGet(call: ApplicationCall) {
     val request = Json.parseToJsonElement(call.receiveText()) as JsonObject
-    val feToken = request["token"]?.jsonPrimitive?.content
-    val id = if (feToken != null) {
-        tokenToId(TokenType.FE_TOKEN, feToken)
-    } else {
-        val accessToken = request["access_token"]?.jsonPrimitive?.content
-            ?: throw IllegalArgumentException("either token or access_token is required")
-        tokenToId(TokenType.ACCESS_TOKEN, accessToken)
-    }
+    val feToken = request["token"]!!.jsonPrimitive.content
+    val id = tokenToId(TokenType.FE_TOKEN, feToken)
     val identity = Identity.findById(id)
     val fields = request["core"]!!.jsonArray.map { it.jsonPrimitive.content }
     val records = request["records"]!!.jsonObject.asIterable().associate { (key, list) ->

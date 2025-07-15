@@ -1,14 +1,19 @@
 package org.multipaz.openid4vci.request
 
+import io.ktor.client.HttpClient
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.get
+import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.headers
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respondText
+import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.rpc.handler.InvalidRequestException
-import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
@@ -24,6 +29,13 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.addCborMap
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.putCborArray
+import org.multipaz.cbor.putCborMap
+import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.openid4vci.credential.Openid4VciFormat
@@ -34,8 +46,10 @@ import org.multipaz.openid4vci.util.OpaqueIdType
 import org.multipaz.openid4vci.util.authorizeWithDpop
 import org.multipaz.openid4vci.util.codeToId
 import org.multipaz.openid4vci.util.extractAccessToken
+import org.multipaz.openid4vci.util.getSystemOfRecordUrl
 import org.multipaz.openid4vci.util.validateJwt
 import org.multipaz.server.getBaseUrl
+import org.multipaz.util.Logger
 import kotlin.random.Random
 
 /**
@@ -77,9 +91,12 @@ suspend fun credential(call: ApplicationCall) {
     if (state.clientAttestationKey == null && factory.requireClientAttestation) {
         throw InvalidRequestException("this credential type requires client attestation")
     }
+
+    val credentialData = readSystemOfRecord(state)
+
     if (factory.cryptographicBindingMethods.isEmpty()) {
         // Keyless credential: no need for proof/proofs parameter.
-        val credential = factory.makeCredential(state, null)
+        val credential = factory.makeCredential(credentialData, null)
         call.respondText(
             text = buildJsonObject {
                 putJsonArray("credentials") {
@@ -172,7 +189,9 @@ suspend fun credential(call: ApplicationCall) {
         }
     }
 
-    val credentials = authenticationKeys.map { key -> factory.makeCredential(state, key) }
+    val credentials = authenticationKeys.map { key ->
+        factory.makeCredential(credentialData, key)
+    }
 
     val result =
         buildJsonObject {
@@ -190,3 +209,42 @@ suspend fun credential(call: ApplicationCall) {
     )
 }
 
+private const val TAG = "credential"
+
+private suspend fun readSystemOfRecord(state: IssuanceState): DataItem {
+    val systemOfRecordAccess = state.systemOfRecordAccess!!
+    val systemOfRecordUrl = BackendEnvironment.getSystemOfRecordUrl()
+    if (systemOfRecordUrl == null) {
+        // Running without System of Record (demo/dev mode). Expect basic data encoded
+        // as fake access token
+        val (givenName, familyName, birthDate) = systemOfRecordAccess.accessToken.split(":")
+        return buildCborMap {
+            putCborMap("core") {
+                put("given_name", givenName)
+                put("family_name", familyName)
+                put("birth_date", LocalDate.parse(birthDate).toDataItemFullDate())
+            }
+            putCborMap("records") {
+                putCborMap("mDL") {
+                    putCborMap("") {}
+                }
+                putCborMap("naturalization") {
+                    putCborMap("") {}
+                }
+            }
+        }
+    } else {
+        val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
+        val request = httpClient.get("$systemOfRecordUrl/data") {
+            headers {
+                bearerAuth(systemOfRecordAccess.accessToken)
+            }
+        }
+        if (request.status != HttpStatusCode.OK) {
+            val text = request.readBytes().decodeToString()
+            Logger.e(TAG, "Error accessing data from the System of Record: $text")
+            throw IllegalStateException("Could not access data from System of Record")
+        }
+        return Cbor.decode(request.readBytes())
+    }
+}

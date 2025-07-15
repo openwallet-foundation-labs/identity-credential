@@ -5,6 +5,7 @@ import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.rpc.handler.InvalidRequestException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.cbor.DataItem
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
 import org.multipaz.openid4vci.util.IssuanceState
 
@@ -32,7 +33,7 @@ internal interface CredentialFactory {
      * Creates the credential. [authenticationKey] must be non-null for key-bound
      * credentials and null for keyless ones.
      */
-    suspend fun makeCredential(state: IssuanceState, authenticationKey: EcPublicKey?): String
+    suspend fun makeCredential(data: DataItem, authenticationKey: EcPublicKey?): String
 
     companion object {
         val byOfferId: Map<String, CredentialFactory>

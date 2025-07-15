@@ -27,7 +27,9 @@ data class IssuanceState(
     var clientState: String? = null,
     var dpopNonce: ByteString? = null,
     var openid4VpVerifierModel: Openid4VpVerifierModel? = null,
-    var credentialData: NameSpacedData? = null
+    var systemOfRecordAuthCode: String? = null,
+    var systemOfRecordCodeVerifier: ByteString? = null,
+    var systemOfRecordAccess: SystemOfRecordAccess? = null
 ) {
     companion object {
         private val tableSpec = StorageTableSpec(

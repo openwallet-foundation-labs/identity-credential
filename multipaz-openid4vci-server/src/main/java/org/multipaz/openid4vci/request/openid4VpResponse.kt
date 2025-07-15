@@ -55,7 +55,9 @@ suspend fun openid4VpResponse(call: ApplicationCall) {
         }
     }
 
-    state.credentialData = data.build()
+    // TODO
+    //state.credentialData = data.build()
+
     IssuanceState.updateIssuanceState(id, state)
 
     val presentationCode = idToCode(OpaqueIdType.OPENID4VP_PRESENTATION, id, 5.minutes)
