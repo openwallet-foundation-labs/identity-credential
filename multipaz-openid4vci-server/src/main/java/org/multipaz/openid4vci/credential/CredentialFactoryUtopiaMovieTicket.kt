@@ -1,6 +1,5 @@
 package org.multipaz.openid4vci.credential
 
-import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
@@ -11,10 +10,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.sdjwt.SdJwt
-import kotlin.random.Random
 
 internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
     override val offerId: String
@@ -46,7 +44,7 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactory {
         get() = "movie_ticket.png"
 
     override suspend fun makeCredential(
-        state: IssuanceState,
+        data: DataItem,
         authenticationKey: EcPublicKey?
     ): String {
         check(authenticationKey == null)

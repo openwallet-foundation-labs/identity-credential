@@ -48,7 +48,8 @@ enum class OpaqueIdType {
     AUTH_SESSION,  // for use in /authorize_challenge
     OPENID4VP_CODE,  // send to /authorize when we want openid4vp request
     OPENID4VP_STATE,  // for state field in openid4vp
-    OPENID4VP_PRESENTATION  // for use in presentation_during_issuance_session
+    OPENID4VP_PRESENTATION,  // for use in presentation_during_issuance_session
+    RECORDS_STATE  // oauth state to authorize with System of Record
 }
 
 /**

@@ -15,13 +15,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.records.data.IdentityNotFoundException
+import org.multipaz.records.request.authorizeGet
 import org.multipaz.records.request.fetchResource
-import org.multipaz.records.request.identityAuthorize
+import org.multipaz.records.request.authorizePost
+import org.multipaz.records.request.data
 import org.multipaz.records.request.identityDelete
 import org.multipaz.records.request.identitySchema
 import org.multipaz.records.request.identityGet
 import org.multipaz.records.request.identityList
 import org.multipaz.records.request.identityPut
+import org.multipaz.records.request.pushedAuthorizationRequest
+import org.multipaz.records.request.token
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.server.ServerConfiguration
 import org.multipaz.server.ServerEnvironment
@@ -101,11 +105,23 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
         post("/identity/delete") {
             runRequest { identityDelete(call) }
         }
-        post("/identity/authorize") {
-            runRequest { identityAuthorize(call) }
-        }
         get("/identity/schema") {
             runRequest { identitySchema(call) }
+        }
+        post("/par") {
+            runRequest { pushedAuthorizationRequest(call) }
+        }
+        get("/authorize") {
+            runRequest { authorizeGet(call) }
+        }
+        post("/authorize") {
+            runRequest { authorizePost(call) }
+        }
+        post("/token") {
+            runRequest { token(call) }
+        }
+        get("/data") {
+            runRequest { data(call) }
         }
     }
 }

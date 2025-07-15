@@ -1,7 +1,5 @@
 package org.multipaz.openid4vci.credential
 
-import org.multipaz.cbor.Cbor
-import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
@@ -13,12 +11,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
-import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.sdjwt.SdJwt
-import kotlin.random.Random
 
 internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
     override val offerId: String
@@ -50,19 +45,15 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
         get() = "naturalization.png"
 
     override suspend fun makeCredential(
-        state: IssuanceState,
+        data: DataItem,
         authenticationKey: EcPublicKey?
     ): String {
         check(authenticationKey != null)
-        val data = state.credentialData!!
-        val birthdateDataElement = euPidDocumentType.mdocDocumentType!!
-            .namespaces[EUPersonalID.EUPID_NAMESPACE]!!.dataElements["birth_date"]!!
-        val birthdate = birthdateDataElement.renderValue(Cbor.decode(
-            data.getDataElement(EUPersonalID.EUPID_NAMESPACE, "birth_date")))
+        val coreData = data["core"]
         val identityAttributes = buildJsonObject {
-            put("given_name", data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "given_name"))
-            put("family_name", data.getDataElementString(EUPersonalID.EUPID_NAMESPACE, "family_name"))
-            put("birth_date", birthdate)
+            put("given_name", coreData["given_name"].asTstr)
+            put("family_name", coreData["family_name"].asTstr)
+            put("birth_date", coreData["birth_date"].asDateString.toString())
             put("naturalization_date", "2024-05-01")  // Utopia Naturalization Day (aka April Fools)
         }
 
@@ -98,8 +89,5 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
 
     companion object {
         private val FORMAT = Openid4VciFormatSdJwt(UtopiaNaturalization.VCT)
-
-        // to decode attributes
-        private val euPidDocumentType = EUPersonalID.getDocumentType()
     }
 }

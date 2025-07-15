@@ -126,7 +126,7 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
 val RESPONSE_COPY_KEY = AttributeKey<String>("RESPONSE_COPY_KEY")
 
 fun Application.traceCalls(configuration: ServerConfiguration) {
-    val traceFile = configuration.getValue("serverTraceFile") ?: return
+    val traceFile = configuration.getValue("server_trace_file") ?: return
     install(DoubleReceive)
     val traceStream = if (traceFile == "-") {
         OutputStreamWriter(System.out)

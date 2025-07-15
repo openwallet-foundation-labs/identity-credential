@@ -23,6 +23,7 @@ import org.multipaz.util.toBase64Url
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
@@ -34,8 +35,8 @@ import org.multipaz.cbor.Uint
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
-import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.util.Logger
 import kotlin.time.Duration.Companion.days
 
@@ -68,12 +69,26 @@ internal class CredentialFactoryMdl : CredentialFactory {
         get() = "card-mdl.png"
 
     override suspend fun makeCredential(
-        state: IssuanceState,
+        data: DataItem,
         authenticationKey: EcPublicKey?
     ): String {
         val now = Clock.System.now()
 
         val resources = BackendEnvironment.getInterface(Resources::class)!!
+
+        val coreData = data["core"]
+        val dateOfBirth = coreData["birth_date"].asDateString
+        val portrait = if (coreData.hasKey("portrait")) {
+            coreData["portrait"].asBstr
+        } else {
+            resources.getRawResource("female.jpg")!!.toByteArray()
+        }
+
+        val records = data["records"]
+        if (!records.hasKey("mDL")) {
+            throw IllegalArgumentException("No driver's license was issued to this person")
+        }
+        val mdlData = records["mDL"].asMap.values.firstOrNull() ?: buildCborMap { }
 
         // Create AuthKeys and MSOs, make sure they're valid for 30 days. Also make
         // sure to not use fractional seconds as 18013-5 calls for this (clauses 7.1
@@ -94,13 +109,10 @@ internal class CredentialFactoryMdl : CredentialFactory {
 
         // As we do not have driver license database, just make up some data to fill mDL
         // for demo purposes. Take what we can from the PID that was presented as evidence.
-        val source = state.credentialData!!
         val mdocType = DrivingLicense.getDocumentType()
             .mdocDocumentType!!.namespaces[DrivingLicense.MDL_NAMESPACE]!!
 
         val timeZone = TimeZone.currentSystemDefault()
-        val dateOfBirth = Cbor.decode(
-            source.getDataElement(EUPersonalID.EUPID_NAMESPACE, "birth_date")).asDateString
         val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
         // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
         val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
@@ -108,12 +120,19 @@ internal class CredentialFactoryMdl : CredentialFactory {
 
         val issuerNamespaces = buildIssuerNamespaces {
             addNamespace(DrivingLicense.MDL_NAMESPACE) {
-                val added = mutableSetOf<String>()
-                for (elementName in source.getDataElementNames(EUPersonalID.EUPID_NAMESPACE)) {
-                    val value = source.getDataElement(EUPersonalID.EUPID_NAMESPACE, elementName)
-                    if (mdocType.dataElements.containsKey(elementName)) {
-                        addDataElement(elementName, Cbor.decode(value))
-                        added.add(elementName)
+                // Transfer core fields
+                addDataElement("family_name", coreData["family_name"])
+                addDataElement("given_name", coreData["given_name"])
+                addDataElement("portrait", Bstr(portrait))
+                addDataElement("birth_date", dateOfBirth.toDataItemFullDate())
+                val added = mutableSetOf("family_name", "given_name", "portrait", "birth_date")
+
+                // Transfer fields from mDL record that have counterparts in the mDL credential
+                for ((nameItem, value) in mdlData.asMap) {
+                    val name = nameItem.asTstr
+                    if (mdocType.dataElements.contains(name)) {
+                        addDataElement(name, value)
+                        added.add(name)
                     }
                 }
 
@@ -123,15 +142,6 @@ internal class CredentialFactoryMdl : CredentialFactory {
                 addDataElement("age_birth_year", Uint(dateOfBirth.year.toULong()))
                 addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
                 addDataElement( "age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
-
-                if (!added.contains("portrait")) {
-                    val useMalePhoto = source.hasDataElement(EUPersonalID.EUPID_NAMESPACE, "sex") &&
-                            source.getDataElementNumber(EUPersonalID.EUPID_NAMESPACE, "sex") == 1L
-                    val photoResource = if (useMalePhoto) "male.jpg" else "female.jpg"
-                    val photoBytes = resources.getRawResource(photoResource)
-                    addDataElement("portrait", Bstr(photoBytes!!.toByteArray()))
-                    added.add("portrait")
-                }
 
                 addDataElement(
                     "driving_privileges",
