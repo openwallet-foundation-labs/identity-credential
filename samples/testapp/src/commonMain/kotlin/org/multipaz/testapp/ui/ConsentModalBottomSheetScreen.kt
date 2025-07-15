@@ -31,9 +31,9 @@ import org.multipaz.request.MdocRequest
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.testapp.platformAppIcon
 import org.multipaz.testapp.platformAppName
-import org.multipaz.trustmanagement.LocalTrustManager
-import org.multipaz.trustmanagement.TrustPointMetadata
-import org.multipaz.trustmanagement.X509CertTrustPoint
+import org.multipaz.trustmanagement.TrustManagerLocal
+import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.trustmanagement.TrustPoint
 
 private val READER_CERT_CHAIN = X509CertChain(listOf(
     X509Cert.fromPem(
@@ -119,7 +119,7 @@ fun ConsentModalBottomSheetScreen(
         sheetState.show()
     }
 
-    val trustManager = LocalTrustManager(storage = EphemeralStorage())
+    val trustManager = TrustManagerLocal(storage = EphemeralStorage())
 
     val (requester, trustPoint) = when (verifierType) {
         VerifierType.KNOWN_VERIFIER_WITH_POLICY_PROXIMITY -> {
@@ -127,9 +127,9 @@ fun ConsentModalBottomSheetScreen(
                 Requester(
                     certChain = READER_CERT_CHAIN,
                 ),
-                X509CertTrustPoint(
+                TrustPoint(
                     certificate = READER_CERT_CHAIN.certificates.last(),
-                    metadata = TrustPointMetadata(
+                    metadata = TrustMetadata(
                         displayName = "Utopia Brewery",
                         displayIcon = relyingPartyDisplayIcon,
                         privacyPolicyUrl = "https://apps.multipaz.org",
@@ -143,9 +143,9 @@ fun ConsentModalBottomSheetScreen(
                 Requester(
                     certChain = READER_CERT_CHAIN,
                 ),
-                X509CertTrustPoint(
+                TrustPoint(
                     certificate = READER_CERT_CHAIN.certificates.last(),
-                    metadata = TrustPointMetadata(
+                    metadata = TrustMetadata(
                         displayName = "Utopia Brewery",
                         displayIcon = relyingPartyDisplayIcon,
                         privacyPolicyUrl = "https://apps.multipaz.org",
@@ -176,9 +176,9 @@ fun ConsentModalBottomSheetScreen(
                     appId = "com.android.chrome",
                     websiteOrigin = "https://www.example.com",
                 ),
-                X509CertTrustPoint(
+                TrustPoint(
                     certificate = READER_CERT_CHAIN.certificates.last(),
-                    metadata = TrustPointMetadata(
+                    metadata = TrustMetadata(
                         displayName = "Utopia Brewery",
                         displayIcon = relyingPartyDisplayIcon,
                         privacyPolicyUrl = "https://apps.multipaz.org",
@@ -194,9 +194,9 @@ fun ConsentModalBottomSheetScreen(
                     appId = "com.android.chrome",
                     websiteOrigin = "https://www.example.com"
                 ),
-                X509CertTrustPoint(
+                TrustPoint(
                     certificate = READER_CERT_CHAIN.certificates.last(),
-                    metadata = TrustPointMetadata(
+                    metadata = TrustMetadata(
                         displayName = "Utopia Brewery",
                         displayIcon = relyingPartyDisplayIcon,
                         privacyPolicyUrl = "https://apps.multipaz.org",
@@ -231,9 +231,9 @@ fun ConsentModalBottomSheetScreen(
                     certChain = READER_CERT_CHAIN,
                     appId = "com.google.android.apps.messaging",
                 ),
-                X509CertTrustPoint(
+                TrustPoint(
                     certificate = READER_CERT_CHAIN.certificates.last(),
-                    metadata = TrustPointMetadata(
+                    metadata = TrustMetadata(
                         displayName = "Utopia Brewery",
                         displayIcon = relyingPartyDisplayIcon,
                         privacyPolicyUrl = "https://apps.multipaz.org",
@@ -248,9 +248,9 @@ fun ConsentModalBottomSheetScreen(
                     certChain = READER_CERT_CHAIN,
                     appId = "com.google.android.apps.messaging",
                 ),
-                X509CertTrustPoint(
+                TrustPoint(
                     certificate = READER_CERT_CHAIN.certificates.last(),
-                    metadata = TrustPointMetadata(
+                    metadata = TrustMetadata(
                         displayName = "Utopia Brewery",
                         displayIcon = relyingPartyDisplayIcon,
                         privacyPolicyUrl = "https://apps.multipaz.org",

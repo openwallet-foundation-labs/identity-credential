@@ -5,11 +5,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
@@ -30,7 +28,7 @@ import org.multipaz.openid.OpenID4VP
 import org.multipaz.request.Request
 import org.multipaz.sdjwt.SdJwtKb
 import org.multipaz.storage.ephemeral.EphemeralStorage
-import org.multipaz.trustmanagement.LocalTrustManager
+import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
@@ -100,7 +98,7 @@ class DigitalCredentialsPresentmentTest {
 
         val presentmentModel = PresentmentModel()
 
-        val readerTrustManager = LocalTrustManager(EphemeralStorage())
+        val readerTrustManager = TrustManagerLocal(EphemeralStorage())
         val presentmentSource = SimplePresentmentSource(
             documentStore = documentStoreTestHarness.documentStore,
             documentTypeRepository = documentStoreTestHarness.documentTypeRepository,

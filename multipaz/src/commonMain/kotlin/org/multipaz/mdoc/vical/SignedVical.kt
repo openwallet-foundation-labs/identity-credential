@@ -95,11 +95,15 @@ data class SignedVical(
          * well-formed.
          *
          * @param encodedSignedVical the encoded CBOR with the COSE_Sign1 described above.
+         * @param disableSignatureVerification set to `true` to disable signature verification.
          * @return a `SignedVical` instance.
          * @throws IllegalArgumentException if the passed in signed VICAL is malformed
          * @throws SignatureVerificationException if signature verification failed.
          */
-        fun parse(encodedSignedVical: ByteArray): SignedVical {
+        fun parse(
+            encodedSignedVical: ByteArray,
+            disableSignatureVerification: Boolean = false
+        ): SignedVical {
             val signature = CoseSign1.fromDataItem(Cbor.decode(encodedSignedVical))
 
             val vicalPayload = signature?.payload
@@ -112,12 +116,14 @@ data class SignedVical(
                 ?.let { Algorithm.fromCoseAlgorithmIdentifier(it) }
                 ?: throw IllegalArgumentException("Signature Algorithm not set")
 
-            Cose.coseSign1Check(
-                certChain.certificates.first().ecPublicKey,
-                null,
-                signature,
-                signatureAlgorithm
-            )
+            if (!disableSignatureVerification) {
+                Cose.coseSign1Check(
+                    certChain.certificates.first().ecPublicKey,
+                    null,
+                    signature,
+                    signatureAlgorithm
+                )
+            }
 
             val vicalMap = Cbor.decode(vicalPayload)
             val version = vicalMap["version"].asTstr

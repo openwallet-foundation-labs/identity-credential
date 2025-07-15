@@ -9,10 +9,15 @@ import kotlinx.datetime.Instant
  *
  * This can be used for both issuers and relying parties.
  *
- * This looks up a database of trusted entities to render verdicts, see [LocalTrustManager]
+ * This looks up a database of trusted entities to render verdicts, see [TrustManagerLocal]
  * for an implementation that uses a local trust store.
  */
 interface TrustManager {
+
+    /**
+     * An identifier for the [TrustManager] instance.
+     */
+    val identifier: String
 
     /**
      * Gets all trust points known to this [TrustManager] instance.
@@ -35,18 +40,6 @@ interface TrustManager {
      */
     suspend fun verify(
         chain: List<X509Cert>,
-        atTime: Instant = Clock.System.now(),
-    ): TrustResult
-
-    /**
-     * Checks if an entity identifying itself using a origin is trusted,.
-     *
-     * @param origin the web origin to check.
-     * @param atTime the point in time to check validity for.
-     * @return a [TrustResult] instance with the verdict.
-     */
-    suspend fun verify(
-        origin: String,
         atTime: Instant = Clock.System.now(),
     ): TrustResult
 }

@@ -8,8 +8,11 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.buildX509Cert
+import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.mdoc.vical.SignedVical
 import org.multipaz.mdoc.vical.Vical
 import org.multipaz.mdoc.vical.VicalCertificateInfo
@@ -20,6 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
@@ -154,10 +158,10 @@ class TrustManagerTest {
 
     @Test
     fun happyFlow() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        trustManager.addX509Cert(caCertificate, TrustMetadata())
 
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
@@ -169,10 +173,10 @@ class TrustManagerTest {
 
     @Test
     fun validInThePast() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        trustManager.addX509Cert(caCertificate, TrustMetadata())
 
         trustManager.verify(listOf(dsValidInThePastCertificate)).let {
             assertTrue(it.error!!.message!!.startsWith("Certificate is no longer valid"))
@@ -184,10 +188,10 @@ class TrustManagerTest {
 
     @Test
     fun validInTheFuture() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        trustManager.addX509Cert(caCertificate, TrustMetadata())
 
         trustManager.verify(listOf(dsValidInTheFutureCertificate)).let {
             assertTrue(it.error!!.message!!.startsWith("Certificate is not yet valid"))
@@ -199,9 +203,9 @@ class TrustManagerTest {
 
     @Test
     fun happyFlowWithOnlyIntermediateCertificate() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
 
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
@@ -213,9 +217,9 @@ class TrustManagerTest {
 
     @Test
     fun happyFlowWithChainOfTwo() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(caCertificate, TrustMetadata())
 
         trustManager.verify(listOf(dsCertificate, intermediateCertificate)).let {
             assertEquals(null, it.error)
@@ -227,9 +231,9 @@ class TrustManagerTest {
 
     @Test
     fun trustPointNotCaCert() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(dsCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(dsCertificate, TrustMetadata())
 
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
@@ -241,11 +245,11 @@ class TrustManagerTest {
 
     @Test
     fun happyFlowMultipleCerts() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(ca2Certificate, TrustPointMetadata())
+        trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        trustManager.addX509Cert(caCertificate, TrustMetadata())
+        trustManager.addX509Cert(ca2Certificate, TrustMetadata())
 
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals(null, it.error)
@@ -263,40 +267,11 @@ class TrustManagerTest {
     }
 
     @Test
-    fun happyFlowOrigin() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
-
-        val originTrustPoint = trustManager.addTrustPoint("https://verifier.multipaz.org", TrustPointMetadata())
-
-        trustManager.verify("https://verifier.multipaz.org").let {
-            assertEquals(null, it.error)
-            assertTrue(it.isTrusted)
-            assertNull(it.trustChain)
-            assertEquals(1, it.trustPoints.size)
-            assertEquals(originTrustPoint, it.trustPoints[0])
-        }
-
-        trustManager.verify("https://verifier2.multipaz.org").let {
-            assertEquals("No trusted origin could not be found", it.error?.message)
-            assertFalse(it.isTrusted)
-            assertNull(it.trustChain)
-            assertEquals(0, it.trustPoints.size)
-        }
-    }
-
-    @Test
     fun noTrustPoints() = runTest {
-        val trustManager = LocalTrustManager(EphemeralStorage())
+        val trustManager = TrustManagerLocal(EphemeralStorage())
 
         trustManager.verify(listOf(dsCertificate)).let {
             assertEquals("No trusted root certificate could not be found", it.error?.message)
-            assertFalse(it.isTrusted)
-            assertNull(it.trustChain)
-            assertEquals(0, it.trustPoints.size)
-        }
-
-        trustManager.verify("https://verifier.multipaz.org").let {
-            assertEquals("No trusted origin could not be found", it.error?.message)
             assertFalse(it.isTrusted)
             assertNull(it.trustChain)
             assertEquals(0, it.trustPoints.size)
@@ -306,86 +281,364 @@ class TrustManagerTest {
     @Test
     fun skiAlreadyExists() = runTest {
         val storage = EphemeralStorage()
-        val trustManager = LocalTrustManager(storage)
+        val trustManager = TrustManagerLocal(storage)
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
+        trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        trustManager.addX509Cert(caCertificate, TrustMetadata())
         val e = assertFailsWith(TrustPointAlreadyExistsException::class) {
-            trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
+            trustManager.addX509Cert(caCertificate, TrustMetadata())
         }
         assertEquals("TrustPoint with given SubjectKeyIdentifier already exists", e.message)
     }
 
-    @Test
-    fun originAlreadyExists() = runTest {
-        val storage = EphemeralStorage()
-        val trustManager = LocalTrustManager(storage)
-        trustManager.addTrustPoint("https://verifier.multipaz.org", TrustPointMetadata())
+    private data class TestIaca(
+        val elboniaIaca: X509Cert,
+        val elboniaIacaKey: EcPrivateKey,
+        val atlantisIaca: X509Cert,
+        val atlantisIacaKey: EcPrivateKey,
+        val encodedSignedVical: ByteString,
 
-        val e = assertFailsWith(TrustPointAlreadyExistsException::class) {
-            trustManager.addTrustPoint("https://verifier.multipaz.org", TrustPointMetadata())
+        val elboniaDs: X509Cert,
+        val elboniaDsKey: EcPrivateKey,
+    )
+
+    private fun createTestIaca(): TestIaca {
+        val now = Clock.System.now()
+        val validFrom = now - 10.minutes
+        val validUntil = now + 10.minutes
+
+        val elboniaIacaKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val elboniaIaca = MdocUtil.generateIacaCertificate(
+            iacaKey = elboniaIacaKey,
+            subject = X500Name.fromName("CN=Elbonia TrustManager CA"),
+            serial = ASN1Integer.fromRandom(numBits = 128),
+            validFrom = validFrom,
+            validUntil = validUntil,
+            issuerAltNameUrl = "https://example.com/elbonia/altname",
+            crlUrl = "https://example.com/elbonia/crl"
+        )
+        val elboniaDsKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val elboniaDs = MdocUtil.generateDsCertificate(
+            iacaCert = elboniaIaca,
+            iacaKey = elboniaIacaKey,
+            dsKey = elboniaDsKey.publicKey,
+            subject = X500Name.fromName("CN=Elbonia DS"),
+            serial = ASN1Integer.fromRandom(numBits = 128),
+            validFrom = validFrom,
+            validUntil = validUntil
+        )
+
+        val atlantisIacaKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val atlantisIaca = MdocUtil.generateIacaCertificate(
+            iacaKey = atlantisIacaKey,
+            subject = X500Name.fromName("CN=Atlantis TrustManager CA"),
+            serial = ASN1Integer.fromRandom(numBits = 128),
+            validFrom = validFrom,
+            validUntil = validUntil,
+            issuerAltNameUrl = "https://example.com/atlantis/altname",
+            crlUrl = "https://example.com/atlantis/crl"
+        )
+
+        val vical = Vical(
+            version = "1",
+            vicalProvider = "Test VICAL provider",
+            date = now,
+            nextUpdate = null,
+            vicalIssueID = null,
+            certificateInfos = listOf(
+                VicalCertificateInfo(
+                    certificate = elboniaIaca,
+                    docTypes = listOf("org.iso.18013.5.1.mDL")
+                ),
+                VicalCertificateInfo(
+                    certificate = atlantisIaca,
+                    docTypes = listOf("org.iso.18013.5.1.mDL")
+                )
+            )
+        )
+
+        val vicalKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val vicalCert = buildX509Cert(
+            publicKey = vicalKey.publicKey,
+            signingKey = vicalKey,
+            signatureAlgorithm = vicalKey.curve.defaultSigningAlgorithm,
+            serialNumber = ASN1Integer(1),
+            subject = X500Name.fromName("CN=Test VICAL provider"),
+            issuer = X500Name.fromName("CN=Test VICAL provider"),
+            validFrom = validFrom,
+            validUntil = validUntil
+        ) {
+            includeSubjectKeyIdentifier()
         }
-        assertEquals("TrustPoint with given origin already exists", e.message)
+
+        val signedVical = SignedVical(vical, X509CertChain(listOf(vicalCert)))
+        return TestIaca(
+            elboniaIaca = elboniaIaca,
+            elboniaIacaKey = elboniaIacaKey,
+            atlantisIaca = atlantisIaca,
+            atlantisIacaKey = atlantisIacaKey,
+            encodedSignedVical = ByteString(
+                signedVical.generate(
+                    signingKey = vicalKey,
+                    signingAlgorithm = vicalKey.curve.defaultSigningAlgorithmFullySpecified
+                )
+            ),
+            elboniaDs = elboniaDs,
+            elboniaDsKey = elboniaDsKey,
+        )
+    }
+
+    @Test
+    fun updateMetadataX509() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = TrustManagerLocal(storage)
+
+        val entry = trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        assertEquals(setOf(
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+        assertEquals(listOf(entry), trustManager.getEntries())
+
+        val newEntry = trustManager.updateMetadata(entry,
+            TrustMetadata(
+                displayName = "New Display Name",
+                displayIcon = ByteString(1, 2, 3),
+                privacyPolicyUrl = "https://example.com/privacypolicy",
+                testOnly = true
+            )
+        )
+        assertNotEquals(newEntry, entry)
+        assertEquals(listOf(newEntry), trustManager.getEntries())
+        assertEquals("New Display Name", newEntry.metadata.displayName)
+        assertEquals(ByteString(1, 2, 3), newEntry.metadata.displayIcon)
+        assertEquals("https://example.com/privacypolicy", newEntry.metadata.privacyPolicyUrl)
+        assertTrue(newEntry.metadata.testOnly)
+
+        // Check verification now gets the new data...
+        trustManager.verify(listOf(dsCertificate)).let {
+            assertEquals(null, it.error)
+            assertTrue(it.isTrusted)
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(intermediateCertificate, it.trustChain.certificates.last())
+            assertEquals(1, it.trustPoints.size)
+            assertEquals(newEntry.metadata, it.trustPoints[0].metadata)
+        }
+
+        val otherTrustManager = TrustManagerLocal(storage)
+        assertEquals(1, otherTrustManager.getEntries().size)
+        val entryFromOtherTrustManager = otherTrustManager.getEntries().first()
+        assertEquals(entryFromOtherTrustManager, newEntry)
+    }
+
+    @Test
+    fun updateMetadataVical() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = TrustManagerLocal(storage)
+
+        val testIaca = createTestIaca()
+        val entry = trustManager.addVical(testIaca.encodedSignedVical, TrustMetadata())
+
+        val newEntry = trustManager.updateMetadata(entry,
+            TrustMetadata(
+                displayName = "New Display Name",
+                displayIcon = ByteString(1, 2, 3),
+                privacyPolicyUrl = "https://example.com/privacypolicy",
+                testOnly = true
+            )
+        )
+        assertNotEquals(newEntry, entry)
+        assertEquals(listOf(newEntry), trustManager.getEntries())
+        assertEquals("New Display Name", newEntry.metadata.displayName)
+        assertEquals(ByteString(1, 2, 3), newEntry.metadata.displayIcon)
+        assertEquals("https://example.com/privacypolicy", newEntry.metadata.privacyPolicyUrl)
+        assertTrue(newEntry.metadata.testOnly)
+
+        val otherTrustManager = TrustManagerLocal(storage)
+        assertEquals(1, otherTrustManager.getEntries().size)
+        val entryFromOtherTrustManager = otherTrustManager.getEntries().first()
+        assertEquals(entryFromOtherTrustManager, newEntry)
+    }
+
+    @Test
+    fun deleteEntryX509() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = TrustManagerLocal(storage)
+
+        val entry = trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        assertEquals(setOf(
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+        assertEquals(listOf(entry), trustManager.getEntries())
+
+        // Check verification works
+        trustManager.verify(listOf(dsCertificate)).let {
+            assertEquals(null, it.error)
+            assertTrue(it.isTrusted)
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(intermediateCertificate, it.trustChain.certificates.last())
+        }
+
+        // Delete entry
+        assertTrue(trustManager.deleteEntry(entry))
+
+        // Check verification now fails
+        trustManager.verify(listOf(dsCertificate)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+
+        val otherTrustManager = TrustManagerLocal(storage)
+        assertEquals(0, otherTrustManager.getEntries().size)
+
+        // Check verification now fails
+        otherTrustManager.verify(listOf(dsCertificate)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+    }
+
+    @Test
+    fun deleteEntryVical() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = TrustManagerLocal(storage)
+
+        val testIaca = createTestIaca()
+        val entry = trustManager.addVical(testIaca.encodedSignedVical, TrustMetadata())
+
+        // Check verification works
+        trustManager.verify(listOf(testIaca.elboniaDs)).let {
+            assertEquals(null, it.error)
+            assertTrue(it.isTrusted)
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(testIaca.elboniaIaca, it.trustChain.certificates.last())
+        }
+
+        // Delete entry
+        assertTrue(trustManager.deleteEntry(entry))
+
+        // Check verification now fails
+        trustManager.verify(listOf(testIaca.elboniaDs)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+
+        val otherTrustManager = TrustManagerLocal(storage)
+        assertEquals(0, otherTrustManager.getEntries().size)
+
+        // Check verification now fails
+        trustManager.verify(listOf(testIaca.elboniaDs)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
     }
 
     @Test
     fun persistence() = runTest {
         val storage = EphemeralStorage()
-        val trustManager = LocalTrustManager(storage)
+        val trustManager = TrustManagerLocal(storage)
 
-        trustManager.addTrustPoint(intermediateCertificate, TrustPointMetadata())
-        trustManager.addTrustPoint(caCertificate, TrustPointMetadata())
-        val ca2TrustPoint = trustManager.addTrustPoint(ca2Certificate, TrustPointMetadata())
+        val intermediaCertificateEntry = trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        val caCertificateEntry = trustManager.addX509Cert(caCertificate, TrustMetadata())
+        val ca2CertificateEntry = trustManager.addX509Cert(ca2Certificate, TrustMetadata())
         assertEquals(setOf(
-            "x509-ski:" + caCertificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + ca2Certificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + intermediateCertificate.subjectKeyIdentifier!!.toHex(),
-        ), trustManager.getTrustPoints().map { it.identifier }.toSet())
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            ca2Certificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
 
-        val originTrustPoint = trustManager.addTrustPoint("https://verifier.multipaz.org", TrustPointMetadata())
-        assertEquals(setOf(
-            "x509-ski:" + caCertificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + ca2Certificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + intermediateCertificate.subjectKeyIdentifier!!.toHex(),
-            "origin:https://verifier.multipaz.org"
-        ), trustManager.getTrustPoints().map { it.identifier }.toSet())
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+            ca2CertificateEntry
+        ), trustManager.getEntries())
 
-        trustManager.addTrustPoint("https://verifier2.multipaz.org", TrustPointMetadata())
-        assertEquals(setOf(
-            "x509-ski:" + caCertificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + ca2Certificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + intermediateCertificate.subjectKeyIdentifier!!.toHex(),
-            "origin:https://verifier.multipaz.org",
-            "origin:https://verifier2.multipaz.org"
-        ), trustManager.getTrustPoints().map { it.identifier }.toSet())
+        assertTrue(trustManager.deleteEntry(ca2CertificateEntry))
 
-        assertTrue(trustManager.deleteTrustPoint(ca2TrustPoint))
-        assertEquals(setOf(
-            "x509-ski:" + caCertificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + intermediateCertificate.subjectKeyIdentifier!!.toHex(),
-            "origin:https://verifier.multipaz.org",
-            "origin:https://verifier2.multipaz.org"
-        ), trustManager.getTrustPoints().map { it.identifier }.toSet())
-        assertFalse(trustManager.deleteTrustPoint(ca2TrustPoint))
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+        ), trustManager.getEntries())
 
-        assertTrue(trustManager.deleteTrustPoint(originTrustPoint))
         assertEquals(setOf(
-            "x509-ski:" + caCertificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + intermediateCertificate.subjectKeyIdentifier!!.toHex(),
-            "origin:https://verifier2.multipaz.org"
-        ), trustManager.getTrustPoints().map { it.identifier }.toSet())
-        assertFalse(trustManager.deleteTrustPoint(originTrustPoint))
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+        assertFalse(trustManager.deleteEntry(ca2CertificateEntry))
 
-        val otherTrustManager = LocalTrustManager(storage)
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+        ), trustManager.getEntries())
+
+        // Now add the VICAL into the mix...
+        val testIaca = createTestIaca()
+        val vicalEntry = trustManager.addVical(testIaca.encodedSignedVical, TrustMetadata())
         assertEquals(setOf(
-            "x509-ski:" + caCertificate.subjectKeyIdentifier!!.toHex(),
-            "x509-ski:" + intermediateCertificate.subjectKeyIdentifier!!.toHex(),
-            "origin:https://verifier2.multipaz.org"
-        ), otherTrustManager.getTrustPoints().map { it.identifier }.toSet())
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+            testIaca.elboniaIaca.subjectKeyIdentifier!!.toHex(),
+            testIaca.atlantisIaca.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+            vicalEntry
+        ), trustManager.getEntries())
+
+        // Check we can remove the VICAL
+        assertTrue(trustManager.deleteEntry(vicalEntry))
+        assertFalse(trustManager.deleteEntry(vicalEntry))
+        assertEquals(setOf(
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+        ), trustManager.getEntries())
+
+        // Add the VICAL back to check persistence...
+        val vicalEntry2 = trustManager.addVical(testIaca.encodedSignedVical, TrustMetadata())
+        assertEquals(setOf(
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+            testIaca.elboniaIaca.subjectKeyIdentifier!!.toHex(),
+            testIaca.atlantisIaca.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+            vicalEntry2
+        ), trustManager.getEntries())
+
+        val otherTrustManager = TrustManagerLocal(storage)
+        assertEquals(setOf(
+            caCertificate.subjectKeyIdentifier!!.toHex(),
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+            testIaca.elboniaIaca.subjectKeyIdentifier!!.toHex(),
+            testIaca.atlantisIaca.subjectKeyIdentifier!!.toHex(),
+        ), otherTrustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+
+        assertEquals(listOf(
+            intermediaCertificateEntry,
+            caCertificateEntry,
+            vicalEntry2
+        ), otherTrustManager.getEntries())
 
         val otherStorage = EphemeralStorage()
-        val yetAnotherTrustManager = LocalTrustManager(otherStorage)
-        assertEquals(emptySet(), yetAnotherTrustManager.getTrustPoints().map { it.identifier }.toSet())
+        val yetAnotherTrustManager = TrustManagerLocal(otherStorage)
+        assertEquals(emptySet(), yetAnotherTrustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
     }
 
     @Test
@@ -473,8 +726,8 @@ class TrustManagerTest {
 
     @Test
     fun testCompositeTrustManager() = runTest {
-        val tm1 = LocalTrustManager(EphemeralStorage()).apply { addTrustPoint(caCertificate, TrustPointMetadata()) }
-        val tm2 = LocalTrustManager(EphemeralStorage()).apply { addTrustPoint(ca2Certificate, TrustPointMetadata()) }
+        val tm1 = TrustManagerLocal(EphemeralStorage()).apply { addX509Cert(caCertificate, TrustMetadata()) }
+        val tm2 = TrustManagerLocal(EphemeralStorage()).apply { addX509Cert(ca2Certificate, TrustMetadata()) }
         val trustManager = CompositeTrustManager(listOf(tm1, tm2))
 
         // Happy flow
@@ -485,7 +738,6 @@ class TrustManagerTest {
             assertEquals(3, it.trustChain!!.certificates.size)
             assertEquals(caCertificate, it.trustChain.certificates.last())
             assertEquals(1, it.trustPoints.size)
-            assertEquals(it.trustPoints[0].trustManager, tm1)
         }
         trustManager.verify(listOf(ds2Certificate)).let {
             assertEquals(null, it.error)
@@ -493,7 +745,6 @@ class TrustManagerTest {
             assertEquals(2, it.trustChain!!.certificates.size)
             assertEquals(ca2Certificate, it.trustChain.certificates.last())
             assertEquals(1, it.trustPoints.size)
-            assertEquals(it.trustPoints[0].trustManager, tm2)
         }
 
         // No trust point

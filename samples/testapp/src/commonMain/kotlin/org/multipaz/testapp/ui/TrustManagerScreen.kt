@@ -18,23 +18,27 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.multipaz.compose.datetime.formattedDate
-import org.multipaz.trustmanagement.LocalTrustManager
-import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.trustmanagement.CompositeTrustManager
+import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.trustmanagement.VicalTrustManager
 
 @Composable
 fun TrustManagerScreen(
-    trustManager: TrustManager,
+    compositeTrustManager: CompositeTrustManager,
     onViewTrustPoint: (trustPoint: TrustPoint) -> Unit,
     showToast: (message: String) -> Unit,
 ) {
-    val trustPoints = remember { mutableStateOf<List<TrustPoint>?>(null) }
+    val trustManagerIdToTrustPoints = remember { mutableStateOf<Map<String, List<TrustPoint>>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(true) {
         coroutineScope.launch {
-            trustPoints.value = trustManager.getTrustPoints()
+            val map = mutableMapOf<String, List<TrustPoint>>()
+            for (tm in compositeTrustManager.trustManagers) {
+                map[tm.identifier] = tm.getTrustPoints()
+            }
+            trustManagerIdToTrustPoints.value = map
         }
     }
 
@@ -42,11 +46,10 @@ fun TrustManagerScreen(
         modifier = Modifier.padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        trustPoints.value?.let {
-            val trustManagers = it.map { it.trustManager }.toSet()
-            for (trustManager in trustManagers) {
+        trustManagerIdToTrustPoints.value?.let {
+            for (tm in compositeTrustManager.trustManagers) {
                 item {
-                    when (trustManager) {
+                    when (tm) {
                         is VicalTrustManager -> {
                             Text(text = buildAnnotatedString {
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
@@ -54,29 +57,29 @@ fun TrustManagerScreen(
                                 }
                                 append(" by ")
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append(trustManager.signedVical.vical.vicalProvider)
+                                    append(tm.signedVical.vical.vicalProvider)
                                 }
                                 append(" at ")
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append(formattedDate(trustManager.signedVical.vical.date))
+                                    append(formattedDate(tm.signedVical.vical.date))
                                 }
                             })
                         }
-                        is LocalTrustManager -> {
+                        is TrustManagerLocal -> {
                             Text(text = buildAnnotatedString {
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append("Local Storage (${trustManager.identifier})")
+                                    append("Local Storage (${tm.identifier})")
                                 }
                             })
                         }
                     }
                 }
-                it.filter {it.trustManager == trustManager}.forEach { trustPoint ->
+                it[tm.identifier]!!.forEach { trustPoint ->
                     item {
                         TextButton(
                             onClick = { onViewTrustPoint(trustPoint) }
                         ) {
-                            Text(text = trustPoint.metadata.displayName ?: trustPoint.identifier)
+                            Text(text = trustPoint.metadata.displayName ?: trustPoint.certificate.subject.name)
                         }
                     }
                 }

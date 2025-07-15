@@ -1,12 +1,12 @@
 package org.multipaz.testapp.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,18 +23,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlinx.datetime.format
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
-import org.multipaz.compose.certificateviewer.CertificateViewer
+import org.multipaz.compose.certificateviewer.X509CertViewer
 import org.multipaz.compose.datetime.formattedDate
 import org.multipaz.testapp.App
-import org.multipaz.trustmanagement.LocalTrustManager
-import org.multipaz.trustmanagement.OriginTrustPoint
+import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.trustmanagement.VicalTrustManager
-import org.multipaz.trustmanagement.X509CertTrustPoint
+import org.multipaz.util.toHex
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
@@ -49,13 +47,16 @@ fun TrustPointViewerScreen(
 
     LaunchedEffect(true) {
         coroutineScope.launch {
-            trustPoint.value = trustManager.getTrustPoints().first { it.identifier == trustPointId }
+            trustPoint.value = trustManager.getTrustPoints().first {
+                it.certificate.subjectKeyIdentifier!!.toHex() == trustPointId
+            }
         }
     }
 
+    val scrollState = rememberScrollState()
     Column(
-        modifier = Modifier.padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.padding(8.dp).verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         trustPoint.value?.let {
             it.metadata.displayIcon?.let {
@@ -87,9 +88,9 @@ fun TrustPointViewerScreen(
                 append(it.metadata.privacyPolicyUrl ?: "(not set)")
             })
 
-            when (it.trustManager) {
+            when (trustManager) {
                 is VicalTrustManager -> {
-                    val vical = (it.trustManager as VicalTrustManager).signedVical.vical
+                    val vical = trustManager.signedVical.vical
                     Text(text = buildAnnotatedString {
                         withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                             append("Source: ")
@@ -100,34 +101,23 @@ fun TrustPointViewerScreen(
                         append(formattedDate(vical.date))
                     })
                 }
-                is LocalTrustManager -> {
+
+                is TrustManagerLocal -> {
                     Text(text = buildAnnotatedString {
                         withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
                             append("Source: ")
                         }
-                        append((trustManager as LocalTrustManager).identifier)
+                        append((trustManager as TrustManagerLocal).identifier)
                     })
                 }
             }
 
-            when (it) {
-                is X509CertTrustPoint -> {
-                    Text(text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append("X.509 Certificate:")
-                        }
-                    })
-                    CertificateViewer(it.certificate)
+            Text(text = buildAnnotatedString {
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append("X.509 Certificate:")
                 }
-                is OriginTrustPoint -> {
-                    Text(text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append("Origin: ")
-                        }
-                        append(it.origin)
-                    })
-                }
-            }
+            })
+            X509CertViewer(certificate = it.certificate)
         }
     }
 }

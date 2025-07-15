@@ -13,9 +13,11 @@ import org.multipaz.crypto.X509Cert
  * with [TrustResult.isTrusted] set to `false` is returned.
  *
  * @param trustManagers a list of [TrustManager]s that will be used for verification.
+ * @param identifier an identifier for the [TrustManager].
  */
 class CompositeTrustManager(
-    val trustManagers: List<TrustManager>
+    val trustManagers: List<TrustManager>,
+    override val identifier: String = "composite"
 ): TrustManager {
     override suspend fun getTrustPoints(): List<TrustPoint> {
         val ret = mutableListOf<TrustPoint>()
@@ -36,22 +38,6 @@ class CompositeTrustManager(
         return TrustResult(
             isTrusted = false,
             error = IllegalStateException("No trusted root certificate could not be found")
-        )
-    }
-
-    override suspend fun verify(
-        origin: String,
-        atTime: Instant
-    ): TrustResult {
-        trustManagers.forEach { trustManager ->
-            val ret = trustManager.verify(origin, atTime)
-            if (ret.isTrusted) {
-                return ret
-            }
-        }
-        return TrustResult(
-            isTrusted = false,
-            error = IllegalStateException("No trusted origin could not be found")
         )
     }
 }
