@@ -827,6 +827,26 @@ object DrivingLicense {
                 ),
             )
             .addSampleRequest(
+                id = "age_over_18_zkp",
+                displayName ="Age Over 18 (ZKP)",
+                mdocDataElements = mapOf(
+                    MDL_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                    )
+                ),
+                mdocUseZkp = true
+            )
+            .addSampleRequest(
+                id = "age_over_21_zkp",
+                displayName ="Age Over 21 (ZKP)",
+                mdocDataElements = mapOf(
+                    MDL_NAMESPACE to mapOf(
+                        "age_over_21" to false,
+                    )
+                ),
+                mdocUseZkp = true
+            )
+            .addSampleRequest(
                 id = "age_over_18_and_portrait",
                 displayName ="Age Over 18 + Portrait",
                 mdocDataElements = mapOf(

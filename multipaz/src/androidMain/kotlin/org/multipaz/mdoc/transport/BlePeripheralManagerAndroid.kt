@@ -548,7 +548,7 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
         incomingMessages.close()
         l2capSocket?.let {
             CoroutineScope(Dispatchers.IO).launch() {
-                delay(5000)
+                delay(15_000)
                 it.close()
             }
         }

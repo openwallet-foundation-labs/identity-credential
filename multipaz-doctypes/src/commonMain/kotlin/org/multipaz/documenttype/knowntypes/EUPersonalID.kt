@@ -478,6 +478,17 @@ object EUPersonalID {
                 jsonClaims = listOf("age_equal_or_over.18")
             )
             .addSampleRequest(
+                id = "age_over_18_zkp",
+                displayName = "Age Over 18 (ZKP)",
+                mdocDataElements = mapOf(
+                    EUPID_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                    )
+                ),
+                mdocUseZkp = true,
+                jsonClaims = listOf("age_equal_or_over.18")
+            )
+            .addSampleRequest(
                 id = "age_over_18_and_portrait",
                 displayName = "Age Over 18 + Portrait",
                 mdocDataElements = mapOf(

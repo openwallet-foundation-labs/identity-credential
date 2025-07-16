@@ -229,6 +229,7 @@ class DocumentType private constructor(
          * @param mdocDataElements the mdoc data elements in the request, per namespace, with the intent to retain
          *   value. If the list of a namespace is empty, all defined data elements will be included with intent to
          *   retain set to false.
+         * @param mdocUseZkp `true` if the sample request should indicate a preference for use of Zero-Knowledge Proofs.
          * @param jsonClaims the claim names for JSON-based credentials in the request. If the list is empty, all
          *   defined claims will be included. Each claim name must use `.` to separate path components, e.g.
          *   `age_equal_or_over.18`.
@@ -237,7 +238,8 @@ class DocumentType private constructor(
             id: String,
             displayName: String,
             mdocDataElements: Map<String, Map<String, Boolean>>? = null,
-            jsonClaims: List<String>? = null
+            mdocUseZkp: Boolean = false,
+            jsonClaims: List<String>? = null,
         ) = apply {
             val mdocRequest = if (mdocDataElements == null) {
                 null
@@ -255,7 +257,7 @@ class DocumentType private constructor(
                     }
                     nsRequests.add(MdocNamespaceRequest(namespace, map))
                 }
-                MdocCannedRequest(mdocBuilder!!.docType, nsRequests)
+                MdocCannedRequest(mdocBuilder!!.docType, mdocUseZkp, nsRequests)
             }
             val jsonRequest = if (jsonClaims == null) {
                 null
