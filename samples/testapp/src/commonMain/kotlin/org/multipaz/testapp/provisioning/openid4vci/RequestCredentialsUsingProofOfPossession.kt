@@ -28,7 +28,7 @@ class RequestCredentialsUsingProofOfPossession(
     val issuanceClientId: String,
     override val documentId: String,
     override val credentialConfiguration: CredentialConfiguration,
-    val credentialIssuerUri: String,
+    val credentialIssuerId: String,
     override var format: CredentialFormat? = null,
     var credentialRequests: List<ProofOfPossessionCredentialRequest>? = null,
 ) : AbstractRequestCredentials, RequestCredentials, RpcAuthInspector by RpcAuthBackendDelegate {
@@ -64,7 +64,7 @@ class RequestCredentialsUsingProofOfPossession(
             }.toString().encodeToByteArray().toBase64Url()
             val body = buildJsonObject {
                 put("iss", clientId)
-                put("aud", credentialIssuerUri)
+                put("aud", credentialIssuerId)
                 put("iat", Clock.System.now().epochSeconds)
                 put("nonce", nonce)
             }.toString().encodeToByteArray().toBase64Url()

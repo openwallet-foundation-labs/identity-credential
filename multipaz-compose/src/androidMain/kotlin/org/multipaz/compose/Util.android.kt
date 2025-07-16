@@ -10,11 +10,13 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.graphics.drawable.toBitmapOrNull
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.camera.CameraFrame
 import org.multipaz.context.applicationContext
+import org.multipaz.util.Logger
 import java.io.ByteArrayOutputStream
+
+private const val TAG = "Util"
 
 actual fun getApplicationInfo(appId: String): ApplicationInfo {
     val ai = applicationContext.packageManager.getApplicationInfo(appId, 0)
@@ -26,7 +28,9 @@ actual fun getApplicationInfo(appId: String): ApplicationInfo {
 }
 
 actual fun decodeImage(encodedData: ByteArray): ImageBitmap {
-    return BitmapFactory.decodeByteArray(encodedData, 0, encodedData.size).asImageBitmap()
+    val bitmap = BitmapFactory.decodeByteArray(encodedData, 0, encodedData.size)
+    Logger.e(TAG, "Failed to decode image (${encodedData.size} bytes)")
+    return bitmap?.asImageBitmap() ?: ImageBitmap(1, 1)
 }
 
 actual fun encodeImageToPng(image: ImageBitmap): ByteString {

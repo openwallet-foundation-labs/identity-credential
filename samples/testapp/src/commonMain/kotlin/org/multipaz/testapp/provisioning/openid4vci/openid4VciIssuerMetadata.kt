@@ -21,6 +21,7 @@ import org.multipaz.crypto.Algorithm
 
 // from .well-known/openid-credential-issuer
 internal data class Openid4VciIssuerMetadata(
+    val credentialIssuerId: String,  // may or may not contain trailing slash
     val credentialIssuer: String,
     val nonceEndpoint: String,
     val credentialEndpoint: String,
@@ -36,7 +37,7 @@ internal data class Openid4VciIssuerMetadata(
                 val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
 
                 // Fetch issuer metadata
-                val issuerMetadataUrl = wellKnownVci(issuerUrl, "openid-credential-issuer")
+                val issuerMetadataUrl = wellKnownOauth(issuerUrl, "openid-credential-issuer")
                 val issuerMetadataRequest = httpClient.get(issuerMetadataUrl) {}
                 if (issuerMetadataRequest.status != HttpStatusCode.OK) {
                     throw IllegalStateException("Invalid issuer, no $issuerMetadataUrl")
@@ -70,6 +71,8 @@ internal data class Openid4VciIssuerMetadata(
                     }
                 }
                 Openid4VciIssuerMetadata(
+                    credentialIssuerId = credentialMetadata["credential_issuer"]?.jsonPrimitive?.content
+                        ?: issuerUrl,
                     credentialIssuer = credentialMetadata["credential_issuer"]?.jsonPrimitive?.content ?: issuerUrl,
                     nonceEndpoint = credentialMetadata["nonce_endpoint"]!!.jsonPrimitive.content,
                     credentialEndpoint = credentialMetadata["credential_endpoint"]!!.jsonPrimitive.content,
@@ -98,11 +101,6 @@ internal data class Openid4VciIssuerMetadata(
                         }
                 )
             }
-        }
-
-        // ".well-known/$name" file for the given url according to OpenId4VCI spec
-        private fun wellKnownVci(url: String, name: String): String {
-            return "$url/.well-known/$name"
         }
 
         // ".well-known/$name" file for the given url according to RFC8414
