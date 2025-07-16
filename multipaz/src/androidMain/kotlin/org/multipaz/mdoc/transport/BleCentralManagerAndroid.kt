@@ -680,7 +680,7 @@ internal class BleCentralManagerAndroid : BleCentralManager {
         // Needed since l2capSocket.outputStream.flush() isn't working
         l2capSocket?.let {
             CoroutineScope(Dispatchers.IO).launch() {
-                delay(10000)
+                delay(15_000)
                 it.close()
             }
         }

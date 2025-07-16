@@ -92,7 +92,6 @@ object TestAppUtils {
         readerCert: X509Cert,
         readerRootCert: X509Cert,
         zkSystemRepository: ZkSystemRepository? = null,
-        useZeroKnowledge: Boolean = false,
     ): ByteArray {
         val mdocRequest = request.mdocRequest!!
         val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
@@ -103,7 +102,7 @@ object TestAppUtils {
             }
         }
 
-        var zkSystemSpecs: List<ZkSystemSpec> = if (useZeroKnowledge) {
+        val zkSystemSpecs = if (mdocRequest.useZkp) {
             if (zkSystemRepository == null){
                 throw IllegalStateException("zkSystemRepository is null")
             }

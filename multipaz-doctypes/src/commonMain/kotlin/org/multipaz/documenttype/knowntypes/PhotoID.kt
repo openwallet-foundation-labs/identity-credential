@@ -693,6 +693,16 @@ object PhotoID {
                 ),
             )
             .addSampleRequest(
+                id = "age_over_18_zkp",
+                displayName ="Age Over 18 (ZKP)",
+                mdocDataElements = mapOf(
+                    ISO_23220_2_NAMESPACE to mapOf(
+                        "age_over_18" to false,
+                    )
+                ),
+                mdocUseZkp = true
+            )
+            .addSampleRequest(
                 id = "age_over_18_and_portrait",
                 displayName ="Age Over 18 + Portrait",
                 mdocDataElements = mapOf(

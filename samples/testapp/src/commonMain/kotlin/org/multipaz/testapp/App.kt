@@ -462,7 +462,7 @@ class App private constructor (val promptModel: PromptModel) {
                     readerRootCert = readerRootCert,
                     readerRootKey = readerRootKey,
                     readerKey = readerKey.publicKey,
-                    subject = X500Name.fromName("CN=OWF IC TestApp Reader Cert"),
+                    subject = X500Name.fromName("CN=OWF Multipaz TestApp Reader Cert"),
                     serial = ASN1Integer.fromRandom(numBits = 128),
                     validFrom = certsValidFrom,
                     validUntil = certsValidUntil,
@@ -479,12 +479,10 @@ class App private constructor (val promptModel: PromptModel) {
             partitionId = "BuiltInTrustedIssuers",
             identifier = "Built-in Trusted Issuers"
         )
-        if (builtInIssuerTrustManager.getTrustPoints().isEmpty()) {
-            builtInIssuerTrustManager.addX509Cert(
-                certificate = iacaCert,
-                metadata = TrustMetadata(displayName = "OWF IC TestApp Issuer"),
-            )
-        }
+        builtInIssuerTrustManager.addX509Cert(
+            certificate = iacaCert,
+            metadata = TrustMetadata(displayName = "OWF Multipaz TestApp Issuer"),
+        )
         val signedVical = SignedVical.parse(Res.readBytes("files/20250225 RDW Test Vical.vical"))
         // TODO: validate the Vical is signed by someone we trust, probably force this
         //   by having the caller pass in the public key
@@ -523,6 +521,18 @@ class App private constructor (val promptModel: PromptModel) {
         )
         readerTrustManager = CompositeTrustManager(listOf(builtInReaderTrustManager))
         if (builtInReaderTrustManager.getTrustPoints().isEmpty()) {
+            try {
+                builtInReaderTrustManager.addX509Cert(
+                    certificate = readerRootCert,
+                    metadata = TrustMetadata(
+                        displayName = "Multipaz TestApp",
+                        displayIcon = ByteString(Res.readBytes("files/utopia-brewery.png")),
+                        privacyPolicyUrl = "https://apps.multipaz.org"
+                    )
+                )
+            } catch (e: TrustPointAlreadyExistsException) {
+                // Do nothing, it's possible our certificate is in the list above.
+            }
             for (readerCertFileName in readerCertFileNames) {
                 val certData = Res.readBytes("files/20250225 Reader CA Certificates/" + readerCertFileName)
                 val readerCert = X509Cert.fromPem(certData.decodeToString())
@@ -542,18 +552,6 @@ class App private constructor (val promptModel: PromptModel) {
                             "subject ${existingTrustPoint.certificate.subject.name} with the same " +
                             "Subject Key Identifier", e)
                 }
-            }
-            try {
-                builtInReaderTrustManager.addX509Cert(
-                    certificate = readerRootCert,
-                    metadata = TrustMetadata(
-                        displayName = "Multipaz TestApp",
-                        displayIcon = ByteString(Res.readBytes("files/utopia-brewery.png")),
-                        privacyPolicyUrl = "https://apps.multipaz.org"
-                    )
-                )
-            } catch (e: TrustPointAlreadyExistsException) {
-                // Do nothing, it's possible our certificate is in the list above.
             }
             try {
                 builtInReaderTrustManager.addX509Cert(
