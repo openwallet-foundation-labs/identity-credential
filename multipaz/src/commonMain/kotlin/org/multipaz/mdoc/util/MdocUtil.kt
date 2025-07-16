@@ -737,7 +737,8 @@ fun DeviceRequestParser.DocRequest.toMdocRequest(
             documentTypeRepository,
             mdocCredential
         ),
-        docType = docType
+        docType = docType,
+        zkSystemSpecs = this.zkSystemSpecs
     )
 }
 

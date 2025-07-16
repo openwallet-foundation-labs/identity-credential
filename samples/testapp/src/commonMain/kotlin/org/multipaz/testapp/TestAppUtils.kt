@@ -51,6 +51,8 @@ import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.testapp.ui.CsaCreationMode
 import kotlin.collections.component1
@@ -89,6 +91,8 @@ object TestAppUtils {
         readerKey: EcPrivateKey,
         readerCert: X509Cert,
         readerRootCert: X509Cert,
+        zkSystemRepository: ZkSystemRepository? = null,
+        useZeroKnowledge: Boolean = false,
     ): ByteArray {
         val mdocRequest = request.mdocRequest!!
         val itemsToRequest = mutableMapOf<String, MutableMap<String, Boolean>>()
@@ -99,6 +103,15 @@ object TestAppUtils {
             }
         }
 
+        var zkSystemSpecs: List<ZkSystemSpec> = if (useZeroKnowledge) {
+            if (zkSystemRepository == null){
+                throw IllegalStateException("zkSystemRepository is null")
+            }
+            zkSystemRepository.getAllZkSystemSpecs()
+        } else {
+            emptyList()
+        }
+
         val deviceRequestGenerator = DeviceRequestGenerator(encodedSessionTranscript)
         deviceRequestGenerator.addDocumentRequest(
             docType = mdocRequest.docType,
@@ -107,6 +120,7 @@ object TestAppUtils {
             readerKey = readerKey,
             signatureAlgorithm = readerKey.curve.defaultSigningAlgorithm,
             readerKeyCertificateChain = X509CertChain(listOf(readerCert, readerRootCert)),
+            zkSystemSpecs = zkSystemSpecs
         )
         return deviceRequestGenerator.generate()
     }

@@ -25,8 +25,13 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.mdoc.zkp.ZkSystem
+import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.mdoc.zkp.ZkSystemSpec
+import org.multipaz.util.toHex
 
 private const val TAG = "mdocPresentment"
 
@@ -104,6 +109,8 @@ internal suspend fun mdocPresentment(
                 encodedSessionTranscript!!,
             ).parse()
             for (docRequest in deviceRequest.docRequests) {
+                val zkRequested = docRequest.zkSystemSpecs.isNotEmpty()
+
                 val requestWithoutFiltering = docRequest.toMdocRequest(
                     documentTypeRepository = documentTypeRepository,
                     mdocCredential = null
@@ -123,10 +130,47 @@ internal suspend fun mdocPresentment(
                     showDocumentPicker(documents)
                         ?: continue
                 }
+
+                var zkSystemMatch: ZkSystem? = null
+                var zkSystemSpec: ZkSystemSpec? = null
+                if (zkRequested) {
+                    val requesterSupportedZkSpecs = docRequest.zkSystemSpecs
+
+                    val zkSystemRepository = source.zkSystemRepository
+                    if (zkSystemRepository != null) {
+                        // Find the first ZK System that the requester supports and matches the document
+                        for (zkSpec in requesterSupportedZkSpecs) {
+                            val zkSystem = zkSystemRepository.lookup(zkSpec.system)
+                            if (zkSystem == null) {
+                                continue
+                            }
+
+                            val matchingZkSystemSpec = zkSystem.getMatchingSystemSpec(
+                                requesterSupportedZkSpecs,
+                                requestWithoutFiltering
+                            )
+                            if (matchingZkSystemSpec != null) {
+                                zkSystemMatch = zkSystem
+                                zkSystemSpec = matchingZkSystemSpec
+                                break
+                            }
+                        }
+                    }
+                }
+
+                if (zkRequested && zkSystemSpec == null) {
+                    Logger.w(TAG, "Reader requested ZK proof but no compatible ZkSpec was found.")
+                }
+
                 val mdocCredential = source.selectCredential(
                     document = document,
                     request = requestWithoutFiltering,
-                    keyAgreementPossible = listOf(mechanism.eDeviceKey.curve)
+                    // Check is zk is requested and a compatible ZK system spec was found
+                    keyAgreementPossible = if (zkRequested && zkSystemSpec != null) {
+                        listOf()
+                    } else {
+                        listOf(mechanism.eDeviceKey.curve)
+                    }
                 ) as MdocCredential?
                 if (mdocCredential == null) {
                     Logger.w(TAG, "No credential found")
@@ -137,6 +181,7 @@ internal suspend fun mdocPresentment(
                     documentTypeRepository = documentTypeRepository,
                     mdocCredential = mdocCredential
                 )
+
                 // TODO: deal with request.requestedClaims.size == 0, probably tell the user there is no
                 // credential that can satisfy the request...
                 //
@@ -145,12 +190,25 @@ internal suspend fun mdocPresentment(
                     continue
                 }
 
-                deviceResponseGenerator.addDocument(calcDocument(
+                val documentBytes = calcDocument(
                     credential = mdocCredential,
                     requestedClaims = request.requestedClaims,
                     encodedSessionTranscript = encodedSessionTranscript,
                     eReaderKey = SessionEncryption.getEReaderKey(sessionData),
-                ))
+                )
+
+                if (zkSystemMatch != null) {
+                    val zkDocument = zkSystemMatch.generateProof(
+                        zkSystemSpec!!,
+                        ByteString(documentBytes),
+                        ByteString(encodedSessionTranscript)
+                    )
+
+                    deviceResponseGenerator.addZkDocument(zkDocument)
+                } else {
+                    deviceResponseGenerator.addDocument(documentBytes)
+                }
+
                 mdocCredential.increaseUsageCount()
             }
 

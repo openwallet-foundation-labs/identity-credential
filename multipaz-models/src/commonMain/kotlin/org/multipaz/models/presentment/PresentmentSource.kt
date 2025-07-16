@@ -8,6 +8,7 @@ import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.request.JsonRequest
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
@@ -28,6 +29,7 @@ abstract class PresentmentSource(
     open val documentStore: DocumentStore,
     open val documentTypeRepository: DocumentTypeRepository,
     open val readerTrustManager: TrustManager,
+    open val zkSystemRepository: ZkSystemRepository? = null
 ) {
 
     /**
