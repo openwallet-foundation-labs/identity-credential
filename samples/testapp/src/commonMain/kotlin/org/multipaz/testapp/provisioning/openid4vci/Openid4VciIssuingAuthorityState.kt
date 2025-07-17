@@ -353,7 +353,7 @@ class Openid4VciIssuingAuthorityState(
                     issuanceClientId = issuanceClientId,
                     documentId = documentId,
                     credentialConfiguration = configuration,
-                    credentialIssuerUri = credentialIssuerUri
+                    credentialIssuerId = metadata.credentialIssuerId
                 )
             Openid4VciNoProof ->
                 throw IllegalStateException("requestCredentials call is unexpected for keyless credentials")
