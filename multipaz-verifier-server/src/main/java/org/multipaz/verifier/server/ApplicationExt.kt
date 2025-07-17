@@ -52,15 +52,25 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
         }
     }
     routing {
-        get("/") { runRequest { fetchResource(call, "index.html") } }
+        get("/") {
+            withContext(env.await()) {
+                runRequest { fetchResource(call, "index.html") }
+            }
+        }
         get("/{path...}") {
-            runRequest { fetchResource(call, call.parameters["path"]!!) }
+            withContext(env.await()) {
+                runRequest { fetchResource(call, call.parameters["path"]!!) }
+            }
         }
         get("/verifier/{command}") {
-            runRequest { verifierGet(call, call.parameters["command"]!!) }
+            withContext(env.await()) {
+                runRequest { verifierGet(call, call.parameters["command"]!!) }
+            }
         }
         post("/verifier/{command}") {
-            runRequest { verifierPost(call, call.parameters["command"]!!) }
+            withContext(env.await()) {
+                runRequest { verifierPost(call, call.parameters["command"]!!) }
+            }
         }
     }
 }

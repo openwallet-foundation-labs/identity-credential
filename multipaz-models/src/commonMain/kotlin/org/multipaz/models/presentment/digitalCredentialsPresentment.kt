@@ -31,6 +31,7 @@ import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
@@ -43,6 +44,8 @@ import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
+import org.multipaz.mdoc.zkp.ZkSystem
+import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.models.openid.OpenID4VP
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -442,6 +445,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         deviceRequestBase64.fromBase64Url(),
         encodedSessionTranscript,
     ).parse().docRequests.first()
+    val zkRequested = docRequest.zkSystemSpecs.isNotEmpty()
 
     val requestBeforeFiltering = docRequest.toMdocRequest(
         documentTypeRepository = documentTypeRepository,
@@ -449,9 +453,38 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         requesterAppId = presentmentMechanism.appId,
         requesterWebsiteOrigin = presentmentMechanism.webOrigin,
     )
+
+    var zkSystemMatch: ZkSystem? = null
+    var zkSystemSpec: ZkSystemSpec? = null
+    if (zkRequested) {
+        val requesterSupportedZkSpecs = docRequest.zkSystemSpecs
+        val zkSystemRepository = source.zkSystemRepository
+        if (zkSystemRepository != null) {
+            // Find the first ZK System that the requester supports and matches the document
+            for (zkSpec in requesterSupportedZkSpecs) {
+                val zkSystem = zkSystemRepository.lookup(zkSpec.system)
+                if (zkSystem == null) {
+                    continue
+                }
+
+                val matchingZkSystemSpec = zkSystem.getMatchingSystemSpec(
+                    requesterSupportedZkSpecs,
+                    requestBeforeFiltering
+                )
+                if (matchingZkSystemSpec != null) {
+                    zkSystemMatch = zkSystem
+                    zkSystemSpec = matchingZkSystemSpec
+                    break
+                }
+            }
+        }
+    }
+
     val mdocCredential = source.selectCredential(
         document = presentmentMechanism.document,
         request = requestBeforeFiltering,
+        // TODO: when we start supporting KeyAgreement for DC API note that it won't work with ZKP
+        //   and we will need to do ECDSA there.
         keyAgreementPossible = emptyList()
     ) as MdocCredential?
     if (mdocCredential == null) {
@@ -470,12 +503,23 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         throw PresentmentCanceled("The user did not consent")
     }
 
-    val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-    deviceResponseGenerator.addDocument(calcDocument(
+    val documentBytes = calcDocument(
         credential = mdocCredential,
         requestedClaims = request.requestedClaims,
         encodedSessionTranscript = encodedSessionTranscript,
-    ))
+    )
+
+    val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+    if (zkSystemMatch != null) {
+        val zkDocument = zkSystemMatch.generateProof(
+            zkSystemSpec!!,
+            ByteString(documentBytes),
+            ByteString(encodedSessionTranscript)
+        )
+        deviceResponseGenerator.addZkDocument(zkDocument)
+    } else {
+        deviceResponseGenerator.addDocument(documentBytes)
+    }
     val deviceResponse = deviceResponseGenerator.generate()
 
     val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(

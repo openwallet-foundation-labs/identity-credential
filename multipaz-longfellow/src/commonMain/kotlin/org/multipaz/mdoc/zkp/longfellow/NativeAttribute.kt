@@ -12,8 +12,8 @@ internal data class NativeAttribute(
         fun fromDataItem(dataItem: DataItem): NativeAttribute {
             val decodedAttr = Cbor.decode(dataItem.asTagged.asBstr)
             return NativeAttribute(
-                key=decodedAttr["elementIdentifier"].asTstr,
-                value= Cbor.encode(decodedAttr["elementValue"])
+                key = decodedAttr["elementIdentifier"].asTstr,
+                value = Cbor.encode(decodedAttr["elementValue"])
             )
         }
     }

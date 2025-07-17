@@ -1,6 +1,7 @@
 package org.multipaz.models.openid
 
 import kotlinx.datetime.Clock
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -10,6 +11,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -37,6 +39,8 @@ import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.response.DocumentGenerator
 import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.mdoc.zkp.ZkSystem
+import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.models.presentment.PresentmentCanceled
 import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.models.presentment.findTrustPoint
@@ -54,6 +58,7 @@ import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
+import org.multipaz.util.fromHex
 import org.multipaz.util.toBase64Url
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
@@ -401,7 +406,8 @@ object OpenID4VP {
         }
 
         val format = credential["format"]!!.jsonPrimitive.content
-        val response = if (format == "mso_mdoc") {
+        val requestIsForZk = (format == "mso_mdoc_zk")
+        val response = if (format == "mso_mdoc" || format == "mso_mdoc_zk") {
             openID4VPMsoMdoc(
                 version = version,
                 credential = credential,
@@ -415,7 +421,8 @@ object OpenID4VP {
                 requesterCertChain = requesterCertChain,
                 reReaderPublicKey = reReaderPublicKey,
                 reEncAlg = reEncAlg,
-                responseUri = responseUri
+                responseUri = responseUri,
+                requestIsForZk = requestIsForZk
             )
         } else if (format == "dc+sd-jwt") {
             openID4VPSdJwt(
@@ -459,6 +466,9 @@ object OpenID4VP {
         }
         Logger.iJson(TAG, "vpToken", vpToken)
 
+        // If using ZKP the response will be huge so compression helps
+        val compressionLevel = if (requestIsForZk) 9 else null
+
         val walletGeneratedNonce = Random.nextBytes(16).toBase64Url()
         return if (reReaderPublicKey != null) {
             buildJsonObject {
@@ -469,7 +479,8 @@ object OpenID4VP {
                         encAlg = reEncAlg,
                         apu = nonce.encodeToByteString(),
                         apv = walletGeneratedNonce.encodeToByteString(),
-                        kid = reKid
+                        kid = reKid,
+                        compressionLevel = compressionLevel
                     )
                 )
             }
@@ -497,7 +508,8 @@ object OpenID4VP {
         requesterCertChain: X509CertChain?,
         reReaderPublicKey: EcPublicKey?,
         reEncAlg: Algorithm,
-        responseUri: String?
+        responseUri: String?,
+        requestIsForZk: Boolean
     ): String {
         val meta = credential["meta"]!!.jsonObject
         val docType = meta["doctype_value"]!!.jsonPrimitive.content
@@ -527,6 +539,49 @@ object OpenID4VP {
             ),
             docType = docType
         )
+
+        var zkSystemMatch: ZkSystem? = null
+        var zkSystemSpec: ZkSystemSpec? = null
+        if (requestIsForZk) {
+            val requesterSupportedZkSpecs = mutableListOf<ZkSystemSpec>()
+            for (entry in meta["zk_system_type"]!!.jsonArray) {
+                entry as JsonObject
+                val system = entry["system"]!!.jsonPrimitive.content
+                val id = entry["id"]!!.jsonPrimitive.content
+                val item = ZkSystemSpec(id, system)
+                for (param in entry) {
+                    if (param.key == "system" || param.key == "id") {
+                        continue
+                    }
+                    item.addParam(param.key, param.value)
+                }
+                requesterSupportedZkSpecs.add(item)
+            }
+            val zkSystemRepository = source.zkSystemRepository
+            if (zkSystemRepository != null) {
+                // Find the first ZK System that the requester supports and matches the document
+                for (zkSpec in requesterSupportedZkSpecs) {
+                    val zkSystem = zkSystemRepository.lookup(zkSpec.system)
+                    if (zkSystem == null) {
+                        continue
+                    }
+
+                    val matchingZkSystemSpec = zkSystem.getMatchingSystemSpec(
+                        requesterSupportedZkSpecs,
+                        requestBeforeFiltering
+                    )
+                    if (matchingZkSystemSpec != null) {
+                        zkSystemMatch = zkSystem
+                        zkSystemSpec = matchingZkSystemSpec
+                        break
+                    }
+                }
+            }
+
+            if (zkSystemMatch == null) {
+                throw IllegalStateException("Request is for ZK but no matching ZK system was found")
+            }
+        }
 
         val documentToUse = if (document != null) {
             document
@@ -627,14 +682,24 @@ object OpenID4VP {
             throw PresentmentCanceled("The user did not consent")
         }
 
-        val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-        deviceResponseGenerator.addDocument(
-            calcDocument(
-                credential = mdocCredential,
-                requestedClaims = request.requestedClaims,
-                encodedSessionTranscript = encodedSessionTranscript,
-            )
+        val documentBytes = calcDocument(
+            credential = mdocCredential,
+            requestedClaims = request.requestedClaims,
+            encodedSessionTranscript = encodedSessionTranscript,
         )
+
+        val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+        if (zkSystemMatch != null) {
+            val zkDocument = zkSystemMatch.generateProof(
+                zkSystemSpec!!,
+                ByteString(documentBytes),
+                ByteString(encodedSessionTranscript)
+            )
+            Logger.i(TAG, "ZK Proof Size: ${zkDocument.proof.size}")
+            deviceResponseGenerator.addZkDocument(zkDocument)
+        } else {
+            deviceResponseGenerator.addDocument(documentBytes)
+        }
         val deviceResponse = deviceResponseGenerator.generate()
         mdocCredential.increaseUsageCount()
         return deviceResponse.toBase64Url()

@@ -29,9 +29,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.zkp.ZkSystem
-import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
-import org.multipaz.util.toHex
 
 private const val TAG = "mdocPresentment"
 

@@ -1,13 +1,14 @@
 package org.multipaz.mdoc.zkp.longfellow
 
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystemSpec
 
-internal expect object LongfellowNatives {
-    fun getLongfellowZkSystemSpec(numAttributes: Int): LongfellowZkSystemSpec
+internal actual object LongfellowNatives {
+    actual fun getLongfellowZkSystemSpec(numAttributes: Int): LongfellowZkSystemSpec = TODO()
 
-    fun generateCircuit(jzkSpec: LongfellowZkSystemSpec): ByteString
+    actual fun generateCircuit(jzkSpec: LongfellowZkSystemSpec): ByteString = TODO()
 
-    fun runMdocProver(
+    actual fun runMdocProver(
         circuit: ByteString,
         circuitSize: Int,
         mdoc: ByteString,
@@ -19,9 +20,9 @@ internal expect object LongfellowNatives {
         now: String,
         zkSpec: LongfellowZkSystemSpec,
         statements: List<NativeAttribute>
-    ): ByteArray
+    ): ByteArray = TODO()
 
-    fun runMdocVerifier(
+    actual fun runMdocVerifier(
         circuit: ByteString,
         circuitSize: Int,
         pkx: String,
@@ -34,5 +35,5 @@ internal expect object LongfellowNatives {
         docType: String,
         zkSpec: LongfellowZkSystemSpec,
         statements: Array<NativeAttribute>
-    ): Int
+    ): Int = TODO()
 }
