@@ -38,7 +38,6 @@ private const val TAG = "mdocPresentment"
 internal suspend fun mdocPresentment(
     documentTypeRepository: DocumentTypeRepository,
     source: PresentmentSource,
-    model: PresentmentModel,
     mechanism: MdocPresentmentMechanism,
     dismissable: MutableStateFlow<Boolean>,
     numRequestsServed: MutableStateFlow<Int>,
@@ -59,8 +58,7 @@ internal suspend fun mdocPresentment(
                 it == MdocTransport.State.CLOSED
     }
     if (transport.state.value != MdocTransport.State.CONNECTED) {
-        model.setCompleted(Error("Expected state CONNECTED but found ${transport.state.value}"))
-        return
+        throw Error("Expected state CONNECTED but found ${transport.state.value}")
     }
 
     try {
@@ -73,7 +71,6 @@ internal suspend fun mdocPresentment(
             dismissable.value = false
             if (sessionData.isEmpty()) {
                 Logger.i(TAG, "Received transport-specific session termination message from reader")
-                model.setCompleted()
                 break
             }
 
@@ -98,7 +95,6 @@ internal suspend fun mdocPresentment(
 
             if (status == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
                 Logger.i(TAG, "Received session termination message from reader")
-                model.setCompleted()
                 break
             }
 
@@ -226,7 +222,6 @@ internal suspend fun mdocPresentment(
             numRequestsServed.value = numRequestsServed.value + 1
             if (!mechanism.allowMultipleRequests) {
                 Logger.i(TAG, "Response sent, closing connection")
-                model.setCompleted()
                 break
             } else {
                 Logger.i(TAG, "Response sent, keeping connection open")
@@ -237,11 +232,6 @@ internal suspend fun mdocPresentment(
         // is, the X in the top-right
         err.printStackTrace()
         Logger.i(TAG, "Ending holderJob due to MdocTransportClosedException")
-        model.setCompleted()
-    } catch (error: Throwable) {
-        Logger.e(TAG, "Caught exception", error)
-        error.printStackTrace()
-        model.setCompleted(error)
     }
 }
 

@@ -24,7 +24,7 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.Document
 import org.multipaz.mdoc.response.DeviceResponseParser
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.openid.OpenID4VP
+import org.multipaz.models.openid.OpenID4VP
 import org.multipaz.request.Request
 import org.multipaz.sdjwt.SdJwtKb
 import org.multipaz.storage.ephemeral.EphemeralStorage
@@ -87,13 +87,11 @@ class DigitalCredentialsPresentmentTest {
     )
 
     private suspend fun testOpenID4VP(
-        version: Int,
+        version: OpenID4VP.Version,
         signRequest: Boolean,
         encryptionKey: EcPrivateKey?,
         dcql: JsonObject
     ): TestOpenID4VPResponse {
-        require(version == 24 || version == 29) { "Only OpenID4VP draft 24 or 29 is currently supported" }
-
         documentStoreTestHarness.initialize()
 
         val presentmentModel = PresentmentModel()
@@ -126,40 +124,29 @@ class DigitalCredentialsPresentmentTest {
             Pair(null, null)
         }
 
-        val requestString = if (version == 29) {
-            OpenID4VP.generateRequest(
-                origin = ORIGIN,
-                clientId = CLIENT_ID,
-                nonce = nonce,
-                responseEncryptionKey = encryptionKey?.publicKey,
-                requestSigningKey = readerAuthKey,
-                requestSigningKeyCertification = readerAuthCert?.let {
-                    X509CertChain(listOf(it, documentStoreTestHarness.readerRootCert))
-                },
-                dclqQuery = dcql
-            ).toString()
-        } else {
-            OpenID4VP.generateRequestDraft24(
-                origin = ORIGIN,
-                clientId = CLIENT_ID,
-                nonce = nonce,
-                responseEncryptionKey = encryptionKey?.publicKey,
-                requestSigningKey = readerAuthKey,
-                requestSigningKeyCertification = readerAuthCert?.let {
-                    X509CertChain(listOf(it, documentStoreTestHarness.readerRootCert))
-                },
-                dclqQuery = dcql
-            ).toString()
-        }
+        val requestString = OpenID4VP.generateRequest(
+            version = version,
+            origin = ORIGIN,
+            clientId = CLIENT_ID,
+            nonce = nonce,
+            responseEncryptionKey = encryptionKey?.publicKey,
+            requestSigningKey = readerAuthKey,
+            requestSigningKeyCertification = readerAuthCert?.let {
+                X509CertChain(listOf(it, documentStoreTestHarness.readerRootCert))
+            },
+            responseMode = OpenID4VP.ResponseMode.DC_API,
+            responseUri = null,
+            dclqQuery = dcql
+        ).toString()
 
-
-        val protocol = if (version == 24) {
-            "openid4vp"
-        } else {
-            if (signRequest) {
-                "openid4vp-v1-signed"
-            } else {
-                "openid4vp-v1-unsigned"
+        val protocol = when (version) {
+            OpenID4VP.Version.DRAFT_24 -> "openid4vp"
+            OpenID4VP.Version.DRAFT_29 -> {
+                if (signRequest) {
+                    "openid4vp-v1-signed"
+                } else {
+                    "openid4vp-v1-unsigned"
+                }
             }
         }
         val presentmentMechanism = TestPresentmentMechanism(
@@ -174,7 +161,6 @@ class DigitalCredentialsPresentmentTest {
         digitalCredentialsPresentment(
             documentTypeRepository = documentStoreTestHarness.documentTypeRepository,
             source = presentmentSource,
-            model = presentmentModel,
             mechanism = presentmentMechanism,
             dismissable = dismissable,
             showConsentPrompt = { document, request, trustPoint ->
@@ -185,7 +171,7 @@ class DigitalCredentialsPresentmentTest {
         val dcResponseObject = Json.decodeFromString(JsonObject.serializer(), presentmentMechanism.response!!)
         val decryptedDcResponse = if (encryptionKey != null) {
             val jweCompactSerialization = dcResponseObject["response"]!!.jsonPrimitive.content
-            if (version == 29) {
+            if (version == OpenID4VP.Version.DRAFT_29) {
                 // From Section 8.3: If the selected public key contains a kid parameter, the JWE MUST
                 // include the same value in the kid JWE Header Parameter (as defined in Section 4.1.6)
                 // of the encrypted response.
@@ -230,9 +216,8 @@ class DigitalCredentialsPresentmentTest {
         val vpToken = mutableMapOf<String, List<String>>()
         for ((credId, result) in decryptedDcResponse["vp_token"]!!.jsonObject) {
             vpToken[credId] = when (version) {
-                24 -> listOf(result.jsonPrimitive.content)
-                29 -> result.jsonArray.toList().map { it.jsonPrimitive.content }
-                else -> throw IllegalStateException("Unexpected value $result in vpToken")
+                OpenID4VP.Version.DRAFT_24 -> listOf(result.jsonPrimitive.content)
+                OpenID4VP.Version.DRAFT_29 -> result.jsonArray.toList().map { it.jsonPrimitive.content }
             }
         }
 
@@ -241,7 +226,7 @@ class DigitalCredentialsPresentmentTest {
             vpToken = vpToken,
             nonce = nonce,
             origin = ORIGIN,
-            clientId = if (version == 29) {
+            clientId = if (version == OpenID4VP.Version.DRAFT_29) {
                 if (signRequest) {
                     CLIENT_ID
                 } else {
@@ -254,7 +239,7 @@ class DigitalCredentialsPresentmentTest {
     }
 
     suspend fun test_OpenID4VP_mdoc(
-        version: Int,
+        version: OpenID4VP.Version,
         signRequest: Boolean,
         encryptionKey: EcPrivateKey?,
         dcql: String,
@@ -270,7 +255,7 @@ class DigitalCredentialsPresentmentTest {
         val credId = response.vpToken.keys.first()
         val encodedDeviceResponse = response.vpToken[credId]!![0].fromBase64Url()
 
-        val handoverInfo = if (version == 29) {
+        val handoverInfo = if (version == OpenID4VP.Version.DRAFT_29) {
             Cbor.encode(
                 buildCborArray {
                     add(response.origin)
@@ -320,7 +305,7 @@ class DigitalCredentialsPresentmentTest {
     }
 
     suspend fun test_OpenID4VP_sdJwt(
-        version: Int,
+        version: OpenID4VP.Version,
         signRequest: Boolean,
         encryptionKey: EcPrivateKey?,
         dcql: String,
@@ -336,7 +321,7 @@ class DigitalCredentialsPresentmentTest {
         val credId = response.vpToken.keys.first()
         val compactSerialization = response.vpToken[credId]!![0]
         val sdJwtKb = SdJwtKb(compactSerialization)
-        val expectedAudience = if (version == 29) {
+        val expectedAudience = if (version == OpenID4VP.Version.DRAFT_29) {
             "origin:$ORIGIN"
         } else {
             if (signRequest) CLIENT_ID else "web-origin:$ORIGIN"
@@ -359,10 +344,15 @@ class DigitalCredentialsPresentmentTest {
     }
 
     suspend fun test_OID4VP_mDL(
-        version: Int,
+        versionDraftNumber: Int,
         signRequest: Boolean,
         encryptResponse: Boolean,
     ) {
+        val version = when (versionDraftNumber) {
+            24 -> OpenID4VP.Version.DRAFT_24
+            29 -> OpenID4VP.Version.DRAFT_29
+            else -> throw IllegalArgumentException("Unknown draft number")
+        }
         val encryptionKey = if (encryptResponse) Crypto.createEcPrivateKey(EcCurve.P256) else null
         test_OpenID4VP_mdoc(
             version = version,
@@ -393,10 +383,15 @@ class DigitalCredentialsPresentmentTest {
     }
 
     suspend fun test_OID4VP_SDJWT(
-        version: Int,
+        versionDraftNumber: Int,
         signRequest: Boolean,
         encryptResponse: Boolean,
     ) {
+        val version = when (versionDraftNumber) {
+            24 -> OpenID4VP.Version.DRAFT_24
+            29 -> OpenID4VP.Version.DRAFT_29
+            else -> throw IllegalArgumentException("Unknown draft number")
+        }
         val encryptionKey = if (encryptResponse) Crypto.createEcPrivateKey(EcCurve.P256) else null
         test_OpenID4VP_sdJwt(
             version = version,

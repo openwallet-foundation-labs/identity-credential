@@ -103,11 +103,33 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
             android:theme="@android:style/Theme.Translucent"
-            android:launchMode="singleInstance">
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="androidx.credentials.registry.provider.action.GET_CREDENTIAL" />
                 <action android:name="androidx.identitycredentials.action.GET_CREDENTIALS" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".TestAppUriSchemePresentmentActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:theme="@android:style/Theme.Translucent"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!--  Various OpenID4VP schemes -->
+                <data android:scheme="haip"/>
+                <data android:scheme="openid4vp"/>
+                <data android:scheme="eudi-openid4vp"/>
+                <data android:scheme="mdoc-openid4vp"/>
+                <!-- Accept all hosts for any of the defined schemes above -->
+                <data android:host="*"/>
             </intent-filter>
         </activity>
 
