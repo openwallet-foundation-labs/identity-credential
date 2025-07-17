@@ -13,10 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
+import kotlinx.atomicfu.atomic
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -28,9 +28,12 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.useContents
 import kotlinx.cinterop.value
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.multipaz.util.Logger
@@ -56,6 +59,7 @@ import platform.AVFoundation.AVCaptureVideoOrientationPortraitUpsideDown
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
 import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVMediaTypeVideo
+import platform.AVFoundation.AVMetadataMachineReadableCodeObject
 import platform.AVFoundation.AVMetadataObjectTypeQRCode
 import platform.AVFoundation.position
 import platform.CoreGraphics.CGImageRef
@@ -90,7 +94,6 @@ import platform.darwin.dispatch_queue_create
 import platform.darwin.dispatch_sync
 import kotlin.native.runtime.GC
 import kotlin.native.runtime.NativeRuntimeApi
-import platform.AVFoundation.AVMetadataMachineReadableCodeObject
 
 private const val TAG = "Camera"
 
@@ -240,6 +243,8 @@ private class CameraManager(
     private var isFrontCamera: Boolean = false
     private var lastKnownPreviewBounds: CValue<CGRect>? = null
     private var videoOrientation: AVCaptureVideoOrientation = AVCaptureVideoOrientationPortrait
+    private val cameraScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val isProcessingFrame = atomic(false)
 
     @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     suspend fun startCamera() {
@@ -347,6 +352,7 @@ private class CameraManager(
     fun stopCamera() {
         if (::captureSession.isInitialized && captureSession.isRunning()) {
             captureSession.stopRunning()
+            cameraScope.cancel()
         }
     }
 
@@ -371,76 +377,100 @@ private class CameraManager(
         fromConnection: AVCaptureConnection
     ) {
         if (didOutputSampleBuffer == null) return
+        if (onCameraFrameCaptured == null) return
 
-        val uiImage = didOutputSampleBuffer.toUIImage() ?: return
-        val cameraImage = CameraImage(uiImage)
-        val imageWidth = uiImage.size.useContents { width }.toFloat()
-        val imageHeight = uiImage.size.useContents { height }.toFloat()
-        var previewTransformation = Matrix() // Identity
-        val density = UIScreen.mainScreen.scale.toFloat()
+        if (!isProcessingFrame.compareAndSet(expect = false, update = true)) { // Drop frame if still processing one.
+            return
+        }
 
-        if (isShowingPreview) {
-            // Retrieve the current preview size.
-            var currentPreviewFrame: CValue<CGRect>? = null
-            dispatch_sync(dispatch_get_main_queue()) { // Must be dispatched to main thread to get the frame.
-                val frameFromLayer = previewLayer.presentationLayer()?.frame ?: previewLayer.frame
-                if (frameFromLayer.useContents { size.width > 0.0 && size.height > 0.0 }) {
-                    currentPreviewFrame = frameFromLayer
-                } else {
-                    Logger.w(TAG, "The previewLayer.frame is zero. Using lastKnownPreviewBounds if available.")
+        val uiImage = didOutputSampleBuffer.toUIImage() ?: run {
+            isProcessingFrame.value = false
+            return
+        }
+
+        val cameraFrame: CameraFrame
+
+        try {
+            val imageWidth = uiImage.size.useContents { width }.toFloat()
+            val imageHeight = uiImage.size.useContents { height }.toFloat()
+            var previewTransformation = Matrix() // Identity
+            val density = UIScreen.mainScreen.scale.toFloat()
+
+            if (isShowingPreview) {
+                // Retrieve the current preview size.
+                var currentPreviewFrame: CValue<CGRect>? = null
+                dispatch_sync(dispatch_get_main_queue()) { // Must be dispatched to main thread to get the frame.
+                    val frameFromLayer = previewLayer.presentationLayer()?.frame ?: previewLayer.frame
+                    if (frameFromLayer.useContents { size.width > 0.0 && size.height > 0.0 }) {
+                        currentPreviewFrame = frameFromLayer
+                    } else {
+                        Logger.w(TAG, "The previewLayer.frame is zero. Using lastKnownPreviewBounds if available.")
+                    }
                 }
-            }
 
-            if (currentPreviewFrame == null) {
-                if (lastKnownPreviewBounds != null && lastKnownPreviewBounds!!.useContents { size.width > 0.0 && size.height > 0.0 }) {
-                    currentPreviewFrame = lastKnownPreviewBounds
-                } else {
-                    Logger.e(TAG, "captureOutput: No valid bounds (neither main thread nor fallback). Skipping frame.")
-                    return // Skip "bad" frame processing.
+                if (currentPreviewFrame == null && lastKnownPreviewBounds == null) {
+                    isProcessingFrame.value = false
+                    return
                 }
-            }
 
-            if (currentPreviewFrame!!.useContents { size.width > 0.0 && size.height > 0.0 }) {
-                lastKnownPreviewBounds = currentPreviewFrame
+                if (currentPreviewFrame == null) {
+                    if (lastKnownPreviewBounds != null && lastKnownPreviewBounds!!.useContents { size.width > 0.0 && size.height > 0.0 }) {
+                        currentPreviewFrame = lastKnownPreviewBounds
+                    } else {
+                        Logger.e(
+                            TAG,
+                            "captureOutput: No valid bounds (neither main thread nor fallback). Skipping frame."
+                        )
+                        return // Skip "bad" frame processing.
+                    }
+                }
+	
+                if (currentPreviewFrame!!.useContents { size.width > 0.0 && size.height > 0.0 }) {
+                    lastKnownPreviewBounds = currentPreviewFrame
+                } else {
+                    Logger.e(TAG, "Preview bounds can't be retrieved. Skipping frame.")
+                    return
+                }
+
+                val boundsToUse = currentPreviewFrame
+
+                previewTransformation = calculatePreviewTransformationMatrix(
+                    imageWidth = imageWidth,
+                    imageHeight = imageHeight,
+                    previewBoundsDp = boundsToUse,
+                    density = density,
+                    videoOrientation = videoOrientation,
+                    isFrontCamera = this.isFrontCamera
+                )
             } else {
-                Logger.e(TAG, "Preview bounds can't be retrieved. Skipping frame.")
-                return
+                previewTransformation = calculateBitmapTransformationMatrix(
+                    imageWidth = imageWidth,
+                    imageHeight = imageHeight,
+                    videoOrientation = videoOrientation,
+                    isFrontCamera = this.isFrontCamera
+                )
             }
 
-            val boundsToUse = currentPreviewFrame
-
-            previewTransformation = calculatePreviewTransformationMatrix(
-                imageWidth = imageWidth,
-                imageHeight = imageHeight,
-                previewBoundsDp = boundsToUse,
-                density = density,
-                videoOrientation = videoOrientation,
-                isFrontCamera = this.isFrontCamera
-            )
-        }
-        else {
-            previewTransformation = calculateBitmapTransformationMatrix(
-                imageWidth = imageWidth,
-                imageHeight = imageHeight,
-                videoOrientation = videoOrientation,
-                isFrontCamera = this.isFrontCamera
-            )
-        }
-
-        if (onCameraFrameCaptured != null) {
-            val cameraFrame = CameraFrame(
-                cameraImage = cameraImage,
+            cameraFrame = CameraFrame(
+                cameraImage = CameraImage(uiImage),
                 width = imageWidth.toInt(),
                 height = imageHeight.toInt(),
                 rotation = videoOrientation.toRotationAngle(),
                 previewTransformation = previewTransformation,
             )
-
-            runBlocking {
-                onCameraFrameCaptured?.let { it(cameraFrame) }
-            }
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Error preparing frame data", e)
+            isProcessingFrame.value = false // Release lock on error during prep.
+            return
         }
 
+        cameraScope.launch {
+            try {
+                onCameraFrameCaptured?.let { it(cameraFrame) }
+            } finally {
+                isProcessingFrame.value = false // Release lock after processing is done or if it throws.
+            }
+        }
         // Not recommended but IS needed to avoid lockups, see https://youtrack.jetbrains.com/issue/KT-74239
         GC.collect()
     }
@@ -467,13 +497,11 @@ private class CameraManager(
                     lastCodeScanned = metadataObj.stringValue
                 }
             }
-
         }
     }
-
 }
 
-private fun  AVCaptureVideoOrientation.toRotationAngle(): Int =
+private fun AVCaptureVideoOrientation.toRotationAngle(): Int =
     when (this) {
         AVCaptureVideoOrientationLandscapeLeft -> 270
         AVCaptureVideoOrientationLandscapeRight -> 90
