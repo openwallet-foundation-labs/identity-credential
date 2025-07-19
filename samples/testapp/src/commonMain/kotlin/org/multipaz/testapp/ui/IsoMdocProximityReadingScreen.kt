@@ -18,7 +18,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -79,7 +78,6 @@ import org.multipaz.util.fromBase64Url
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.datetime.Clock
@@ -93,11 +91,9 @@ import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
-import org.multipaz.testapp.ui.ScanQrCodeDialog
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.zkp.ZkDocument
 import org.multipaz.mdoc.zkp.ZkSystemRepository
-import org.multipaz.util.toHex
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
@@ -924,7 +920,7 @@ private data class DocumentData(
             val kvPairs = mutableListOf<DocumentKeyValuePair>()
 
             if (zkDocument.zkDocumentData.msoX5chain == null) {
-                warnings.add("No msox5chain in ZkDocumentData")
+                warnings.add("No msoX5chain in ZkDocumentData")
             } else {
                 val trustResult = issuerTrustManager.verify(zkDocument.zkDocumentData.msoX5chain!!.certificates)
                 if (trustResult.isTrusted) {
@@ -957,17 +953,20 @@ private data class DocumentData(
                 warnings.add("ZK verification failed with error ${e.message}.")
             }
 
-            for (da in zkDocument.zkDocumentData.issuerSignedItems) {
-                val dataElement = Cbor.decode(da.asTagged.asBstr)
-                val value = Cbor.toDiagnostics(
-                    dataElement["elementValue"], setOf(
-                        DiagnosticOption.PRETTY_PRINT,
-                        DiagnosticOption.EMBEDDED_CBOR,
-                        DiagnosticOption.BSTR_PRINT_LENGTH,
+            zkDocument.zkDocumentData.issuerSigned.forEach { (nameSpaceName, dataElements) ->
+                kvPairs.add(DocumentKeyValuePair("Namespace", nameSpaceName))
+                for ((dataElementName, dataElementValue) in dataElements) {
+                    val prettyPrintedValue = Cbor.toDiagnostics(
+                        dataElementValue, setOf(
+                            DiagnosticOption.PRETTY_PRINT,
+                            DiagnosticOption.EMBEDDED_CBOR,
+                            DiagnosticOption.BSTR_PRINT_LENGTH,
+                        )
                     )
-                    )
-                kvPairs.add(DocumentKeyValuePair(dataElement["elementIdentifier"].asTstr, value))
+                    kvPairs.add(DocumentKeyValuePair(dataElementName, prettyPrintedValue))
+                }
             }
+            // TODO: also iterate over DeviceSigned items
 
             return DocumentData(infos, warnings, kvPairs)
         }

@@ -80,10 +80,6 @@ actual fun platformRestartApp() {
     TODO()
 }
 
-actual fun createZkSystemRepository(): ZkSystemRepository {
-    return ZkSystemRepository()
-}
-
 @OptIn(ExperimentalForeignApi::class)
 actual fun getLocalIpAddress(): String {
     val (status, interfaces) = memScoped {

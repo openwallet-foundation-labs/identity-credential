@@ -1,4 +1,4 @@
-package org.multipaz.mdoc.zkp.longfellow.util
+package org.multipaz.mdoc.zkp.longfellow
 
 internal actual object NativeLoader {
     actual fun loadLibrary(libraryName: String) {

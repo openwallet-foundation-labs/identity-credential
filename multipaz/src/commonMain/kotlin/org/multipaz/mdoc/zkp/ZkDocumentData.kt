@@ -1,28 +1,31 @@
 package org.multipaz.mdoc.zkp
 
 import kotlinx.datetime.Instant
+import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborArray
-import org.multipaz.cbor.toDataItem
+import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509CertChain
+import org.multipaz.util.Logger
 
 /**
  * ZkDocumentData contains the data the proof will prove.
  *
  * @property zkSystemSpecId the ZK system spec Id from the verifier used to create the proof.
  * @property docType the doc type of doc being represented.
- * @property timestamp the timstampe the proof was generated at.
- * @property issuerSignedItems issuer signed document fields.
- * @property deviceSignedItems devices signed document fields.
+ * @property timestamp the timstamps the proof was generated at.
+ * @property issuerSigned issuer signed name spaces and values.
+ * @property deviceSigned devices signed name spaces and values.
  * @property msoX5chain the issuers certificate chain.
  */
 data class ZkDocumentData (
     val zkSystemSpecId: String,
     val docType: String,
     val timestamp: Instant,
-    val issuerSignedItems: List<DataItem>,
-    val deviceSignedItems: List<DataItem>,
+    val issuerSigned: Map<String, Map<String, DataItem>>,
+    val deviceSigned: Map<String, Map<String, DataItem>>,
     val msoX5chain: X509CertChain?,
 ) {
     /**
@@ -43,13 +46,30 @@ data class ZkDocumentData (
             put("id", zkSystemSpecId)
             put("docType", docType)
             put("timestamp", timestamp.toString())
-            putCborArray("issuerSignedItems") {
-                issuerSignedItems.forEach{ add(it) }
+            putCborMap("issuerSigned") {
+                issuerSigned.forEach { (namespaceName, dataElements) ->
+                    putCborArray(namespaceName) {
+                        dataElements.forEach { (dataElementName, dataElementValue) ->
+                            addCborMap {
+                                put("elementIdentifier", dataElementName)
+                                put("elementValue", dataElementValue)
+                            }
+                        }
+                    }
+                }
             }
-            putCborArray("deviceSignedItems") {
-                deviceSignedItems.forEach{ add(it) }
+            putCborMap("deviceSigned") {
+                deviceSigned.forEach { (namespaceName, dataElements) ->
+                    putCborArray(namespaceName) {
+                        dataElements.forEach { (dataElementName, dataElementValue) ->
+                            addCborMap {
+                                put("elementIdentifier", dataElementName)
+                                put("elementValue", dataElementValue)
+                            }
+                        }
+                    }
+                }
             }
-
             if (msoX5chain != null) {
                 put("msoX5chain", msoX5chain.toDataItem())
             }
@@ -57,6 +77,8 @@ data class ZkDocumentData (
     }
 
     companion object {
+        private const val TAG = "ZkDocumentData"
+
         /**
          * Creates a ZkDocumentData instance from a CBOR DataItem.
          *
@@ -82,16 +104,33 @@ data class ZkDocumentData (
                 ?: throw IllegalArgumentException("Missing or invalid 'docType' field parsing ZkDocumentData.")
             val timestamp = dataItem.getOrNull("timestamp")?.asTstr
                 ?: throw IllegalArgumentException("Missing or invalid 'timestamp' field parsing ZkDocumentData.")
-            val issuerSignedItems = dataItem.getOrNull("issuerSignedItems")?.asArray ?: listOf()
-            val deviceSignedItems = dataItem.getOrNull("deviceSignedItems")?.asArray ?: listOf()
+
+            val issuerSigned = mutableMapOf<String, Map<String, DataItem>>()
+            dataItem.getOrNull("issuerSigned")?.asMap?.forEach { (nameSpaceItem, dateElementsItem) ->
+                val dataElementsMap = mutableMapOf<String, DataItem>()
+                dateElementsItem.asArray.forEach { zkSignedItem ->
+                    dataElementsMap.put(zkSignedItem["elementIdentifier"].asTstr, zkSignedItem["elementValue"])
+                }
+                issuerSigned.put(nameSpaceItem.asTstr, dataElementsMap)
+            }
+
+            val deviceSigned = mutableMapOf<String, Map<String, DataItem>>()
+            dataItem.getOrNull("deviceSigned")?.asMap?.forEach { (nameSpaceItem, dateElementsItem) ->
+                val dataElementsMap = mutableMapOf<String, DataItem>()
+                dateElementsItem.asArray.forEach { zkSignedItem ->
+                    dataElementsMap.put(zkSignedItem["elementIdentifier"].asTstr, zkSignedItem["elementValue"])
+                }
+                deviceSigned.put(nameSpaceItem.asTstr, dataElementsMap)
+            }
+
             val msoX5chain = dataItem.getOrNull("msoX5chain")?.asX509CertChain
             return ZkDocumentData(
-                zkSystemSpecId,
-                docType,
+                zkSystemSpecId = zkSystemSpecId,
+                docType = docType,
                 timestamp = Instant.parse(timestamp),
-                issuerSignedItems,
-                deviceSignedItems,
-                msoX5chain
+                issuerSigned = issuerSigned,
+                deviceSigned = deviceSigned,
+                msoX5chain = msoX5chain
             )
         }
     }

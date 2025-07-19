@@ -9,18 +9,19 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.crypto.X509Cert
 import org.multipaz.util.Constants
+import org.multipaz.util.toHex
 import kotlin.time.measureTime
 
 object LongfellowNativeTestsCommon {
     private fun getFormattedCoordinate(value: ByteArray): String {
-        return ("0x" + value.joinToString("") {String.format("%02x", it)})
+        return "0x" + value.toHex()
     }
 
     internal fun runFullVerification(
         proofGenerationAttributes: List<NativeAttribute>,
         proofVerificationAttributes: List<NativeAttribute>
     ): VerifierCodeEnum{
-        val zkSpec: LongfellowZkSystemSpec = LongfellowNatives.getZkSpec(1)
+        val zkSpec: LongfellowZkSystemSpec = LongfellowNatives.getLongfellowZkSystemSpec(1)
         val circuit = LongfellowNatives.generateCircuit(zkSpec)
 
         val sessionTranscript = MdocTestDataProvider.getTranscript()

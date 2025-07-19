@@ -68,7 +68,6 @@ internal suspend fun uriSchemePresentment(
     check(httpResponse.contentType() == ContentType("application", "oauth-authz-req+jwt"))
 
     val reqJwt = (httpResponse.body() as ByteArray).decodeToString()
-    println("body: $reqJwt")
     val info = JsonWebSignature.getInfo(reqJwt)
     val requestObject = info.claimsSet
     val requesterChain = info.x5c!!
@@ -87,8 +86,6 @@ internal suspend fun uriSchemePresentment(
         request = requestObject,
         requesterCertChain = requesterChain,
     )
-
-    println("cool now send to $responseUri the response ${response}")
 
     val responseCs = when (requestObject["response_mode"]!!.jsonPrimitive.content) {
         "direct_post" -> {

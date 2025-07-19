@@ -123,7 +123,7 @@ std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson, std::string pr
     if (cJSON_GetArraySize(credentials) > 0) {
         cJSON *credential = cJSON_GetArrayItem(credentials, 0);
         auto format = std::string(cJSON_GetStringValue(cJSON_GetObjectItem(credential, "format")));
-        if (format == "mso_mdoc") {
+        if (format == "mso_mdoc" || format == "mso_mdoc_zk") {
             cJSON* meta = cJSON_GetObjectItem(credential, "meta");
             docTypeValue = std::string(cJSON_GetStringValue(cJSON_GetObjectItem(meta, "doctype_value")));
             cJSON* claim;

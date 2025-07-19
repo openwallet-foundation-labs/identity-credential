@@ -134,18 +134,17 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
                     data: JsonObject
                 ) {
                     val resultData = Intent()
+                    val json = Json.encodeToString(
+                        buildJsonObject {
+                            put("protocol", protocol)
+                            put("data", data)
+                        }
+                    )
+                    Logger.i(TAG, "Size of JSON response: ${json.length} bytes")
+                    val response = GetCredentialResponse(DigitalCredential(json))
                     PendingIntentHandler.setGetCredentialResponse(
                         resultData,
-                        GetCredentialResponse(
-                            DigitalCredential(
-                                Json.encodeToString(
-                                    buildJsonObject {
-                                        put("protocol", protocol)
-                                        put("data", data)
-                                    }
-                                )
-                            )
-                        )
+                        response
                     )
                     setResult(RESULT_OK, resultData)
                 }

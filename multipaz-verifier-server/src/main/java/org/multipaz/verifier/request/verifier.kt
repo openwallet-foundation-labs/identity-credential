@@ -79,7 +79,11 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.mdoc.zkp.ZkSystemSpec
+import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
 import org.multipaz.models.openid.OpenID4VP
+import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.SdJwtKb
@@ -93,6 +97,8 @@ import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.fromHex
 import java.net.URLEncoder
+import kotlin.IllegalArgumentException
+import kotlin.IllegalStateException
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -279,6 +285,32 @@ private val documentTypeRepo: DocumentTypeRepository by lazy {
     repo.addDocumentType(UtopiaNaturalization.getDocumentType())
     repo.addDocumentType(UtopiaMovieTicket.getDocumentType())
     repo
+}
+
+
+private var zkRepo: ZkSystemRepository? = null
+
+private suspend fun getZkSystemRepository(): ZkSystemRepository {
+    if (zkRepo != null) {
+        return zkRepo!!
+    }
+    val repo = ZkSystemRepository()
+    val circuitsToAdd = listOf(
+        "longfellow-libzk-v1/3_1_bd3168ea0a9096b4f7b9b61d1c210dac1b7126a9ec40b8bc770d4d485efce4e9",
+        "longfellow-libzk-v1/3_2_40b2b68088f1d4c93a42edf01330fed8cac471cdae2b192b198b4d4fc41c9083",
+        "longfellow-libzk-v1/3_3_99a5da3739df68c87c7a380cc904bb275dbd4f1b916c3d297ba9d15ee86dd585",
+        "longfellow-libzk-v1/3_4_5249dac202b61e03361a2857867297ee7b1d96a8a4c477d15a4560bde29f704f",
+    )
+    val longfellowSystem = LongfellowZkSystem()
+    val resources = BackendEnvironment.getInterface(Resources::class)!!
+    for (circuit in circuitsToAdd) {
+        val circuitBytes = resources.getRawResource(circuit)!!
+        val pathParts = circuit.split("/")
+        longfellowSystem.addCircuit(pathParts[pathParts.size - 1], circuitBytes)
+    }
+    repo.add(longfellowSystem)
+    zkRepo = repo
+    return zkRepo!!
 }
 
 private suspend fun clientId(): String {
@@ -1106,7 +1138,7 @@ private suspend fun handleGetDataMdoc(
 
         lines.add(ResultLine("DocType", document.docType))
         for (namespaceName in document.issuerNamespaces) {
-            lines.add(ResultLine("NameSpace", namespaceName))
+            lines.add(ResultLine("Namespace", namespaceName))
             for (dataElementName in document.getIssuerEntryNames(namespaceName)) {
                 val value = document.getIssuerEntryData(namespaceName, dataElementName)
                 val dataItem = Cbor.decode(value)
@@ -1120,6 +1152,75 @@ private suspend fun handleGetDataMdoc(
                 lines.add(ResultLine(dataElementName, renderedValue))
             }
         }
+    }
+    for (zkDocument in deviceResponse.zkDocuments) {
+        val zkSystemRepository = getZkSystemRepository()
+        val trustManager = getIssuerTrustManager()
+
+        try {
+            val zkSystemSpec = zkSystemRepository.getAllZkSystemSpecs().find {
+                it.id == zkDocument.zkDocumentData.zkSystemSpecId
+            }
+            if (zkSystemSpec == null) {
+                lines.add(ResultLine(
+                    "ZK Verification",
+                    "ZK System Spec ID ${zkDocument.zkDocumentData.zkSystemSpecId} was not found.")
+                )
+            } else {
+
+                zkSystemRepository.lookup(zkSystemSpec.system)
+                    ?.verifyProof(zkDocument, zkSystemSpec, ByteString(session.sessionTranscript!!))
+                    ?: throw IllegalStateException("Zk System '${zkSystemSpec.system}' was not found.")
+                lines.add(ResultLine(
+                    "ZK Verification",
+                    "Successfully validated proof"
+                ))
+            }
+
+            if (zkDocument.zkDocumentData.msoX5chain == null) {
+                lines.add(ResultLine("Issuer", "No msoX5chain in ZkDocumentData"))
+            } else {
+                val trustResult = trustManager.verify(zkDocument.zkDocumentData.msoX5chain!!.certificates)
+                if (trustResult.isTrusted) {
+                    val tp = trustResult.trustPoints[0]
+                    val name = tp.metadata.displayName ?: tp.certificate.subject.name
+                    lines.add(ResultLine("Issuer", "In trust list ($name)"))
+                } else {
+                    val name = zkDocument.zkDocumentData.msoX5chain!!.certificates.first().subject.name
+                    lines.add(ResultLine("Issuer", "Not in trust list ($name)"))
+                }
+            }
+
+            for ((nameSpaceName, dataElements) in zkDocument.zkDocumentData.issuerSigned) {
+                lines.add(ResultLine("Namespace", nameSpaceName))
+                for ((dataElementName, dataElementValue) in dataElements) {
+                    val valueStr = Cbor.toDiagnostics(
+                        dataElementValue,
+                        setOf(
+                            DiagnosticOption.PRETTY_PRINT,
+                            DiagnosticOption.EMBEDDED_CBOR,
+                            DiagnosticOption.BSTR_PRINT_LENGTH,
+                        )
+                    )
+                    lines.add(
+                        ResultLine(
+                            dataElementName,
+                            valueStr,
+                        )
+                    )
+                }
+            }
+            // TODO: also iterate over DeviceSigned items
+
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            lines.add(ResultLine(
+                "ZK Verification",
+                "Failed with error $e"
+            ))
+        }
+
+
     }
 
     return lines.toList()
@@ -1235,7 +1336,7 @@ private fun createSessionTranscriptOpenID4VP(
     )
 }
 
-private fun calcDcRequestString(
+private suspend fun calcDcRequestString(
     documentTypeRepository: DocumentTypeRepository,
     format: String,
     session: Session,
@@ -1390,7 +1491,7 @@ private fun calcDcRequestStringOpenID4VPforDCQL(
     ).toString()
 }
 
-private fun calcDcRequestStringOpenID4VP(
+private suspend fun calcDcRequestStringOpenID4VP(
     version: OpenID4VP.Version,
     documentTypeRepository: DocumentTypeRepository,
     format: String,
@@ -1407,6 +1508,12 @@ private fun calcDcRequestStringOpenID4VP(
     responseMode: OpenID4VP.ResponseMode,
     responseUri: String?
 ): String {
+    val zkSystemSpecs = if (request.mdocRequest?.useZkp == true) {
+        getZkSystemRepository().getAllZkSystemSpecs()
+    } else {
+        emptyList()
+    }
+
     val dcql = buildJsonObject {
         putJsonArray("credentials") {
             if (format == "vc") {
@@ -1436,9 +1543,26 @@ private fun calcDcRequestStringOpenID4VP(
             } else {
                 addJsonObject {
                     put("id", JsonPrimitive("cred1"))
-                    put("format", JsonPrimitive("mso_mdoc"))
+                    if (zkSystemSpecs.isNotEmpty()) {
+                        put("format", JsonPrimitive("mso_mdoc_zk"))
+                    } else {
+                        put("format", JsonPrimitive("mso_mdoc"))
+                    }
                     putJsonObject("meta") {
                         put("doctype_value", JsonPrimitive(request.mdocRequest!!.docType))
+                        if (zkSystemSpecs.isNotEmpty()) {
+                            putJsonArray("zk_system_type") {
+                                for (spec in zkSystemSpecs) {
+                                    addJsonObject {
+                                        put("system", spec.system)
+                                        put("id", spec.id)
+                                        spec.params.forEach { param ->
+                                            put(param.key, param.value.toJson())
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     putJsonArray("claims") {
                         for (ns in request.mdocRequest!!.namespacesToRequest) {
@@ -1528,7 +1652,7 @@ private fun mdocCalcDcRequestStringArf(
     return top.toString(JSONStyle.NO_COMPRESS)
 }
 
-private fun mdocCalcDcRequestStringMdocApi(
+private suspend fun mdocCalcDcRequestStringMdocApi(
     documentTypeRepository: DocumentTypeRepository,
     request: DocumentCannedRequest,
     nonce: ByteString,
@@ -1549,6 +1673,12 @@ private fun mdocCalcDcRequestStringMdocApi(
     val dcapiInfo = buildCborArray {
         add(base64EncryptionInfo)
         add(origin)
+    }
+
+    val zkSystemSpecs: List<ZkSystemSpec> = if (request.mdocRequest!!.useZkp) {
+        getZkSystemRepository().getAllZkSystemSpecs()
+    } else {
+        emptyList()
     }
 
     val sessionTranscript = Cbor.encode(
@@ -1577,6 +1707,7 @@ private fun mdocCalcDcRequestStringMdocApi(
         readerKey = readerAuthKey,
         signatureAlgorithm = Algorithm.ES256,
         readerKeyCertificateChain = readerAuthKeyCertification,
+        zkSystemSpecs = zkSystemSpecs
     )
     val deviceRequest = generator.generate()
     val base64DeviceRequest = deviceRequest.toBase64Url()

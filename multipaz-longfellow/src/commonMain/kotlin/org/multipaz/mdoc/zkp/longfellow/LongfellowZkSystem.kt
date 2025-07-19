@@ -1,13 +1,11 @@
 package org.multipaz.mdoc.zkp.longfellow
 
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
@@ -23,6 +21,10 @@ import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.request.MdocRequest
 import kotlinx.datetime.Instant
 import org.multipaz.cbor.putCborArray
+import org.multipaz.util.toHex
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 
 private data class CircuitEntry (
     val zkSystemSpec: ZkSystemSpec,
@@ -50,7 +52,7 @@ class LongfellowZkSystem(): ZkSystem {
         get() = "longfellow-libzk-v1"
 
     private fun getFormattedCoordinate(value: ByteArray): String {
-        return "0x" + value.joinToString("") { (it.toInt() and 0xFF).toString(16).padStart(2, '0') }
+        return "0x" + value.toHex()
     }
 
     private fun formatDate(timestamp: Instant): String {
@@ -143,13 +145,22 @@ class LongfellowZkSystem(): ZkSystem {
         val x = getFormattedCoordinate(ecPubKeyCoordinates.x)
         val y = getFormattedCoordinate(ecPubKeyCoordinates.y)
 
-        val issuerItems = mutableListOf<DataItem>()
         val attributes = mutableListOf<NativeAttribute>()
-        for ((_, v) in doc["issuerSigned"]["nameSpaces"].asMap) {
-            for (attr in v.asArray) {
-                issuerItems.add(attr)
-                attributes.add(NativeAttribute.fromDataItem(attr))
+        val issuerSigned = mutableMapOf<String, Map<String, DataItem>>()
+        for ((nameSpaceItem, dataElementsItem) in doc["issuerSigned"]["nameSpaces"].asMap) {
+            val values = mutableMapOf<String, DataItem>()
+            for (encodedIssuerSignedItem in dataElementsItem.asArray) {
+                val issuerSignedItem = encodedIssuerSignedItem.asTaggedEncodedCbor
+                val dataElementName = issuerSignedItem["elementIdentifier"].asTstr
+                val dataElementValue = issuerSignedItem["elementValue"]
+                values.put(dataElementName, dataElementValue)
+                // TODO: prepend nameSpaceName
+                attributes.add(NativeAttribute(
+                    key = dataElementName,
+                    value = Cbor.encode(dataElementValue)
+                ))
             }
+            issuerSigned.put(nameSpaceItem.asTstr, values)
         }
 
         val proof = LongfellowNatives.runMdocProver(
@@ -172,8 +183,8 @@ class LongfellowZkSystem(): ZkSystem {
                 zkSystemSpecId = zkSystemSpec.id,
                 docType = docType,
                 timestamp = timestamp,
-                issuerSignedItems = issuerItems,
-                deviceSignedItems = listOf(),
+                issuerSigned = issuerSigned,
+                deviceSigned = emptyMap(),     // TODO: support deviceSigned in Longfellow
                 msoX5chain = X509CertChain(listOf(issuerCert)),
             )
         )
@@ -193,7 +204,17 @@ class LongfellowZkSystem(): ZkSystem {
 
         val longfellowZkSystemSpec = getLongfellowZkSystemSpec(zkSystemSpec)
         val circuitBytes = getCircuitBytes(zkSystemSpec) ?: throw IllegalArgumentException("Circuit not found for system spec: $zkSystemSpec")
-        val attributes = zkDocument.zkDocumentData.issuerSignedItems.map{ NativeAttribute.fromDataItem(it) }
+
+        val attributes = mutableListOf<NativeAttribute>()
+        for ((nameSpaceName, dataElements) in zkDocument.zkDocumentData.issuerSigned) {
+            for ((dataElementName, dataElementValue) in dataElements) {
+                // TODO: prepend nameSpaceName
+                attributes.add(NativeAttribute(
+                    key = dataElementName,
+                    value = Cbor.encode(dataElementValue)
+                ))
+            }
+        }
 
         val verifierResult = LongfellowNatives.runMdocVerifier(
             circuitBytes,
