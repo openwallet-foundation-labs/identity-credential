@@ -31,10 +31,28 @@ The project provides libraries written in [Kotlin Multiplatform](https://kotlinl
   non-negligible and not all applications need this or they may bring their
   own.
 
+## Command-line tool
+
 A command-line tool `multipazctl` is also included which can be used to generate
 ISO/IEC 18013-5:2021 IACA certificates among other things. Use
 `./gradlew --quiet runMultipazCtl --args "help"` for documentation on supported
-verbs and options.
+verbs and options. To set up a wrapper, first build the fat jar
+
+```shell
+$ ./gradlew multipazctl:buildFatJar
+```
+
+then create a wrapper like this
+```shell
+#!/bin/sh
+MAIN_CLASS="org.multipaz.multipazctl.MultipazCtl"
+CLASSPATH="/Users/davidz/StudioProjects/identity-credential/multipazctl/build/libs/multipazctl-all.jar"
+JVM_OPTS="-Xms256m -Xmx512m"
+exec java $JVM_OPTS -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+```
+
+in e.g. `~/bin/multipazctl` adjusting paths as needed. With this you can now
+invoke `multipazctl` like any other system tool.
 
 ## Library releases, Versioning, and Stability
 

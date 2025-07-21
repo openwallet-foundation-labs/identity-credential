@@ -21,7 +21,6 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.security.Security
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.random.Random
 
 @OptIn(ExperimentalEncodingApi::class)
 object MultipazCtl {
@@ -60,7 +59,7 @@ object MultipazCtl {
         //                         serialNumber is optional.
         //
         val subjectAndIssuer = X500Name.fromName(
-            getArg(args, "subject_and_issuer", "CN=OWF Identity Credential TEST IACA,C=ZZ")
+            getArg(args, "subject_and_issuer", "CN=OWF Multipaz TEST IACA,C=US")
         )
 
         // From 18013-5 Annex B: 3-5 years is recommended
@@ -77,13 +76,13 @@ object MultipazCtl {
 
         val issuerAltNameUrl = getArg(args,
             "issuer_alt_name_url",
-            "https://github.com/openwallet-foundation-labs/identity-credential"
+            "https://issuer.example.com/website"
         )
 
         val crlUrl = getArg(
             args,
             "crl_url",
-            "https://github.com/openwallet-foundation-labs/identity-credential"
+            "https://issuer.example.com/crl.crl"
         )
 
         val serial = ASN1Integer.fromRandom(128)
@@ -98,7 +97,7 @@ object MultipazCtl {
             crlUrl
         )
 
-        println("Generated self-signed IACA certificate and private key.")
+        println("- Generated self-signed IACA cert and private key with curve $curve")
 
         File(privateKeyOutputFilename).outputStream().bufferedWriter().let {
             it.write(iacaKey.toPem())
@@ -110,7 +109,7 @@ object MultipazCtl {
             it.write(iacaCertificate.toPem())
             it.close()
         }
-        println("- Wrote IACA certificate to $certificateOutputFilename")
+        println("- Wrote IACA cert to $certificateOutputFilename")
     }
 
     fun generateDs(args: Array<String>) {
@@ -134,7 +133,7 @@ object MultipazCtl {
         // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
 
         val subject = X500Name.fromName(
-            getArg(args, "subject", "CN=OWF Identity Credential TEST DS,C=ZZ")
+            getArg(args, "subject", "CN=OWF Multipaz TEST DS,C=US")
         )
 
         val validityInYears = getArg(args, "validity_in_years", "1").toInt()
@@ -159,26 +158,27 @@ object MultipazCtl {
             validUntil
         )
 
-        println("Generated DS certificate and private key.")
+        println("- Generated DS cert and private key with curve $curve")
 
         println("- Loaded IACA cert from $iacaCertificateFilename")
+        println("- Loaded IACA private key from $iacaPrivateKeyFilename")
 
         File(privateKeyOutputFilename).outputStream().bufferedWriter().let {
             it.write(dsKey.toPem())
             it.close()
         }
-        println("- Wrote private key to $privateKeyOutputFilename")
+        println("- Wrote DS private key to $privateKeyOutputFilename")
 
         File(certificateOutputFilename).outputStream().bufferedWriter().let {
             it.write(dsCertificate.toPem())
             it.close()
         }
-        println("- Wrote DS certificate to $certificateOutputFilename")
+        println("- Wrote DS cert to $certificateOutputFilename")
     }
 
     fun generateReaderRoot(args: Array<String>) {
         val subjectAndIssuer = X500Name.fromName(
-            getArg(args, "subject_and_issuer", "CN=OWF Identity Credential TEST Reader CA,C=ZZ")
+            getArg(args, "subject_and_issuer", "CN=OWF Multipaz TEST Reader CA,C=US")
         )
 
         // From 18013-5 Annex B: 3-5 years is recommended
@@ -193,8 +193,11 @@ object MultipazCtl {
 
         val serial = ASN1Integer.fromRandom(128)
 
-
-        println("Curve: $curve [$curveName]")
+        val crlUrl = getArg(
+            args,
+            "crl_url",
+            "https://reader-ca.example.com/crl.crl"
+        )
 
         val readerRootKey = Crypto.createEcPrivateKey(curve)
 
@@ -205,77 +208,169 @@ object MultipazCtl {
                 serial = serial,
                 validFrom = validFrom,
                 validUntil = validUntil,
-                crlUrl = "https://github.com/openwallet-foundation-labs/identity-credential/crl"
+                crlUrl = crlUrl
             )
 
-        println("Generated self-signed reader root certificate and private key.")
+        println("- Generated self-signed reader root cert and private key with curve $curve")
 
-        val certificateOutputFilename = getArg(args, "out_certificate", "")
-        val privateKeyOutputFilename = getArg(args, "out_private_key", "")
-        if (certificateOutputFilename.isNotEmpty()) {
-            check(privateKeyOutputFilename.isNotEmpty()) {
-                "When out_certificate is specified, out_private_key must be specified too"
-            }
-            File(privateKeyOutputFilename).writer().let {
-                it.write(readerRootKey.toPem())
-                it.close()
-            }
-            println("- Wrote private key to $privateKeyOutputFilename")
-
-            File(certificateOutputFilename).writer().let {
-                it.write(readerRootCertificate.toPem())
-                it.close()
-            }
-            println("- Wrote reader root certificate to $certificateOutputFilename")
-        } else {
-            val readerIdentity = getArg(args, "out_identity", "reader_identity.json")
-            val json = buildJsonObject {
-                put("jwk", readerRootKey.toJwk())
-                put("x5c", X509CertChain(listOf(readerRootCertificate)).toX5c())
-            }
-            File(readerIdentity).writer().let {
-                it.write(jsonPrettyPrint.encodeToString(json))
-                it.write("\n")
-                it.close()
-            }
+        val certificateOutputFilename = getArg(args, "out_certificate", "reader_root_certificate.pem")
+        val privateKeyOutputFilename = getArg(args, "out_private_key", "reader_root_private_key.pem")
+        File(privateKeyOutputFilename).writer().let {
+            it.write(readerRootKey.toPem())
+            it.close()
         }
+        println("- Wrote reader root private key to $privateKeyOutputFilename")
+
+        File(certificateOutputFilename).writer().let {
+            it.write(readerRootCertificate.toPem())
+            it.close()
+        }
+        println("- Wrote reader root cert to $certificateOutputFilename")
     }
 
+    fun generateReaderCert(args: Array<String>) {
+        val readerRootCertificateFilename =
+            getArg(args, "reader_root_certificate", "reader_root_certificate.pem")
+        val readerRootPrivateKeyFilename =
+            getArg(args, "reader_root_private_key", "reader_root_private_key.pem")
+
+        val readerRootCert = X509Cert.fromPem(
+            String(File(readerRootCertificateFilename).readBytes(), StandardCharsets.US_ASCII))
+
+        val readerRootPrivateKey = EcPrivateKey.fromPem(
+            String(File(readerRootPrivateKeyFilename).readBytes(), StandardCharsets.US_ASCII),
+            readerRootCert.ecPublicKey)
+
+        val certificateOutputFilename =
+            getArg(args, "out_certificate", "reader_certificate.pem")
+        val privateKeyOutputFilename =
+            getArg(args, "out_private_key", "reader_private_key.pem")
+
+        // Requirements for the Reader Root certificate is defined in ISO/IEC 18013-5:2021 Annex B
+
+        val subject = X500Name.fromName(
+            getArg(args, "subject", "CN=OWF Multipaz TEST Reader,C=US")
+        )
+
+        val validityInYears = getArg(args, "validity_in_years", "1").toInt()
+        val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+        val validFrom = now
+        val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
+
+        val curveName = getArg(args, "curve", "P-256")
+        val curve = EcCurve.fromJwkName(curveName)
+
+        val readerKey = Crypto.createEcPrivateKey(curve)
+
+        val serial = ASN1Integer.fromRandom(128)
+
+        val readerCertificate = MdocUtil.generateReaderCertificate(
+            readerRootCert = readerRootCert,
+            readerRootKey = readerRootPrivateKey,
+            readerKey = readerKey.publicKey,
+            subject = subject,
+            serial = serial,
+            validFrom = validFrom,
+            validUntil = validUntil
+        )
+
+        println("- Generated Reader cert and private key with curve $curve")
+
+        println("- Loaded reader root cert from $readerRootCertificateFilename")
+        println("- Loaded reader root private key from $readerRootPrivateKeyFilename")
+
+        File(privateKeyOutputFilename).outputStream().bufferedWriter().let {
+            it.write(readerKey.toPem())
+            it.close()
+        }
+        println("- Wrote reader private key to $privateKeyOutputFilename")
+
+        File(certificateOutputFilename).outputStream().bufferedWriter().let {
+            it.write(readerCertificate.toPem())
+            it.close()
+        }
+        println("- Wrote reader cert to $certificateOutputFilename")
+    }
+
+    fun printJwk(args: Array<String>) {
+        val certificateFilename = getArg(args, "certificate", "")
+        val privateKeyFilename = getArg(args, "private_key", "")
+
+        check(certificateFilename.length > 0) { "Certificate must be specified" }
+        check(privateKeyFilename.length > 0) { "Private key must be specified" }
+
+        val certificate = X509Cert.fromPem(
+            String(File(certificateFilename).readBytes(), StandardCharsets.US_ASCII))
+
+        val privateKey = EcPrivateKey.fromPem(
+            String(File(privateKeyFilename).readBytes(), StandardCharsets.US_ASCII),
+            certificate.ecPublicKey)
+
+        println("- Loaded cert from $certificateFilename")
+        println("- Loaded private key from $privateKeyFilename")
+        println("")
+
+        val json = buildJsonObject {
+            put("jwk", privateKey.toJwk())
+            put("x5c", X509CertChain(listOf(certificate)).toX5c())
+        }
+        println(jsonPrettyPrint.encodeToString(json))
+        println("")
+    }
 
     fun usage(args: Array<String>) {
         println(
 """
-Generate an IACA certificate and corresponding private key:
+Generate a IACA certificate and corresponding private key:
 
     multipazctl generateIaca
         [--out_certificate iaca_certificate.pem]
         [--out_private_key iaca_private_key.pem]
-        [--subject_and_issuer 'CN=OWF Identity Credential TEST IACA,C=ZZ']
+        [--subject_and_issuer 'CN=OWF Multipaz TEST IACA,C=US']
         [--validity_in_years 5]
         [--curve P-384]
         [--issuer_alt_name_url https://issuer.example.com/website]
         [--crl_url https://issuer.example.com/crl.crl]
 
-Generate an DS certificate and corresponding private key:
+Generate a DS certificate and corresponding private key:
 
     multipazctl generateDs
-        --iaca_certificate iaca_certificate.pem
-        --iaca_private_key iaca_private_key.pem
+        [--iaca_certificate iaca_certificate.pem]
+        [--iaca_private_key iaca_private_key.pem]
         [--out_certificate ds_certificate.pem]
         [--out_private_key ds_private_key.pem]
-        [--subject 'CN=OWF Identity Credential TEST DS,C=ZZ']
+        [--subject 'CN=OWF Multipaz TEST DS,C=US']
         [--validity_in_years 1]
         [--curve P-256]
 
-Generate an reader root and corresponding private key:
+Generate a reader root and corresponding private key:
 
     multipazctl generateReaderRoot
-        [--out_identity reader_identity.json]
-        [--out_certificate <no default>]
-        [--out_private_key <no default>]
-        [--subject_and_issuer 'CN=OWF Identity Credential TEST Reader CA,C=ZZ']
+        [--out_certificate reader_root_certificate.pem]
+        [--out_private_key reader_root_private_key.pem]
+        [--subject_and_issuer 'CN=OWF Multipaz TEST Reader CA,C=US']
         [--validity_in_years 3]
         [--curve P-384]
+        [--crl_url https://reader-ca.example.com/crl.crl]
+
+Generate a reader certificate and corresponding private key:
+
+    multipazctl generateReaderCert
+        [--reader_root_certificate reader_root_certificate.pem]
+        [--reader_root_private_key reader_root_private_key.pem]
+        [--out_certificate reader_certificate.pem]
+        [--out_private_key reader_private_key.pem]
+        [--subject 'CN=OWF Multipaz TEST Reader,C=US']
+        [--validity_in_years 1]
+        [--curve P-256]
+
+Generate JSON for a private key and certificate according to RFC 7517:
+
+    multipazctl printJwk
+        --private_key private_key.pem
+        --certificate certificate.pem
+
+Prints out version:
 
     multipazctl version
 """)
@@ -298,6 +393,8 @@ Generate an reader root and corresponding private key:
                 "generateIaca" -> generateIaca(args)
                 "generateDs" -> generateDs(args)
                 "generateReaderRoot" -> generateReaderRoot(args)
+                "generateReaderCert" -> generateReaderCert(args)
+                "printJwk" -> printJwk(args)
                 "help" -> usage(args)
                 "version" -> version(args)
                 else -> {
