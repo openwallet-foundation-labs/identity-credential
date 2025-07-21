@@ -16,13 +16,15 @@ import org.multipaz.cbor.annotation.CborSerializable
  *   use this if they support importing test certificates / VICALs and wish to convey in
  *   the user interface that the particular reader or issuer being authenticated is used
  *   only for testing.
+ * @param extensions additional metadata which can be used by the application.
  */
 @CborSerializable
 data class TrustMetadata(
     val displayName: String? = null,
     val displayIcon: ByteString? = null,
     val privacyPolicyUrl: String? = null,
-    val testOnly: Boolean = false
+    val testOnly: Boolean = false,
+    val extensions: Map<String, String> = emptyMap()
 ) {
     companion object
 }

@@ -489,10 +489,10 @@ class TrustManagerTest {
             assertEquals(0, it.trustPoints.size)
         }
 
+        // Check it's the same when reloading the TrustManager
         val otherTrustManager = TrustManagerLocal(storage)
         assertEquals(0, otherTrustManager.getEntries().size)
 
-        // Check verification now fails
         otherTrustManager.verify(listOf(dsCertificate)).let {
             assertEquals("No trusted root certificate could not be found", it.error?.message)
             assertFalse(it.isTrusted)
@@ -528,11 +528,75 @@ class TrustManagerTest {
             assertEquals(0, it.trustPoints.size)
         }
 
+        // Check it's the same when reloading the TrustManager
         val otherTrustManager = TrustManagerLocal(storage)
         assertEquals(0, otherTrustManager.getEntries().size)
 
-        // Check verification now fails
+        otherTrustManager.verify(listOf(testIaca.elboniaDs)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+    }
+
+    @Test
+    fun deleteAll() = runTest {
+        val storage = EphemeralStorage()
+        val trustManager = TrustManagerLocal(storage)
+
+        val entryX509 = trustManager.addX509Cert(intermediateCertificate, TrustMetadata())
+        assertEquals(setOf(
+            intermediateCertificate.subjectKeyIdentifier!!.toHex(),
+        ), trustManager.getTrustPoints().map { it.certificate.subjectKeyIdentifier!!.toHex() }.toSet())
+
+        val testIaca = createTestIaca()
+        val entryVical = trustManager.addVical(testIaca.encodedSignedVical, TrustMetadata())
+
+        assertEquals(listOf(entryX509, entryVical), trustManager.getEntries())
+
+        // Check verification works
+        trustManager.verify(listOf(dsCertificate)).let {
+            assertEquals(null, it.error)
+            assertTrue(it.isTrusted)
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(intermediateCertificate, it.trustChain.certificates.last())
+        }
         trustManager.verify(listOf(testIaca.elboniaDs)).let {
+            assertEquals(null, it.error)
+            assertTrue(it.isTrusted)
+            assertEquals(2, it.trustChain!!.certificates.size)
+            assertEquals(testIaca.elboniaIaca, it.trustChain.certificates.last())
+        }
+
+        trustManager.deleteAll()
+        assertEquals(0, trustManager.getEntries().size)
+
+        // Check verification now fails
+        trustManager.verify(listOf(dsCertificate)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+        trustManager.verify(listOf(testIaca.elboniaDs)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+
+        // Check it's the same when reloading the TrustManager
+        val otherTrustManager = TrustManagerLocal(storage)
+        assertEquals(0, otherTrustManager.getEntries().size)
+
+        otherTrustManager.verify(listOf(dsCertificate)).let {
+            assertEquals("No trusted root certificate could not be found", it.error?.message)
+            assertFalse(it.isTrusted)
+            assertNull(it.trustChain)
+            assertEquals(0, it.trustPoints.size)
+        }
+        otherTrustManager.verify(listOf(testIaca.elboniaDs)).let {
             assertEquals("No trusted root certificate could not be found", it.error?.message)
             assertFalse(it.isTrusted)
             assertNull(it.trustChain)
