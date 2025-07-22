@@ -100,9 +100,15 @@ actual fun platformCreateKeySettings(
     check(algorithm.fullySpecified)
     var timeoutMillis = 0L
     // Work around Android bug where ECDH keys don't work with timeout 0, see
-    // AndroidKeystoreUnlockData.cryptoObjectForKeyAgreement for details.
+    // AndroidKeystoreUnlockData.cryptoObjectForKeyAgreement for details...
+    //
+    // Also, on some devices (not all!) using both face and fingerprint the time
+    // spent in the biometric prompt counts against the timeout... so if we use a low
+    // value like one second it'll cause a second biometric prompt to appear. Work
+    // around this bug by using a high timeout.
+    //
     if (algorithm.isKeyAgreement) {
-        timeoutMillis = 1000L
+        timeoutMillis = 15_000L
     }
     return AndroidKeystoreCreateKeySettings.Builder(challenge)
         .setAlgorithm(algorithm)
