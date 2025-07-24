@@ -44,6 +44,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.server.test.host)
 }
 
 ktor {
