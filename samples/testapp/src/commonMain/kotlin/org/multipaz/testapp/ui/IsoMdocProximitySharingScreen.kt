@@ -37,6 +37,7 @@ import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.compose.permissions.rememberBluetoothEnabledState
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.testapp.ui.ShowQrCodeDialog
 import org.multipaz.mdoc.engagement.EngagementGenerator
@@ -57,6 +58,7 @@ fun IsoMdocProximitySharingScreen(
 ) {
     val coroutineScope = rememberCoroutineScope { promptModel }
     val blePermissionState = rememberBluetoothPermissionState()
+    val bleEnabledState = rememberBluetoothEnabledState()
 
     val showQrCode = remember { mutableStateOf<ByteString?>(null) }
     if (showQrCode.value != null && presentmentModel.state.collectAsState().value != PresentmentModel.State.PROCESSING) {
@@ -88,6 +90,22 @@ fun IsoMdocProximitySharingScreen(
                 }
             ) {
                 Text("Request BLE permissions")
+            }
+        }
+    }  else if (!bleEnabledState.isEnabled) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        bleEnabledState.enable()
+                    }
+                }
+            ) {
+                Text("Enable Bluetooth")
             }
         }
     } else {
