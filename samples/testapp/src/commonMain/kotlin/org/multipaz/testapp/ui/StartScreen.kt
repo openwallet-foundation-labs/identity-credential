@@ -38,6 +38,7 @@ import multipazproject.samples.testapp.generated.resources.secure_enclave_secure
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.face_detection_title
 import multipazproject.samples.testapp.generated.resources.selfie_check_title
+import multipazproject.samples.testapp.generated.resources.face_match_title
 import kotlinx.coroutines.launch
 import multipazproject.samples.testapp.generated.resources.barcode_scanning_title
 import multipazproject.samples.testapp.generated.resources.camera_title
@@ -75,7 +76,8 @@ fun StartScreen(
     onClickCamera: () -> Unit = {},
     onClickFaceDetection: () -> Unit = {},
     onClickBarcodeScanning: () -> Unit = {},
-    onClickSelfieCheck: () -> Unit = {}
+    onClickSelfieCheck: () -> Unit = {},
+    onClickFaceMatch: () -> Unit = {}
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
@@ -266,14 +268,20 @@ fun StartScreen(
                 }
 
                 item {
-                    TextButton(onClick = onClickBarcodeScanning) {
-                        Text(stringResource(Res.string.barcode_scanning_title))
+                    TextButton(onClick = onClickFaceMatch) {
+                        Text(stringResource(Res.string.face_match_title))
                     }
                 }
 
                 item {
                     TextButton(onClick = onClickSelfieCheck) {
                         Text(stringResource(Res.string.selfie_check_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickBarcodeScanning) {
+                        Text(stringResource(Res.string.barcode_scanning_title))
                     }
                 }
             }

@@ -51,10 +51,31 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
+  - TensorFlowLiteC (2.17.0):
+    - TensorFlowLiteC/Core (= 2.17.0)
+  - TensorFlowLiteC/Core (2.17.0)
+  - TensorFlowLiteC/CoreML (2.17.0):
+    - TensorFlowLiteC/Core
+  - TensorFlowLiteC/Metal (2.17.0):
+    - TensorFlowLiteC/Core
+  - TensorFlowLiteObjC/Core (2.17.0):
+    - TensorFlowLiteC (= 2.17.0)
+    - TensorFlowLiteObjC/Privacy (= 2.17.0)
+  - TensorFlowLiteObjC/CoreML (2.17.0):
+    - TensorFlowLiteC/CoreML (= 2.17.0)
+    - TensorFlowLiteObjC/Core (= 2.17.0)
+    - TensorFlowLiteObjC/Privacy (= 2.17.0)
+  - TensorFlowLiteObjC/Metal (2.17.0):
+    - TensorFlowLiteC/Metal (= 2.17.0)
+    - TensorFlowLiteObjC/Core (= 2.17.0)
+    - TensorFlowLiteObjC/Privacy (= 2.17.0)
+  - TensorFlowLiteObjC/Privacy (2.17.0)
 
 DEPENDENCIES:
   - GoogleMLKit/BarcodeScanning (= 8.0.0)
   - GoogleMLKit/FaceDetection (= 8.0.0)
+  - TensorFlowLiteObjC/CoreML
+  - TensorFlowLiteObjC/Metal
 
 SPEC REPOS:
   trunk:
@@ -70,6 +91,8 @@ SPEC REPOS:
     - MLKitVision
     - nanopb
     - PromisesObjC
+    - TensorFlowLiteC
+    - TensorFlowLiteObjC
 
 SPEC CHECKSUMS:
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
@@ -84,7 +107,9 @@ SPEC CHECKSUMS:
   MLKitVision: fa8dea9012ac59497c79ddbe9ebf32051047ac4c
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  TensorFlowLiteC: eac6d689a8d391d1b202dc59e3d9165ba64aaf73
+  TensorFlowLiteObjC: 72e1fa903465cd6a8d3d614c1474c5aad7635bb7
 
-PODFILE CHECKSUM: ad7a4fb19d33b907df3bfa5f484ddbb7251ef70c
+PODFILE CHECKSUM: 38a4db0783110019aca62460db4a400645ba644a
 
 COCOAPODS: 1.16.2

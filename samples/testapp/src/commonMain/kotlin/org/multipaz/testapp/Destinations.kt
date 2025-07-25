@@ -28,6 +28,7 @@ import multipazproject.samples.testapp.generated.resources.document_store_screen
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.document_viewer_title
 import multipazproject.samples.testapp.generated.resources.face_detection_title
+import multipazproject.samples.testapp.generated.resources.face_match_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
@@ -251,6 +252,11 @@ data object SelfieCheckScreenDestination : Destination {
     override val title = Res.string.selfie_check_title
 }
 
+data object FaceMatchScreenDestination : Destination {
+    override val route = "FaceMatch"
+    override val title = Res.string.face_match_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -284,6 +290,7 @@ val appDestinations = listOf(
     ScreenLockDestination,
     CameraDestination,
     FaceDetectionDestination,
+    FaceMatchScreenDestination,
+    SelfieCheckScreenDestination,
     BarcodeScanningDestination,
-    SelfieCheckScreenDestination
 )

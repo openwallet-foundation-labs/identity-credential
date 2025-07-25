@@ -297,6 +297,7 @@ private fun CameraPreviewOverlay(faces: List<DetectedFace>?, transformationMatri
                 topLeft = Offset(0f, textLayoutResult.size.height.toFloat() * line++ )
             )
 
+            // Draw face contours (MLKit provides contours for one face only).
             for (contour in face.contours) {
                 contour.points.forEach { point ->
                     val vertice = mapFaceData(point, transformationMatrix)
@@ -326,6 +327,7 @@ private fun CameraPreviewOverlay(faces: List<DetectedFace>?, transformationMatri
                 }
             }
 
+            // Draw face landmarks.
             for (landmark in face.landmarks) {
                 val vertice = mapFaceData(landmark.position, transformationMatrix)
                 drawCircle(
@@ -358,6 +360,7 @@ private fun CameraPreviewOverlay(faces: List<DetectedFace>?, transformationMatri
                     y = maxOf(mappedP1.y, mappedP2.y, mappedP3.y, mappedP4.y)
                 )
 
+                // Draw face frame.
                 drawRoundRect(
                     color = Color.Blue,
                     topLeft = bbTopLeft,
@@ -387,19 +390,20 @@ private fun extractFaceBitmap(
         return frameData.cameraImage.toImageBitmap()
     }
 
+    val mouthPosition = faces[0].landmarks.find { it.type == FaceLandmarkType.MOUTH_BOTTOM }
     val leftEye = faces[0].landmarks.find { it.type == FaceLandmarkType.LEFT_EYE }
     val rightEye = faces[0].landmarks.find { it.type == FaceLandmarkType.RIGHT_EYE }
 
-    if (leftEye == null || rightEye == null) {
+    if (leftEye == null || rightEye == null || mouthPosition == null) {
         Logger.w(TAG, "No face features for bitmap extraction.")
         return frameData.cameraImage.toImageBitmap()
     }
 
     // Heuristic multiplier to fit the face normalized to the eyes pupilar distance.
-    val faceCropFactor = 3.5f
+    val faceCropFactor = 4f
 
     // Heuristic multiplier to offset vertically so the face is better centered within the rectangular crop.
-    val faceVerticalOffsetFactor = 0.5f
+    val faceVerticalOffsetFactor = 0.25f
 
     var faceCenterX = (leftEye.position.x + rightEye.position.x) / 2
     var faceCenterY = (leftEye.position.y + rightEye.position.y) / 2
@@ -408,10 +412,13 @@ private fun extractFaceBitmap(
     val eyeDistance = sqrt(eyeOffsetX * eyeOffsetX + eyeOffsetY * eyeOffsetY)
     val faceWidth = eyeDistance * faceCropFactor
     val faceVerticalOffset = eyeDistance * faceVerticalOffsetFactor
+
     if (frameData.isLandscape) {
-        faceCenterY += faceVerticalOffset
+        /** Required for iOS capable of upside-down face detection. */
+        faceCenterY += faceVerticalOffset * (if (leftEye.position.y < mouthPosition.position.y) 1 else -1)
     } else {
-        faceCenterX -= faceVerticalOffset
+        /** Required for iOS capable of upside-down face detection. */
+        faceCenterX -= faceVerticalOffset * (if (leftEye.position.x < mouthPosition.position.x) -1 else 1)
     }
     val eyesAngleRad = atan2(eyeOffsetY, eyeOffsetX)
     val eyesAngleDeg = eyesAngleRad * 180.0 / PI // Convert radians to degrees
