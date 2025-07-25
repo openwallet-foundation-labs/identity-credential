@@ -56,11 +56,8 @@ actual class BluetoothEnabledState internal constructor(
             }
 
             CBManagerStateUnauthorized -> {
-                // Direct to settings for authorization
-                val settingsUrl = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
-                if (settingsUrl != null && UIApplication.sharedApplication.canOpenURL(settingsUrl)) {
-                    UIApplication.sharedApplication.openURL(settingsUrl, mapOf<Any?, Any?>(), null)
-                }
+                // Bluetooth permission not granted
+                throw IllegalStateException("Unauthorized: Bluetooth permission not granted")
             }
 
             CBManagerStateUnsupported -> {
