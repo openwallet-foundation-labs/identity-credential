@@ -1132,8 +1132,12 @@ private suspend fun handleGetDataMdoc(
             val name = tp.metadata.displayName ?: tp.certificate.subject.name
             lines.add(ResultLine("Issuer", "In trust list ($name)"))
         } else {
-            val name = document.issuerCertificateChain.certificates.first().subject.name
-            lines.add(ResultLine("Issuer", "Not in trust list ($name)"))
+            if (document.issuerCertificateChain.certificates.size > 0) {
+                val name = document.issuerCertificateChain.certificates.first().subject.name
+                lines.add(ResultLine("Issuer", "Not in trust list ($name)"))
+            } else {
+                lines.add(ResultLine("Issuer", "Not signed by issuer"))
+            }
         }
 
         lines.add(ResultLine("DocType", document.docType))
