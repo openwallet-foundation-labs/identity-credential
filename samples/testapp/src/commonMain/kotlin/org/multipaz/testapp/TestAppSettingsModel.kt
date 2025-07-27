@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.models.digitalcredentials.DigitalCredentials
 import kotlin.Boolean
 
 /**
@@ -73,6 +74,7 @@ class TestAppSettingsModel private constructor(
                 Boolean::class -> { dataItem.asBoolean as T }
                 String::class -> { dataItem.asTstr as T }
                 List::class -> { dataItem.asArray.map { item -> (item as Tstr).value } as T }
+                Set::class -> { dataItem.asArray.map { item -> (item as Tstr).value }.toSet() as T }
                 EcCurve::class -> { EcCurve.entries.find { it.name == dataItem.asTstr } as T }
                 else -> { throw IllegalStateException("Type not supported") }
             }
@@ -94,6 +96,12 @@ class TestAppSettingsModel private constructor(
                         List::class -> {
                             buildCborArray {
                                 (newValue as List<*>).forEach { add(Tstr(it as String)) }
+                            }
+                        }
+
+                        Set::class -> {
+                            buildCborArray {
+                                (newValue as Set<*>).forEach { add(Tstr(it as String)) }
                             }
                         }
 
@@ -150,6 +158,7 @@ class TestAppSettingsModel private constructor(
         bind(readerAllowMultipleRequests, "readerAllowMultipleRequests", false)
 
         bind(cloudSecureAreaUrl, "cloudSecureAreaUrl", CSA_URL_DEFAULT)
+        bind(dcApiProtocols, "dcApiProtocols", DigitalCredentials.Default.supportedProtocols)
 
         bind(cryptoPreferBouncyCastle, "cryptoForceBouncyCastle", false)
     }
@@ -174,6 +183,7 @@ class TestAppSettingsModel private constructor(
     val readerAllowMultipleRequests = MutableStateFlow<Boolean>(false)
 
     val cloudSecureAreaUrl = MutableStateFlow<String>(CSA_URL_DEFAULT)
+    val dcApiProtocols = MutableStateFlow<Set<String>>(DigitalCredentials.Default.supportedProtocols)
 
     val cryptoPreferBouncyCastle = MutableStateFlow<Boolean>(false)
 }

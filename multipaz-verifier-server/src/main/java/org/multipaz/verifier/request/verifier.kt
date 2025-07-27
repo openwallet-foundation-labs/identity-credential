@@ -133,6 +133,10 @@ enum class Protocol {
     W3C_DC_MDOC_API,
     W3C_DC_OPENID4VP_24,
     W3C_DC_OPENID4VP_29,
+    W3C_DC_OPENID4VP_29_AND_MDOC_API,
+    W3C_DC_OPENID4VP_24_AND_MDOC_API,
+    W3C_DC_MDOC_API_AND_OPENID4VP_29,
+    W3C_DC_MDOC_API_AND_OPENID4VP_24,
     URI_SCHEME_OPENID4VP_29,
 }
 
@@ -242,12 +246,16 @@ private data class DCBeginRawDcqlRequest(
 @Serializable
 private data class DCBeginResponse(
     val sessionId: String,
-    val dcRequestString: String
+    val dcRequestProtocol: String,
+    val dcRequestString: String,
+    val dcRequestProtocol2: String?,
+    val dcRequestString2: String?
 )
 
 @Serializable
 private data class DCGetDataRequest(
     val sessionId: String,
+    val credentialProtocol: String,
     val credentialResponse: String
 )
 
@@ -460,6 +468,10 @@ private suspend fun handleDcBegin(
         "w3c_dc_mdoc_api" -> Protocol.W3C_DC_MDOC_API
         "w3c_dc_openid4vp_24" -> Protocol.W3C_DC_OPENID4VP_24
         "w3c_dc_openid4vp_29" -> Protocol.W3C_DC_OPENID4VP_29
+        "w3c_dc_openid4vp_29_and_mdoc_api" -> Protocol.W3C_DC_OPENID4VP_29_AND_MDOC_API
+        "w3c_dc_openid4vp_24_and_mdoc_api" -> Protocol.W3C_DC_OPENID4VP_24_AND_MDOC_API
+        "w3c_dc_mdoc_api_and_openid4vp_29" -> Protocol.W3C_DC_MDOC_API_AND_OPENID4VP_29
+        "w3c_dc_mdoc_api_and_openid4vp_24" -> Protocol.W3C_DC_MDOC_API_AND_OPENID4VP_24
         "uri_scheme_openid4vp_29" -> Protocol.URI_SCHEME_OPENID4VP_29
         else -> throw InvalidRequestException("Unknown protocol '$request.protocol'")
     }
@@ -489,7 +501,8 @@ private suspend fun handleDcBegin(
     // Uncomment when making test vectors...
     //Logger.iCbor(TAG, "readerKey: ", Cbor.encode(session.encryptionKey.toCoseKey().toDataItem()))
 
-    val dcRequestString = calcDcRequestString(
+    val beginResponse = calcDcRequest(
+        sessionId,
         documentTypeRepo,
         request.format,
         session,
@@ -504,11 +517,11 @@ private suspend fun handleDcBegin(
         request.signRequest,
         request.encryptResponse,
     )
-    Logger.i(TAG, "dcRequestString: $dcRequestString")
+    Logger.i(TAG, "beginResponse: $beginResponse")
     val json = Json { ignoreUnknownKeys = true }
     call.respondText(
         contentType = ContentType.Application.Json,
-        text = json.encodeToString(DCBeginResponse(sessionId, dcRequestString))
+        text = json.encodeToString(beginResponse)
     )
 }
 
@@ -566,7 +579,20 @@ private suspend fun handleDcBeginRawDcql(
     )
     Logger.i(TAG, "dcRequestString: $dcRequestString")
     val json = Json { ignoreUnknownKeys = true }
-    val responseString = json.encodeToString(DCBeginResponse(sessionId, dcRequestString))
+    val responseString = json.encodeToString(
+        DCBeginResponse(
+            sessionId = sessionId,
+            dcRequestProtocol = when (version) {
+                OpenID4VP.Version.DRAFT_24 -> "openidvp"
+                OpenID4VP.Version.DRAFT_29 -> {
+                    if (request.signRequest) "openid4vp-v1-signed" else "openid4vp-v1-unsigned"
+                }
+            },
+            dcRequestString = dcRequestString,
+            dcRequestProtocol2 = null,
+            dcRequestString2 = null
+        )
+    )
     call.respondText(
         contentType = ContentType.Application.Json,
         text = responseString
@@ -585,26 +611,26 @@ private suspend fun handleDcGetData(
         ?: throw InvalidRequestException("No session for sessionId ${request.sessionId}")
     val session = Session.fromCbor(encodedSession.toByteArray())
 
-    Logger.i(TAG, "Data received from WC3 DC API: ${request.credentialResponse}")
+    Logger.i(TAG, "Data received from WC3 DC API: protocol=${request.credentialProtocol} data=${request.credentialResponse}")
 
-    when (session.protocol) {
-        Protocol.W3C_DC_PREVIEW ->handleDcGetDataPreview(session, request.credentialResponse)
-        Protocol.W3C_DC_ARF -> handleDcGetDataArf(session, request.credentialResponse)
-        Protocol.W3C_DC_MDOC_API -> handleDcGetDataMdocApi(session, request.credentialResponse)
-        Protocol.W3C_DC_OPENID4VP_24 -> handleDcGetDataOpenID4VP(24, session, request.credentialResponse)
-        Protocol.W3C_DC_OPENID4VP_29 -> handleDcGetDataOpenID4VP(29, session, request.credentialResponse)
-        else -> throw IllegalArgumentException("unsupported protocol ${session.protocol}")
+    when (request.credentialProtocol) {
+        "preview" -> handleDcGetDataPreview(session, request.credentialResponse)
+        "austroads-request-forwarding-v2" -> handleDcGetDataArf(session, request.credentialResponse)
+        "openid4vp" -> handleDcGetDataOpenID4VP(24, session, request.credentialResponse)
+        "openid4vp-v1-signed", "openid4vp-v1-unsigned" -> handleDcGetDataOpenID4VP(29, session, request.credentialResponse)
+        "org-iso-mdoc" -> handleDcGetDataMdocApi(session, request.credentialResponse)
+        else -> throw IllegalArgumentException("unsupported protocol ${request.credentialProtocol}")
     }
 
     val lines = if (session.sessionTranscript != null) {
-        handleGetDataMdoc(session)
+        handleGetDataMdoc(session, request.credentialProtocol)
     } else {
         val clientIdToUse = if (session.signRequest) {
             "x509_san_dns:${session.host}"
         } else {
             "web-origin:${session.origin}"
         }
-        handleGetDataSdJwt(session, clientIdToUse)
+        handleGetDataSdJwt(session, request.credentialProtocol, clientIdToUse)
     }
 
     val json = Json { ignoreUnknownKeys = true }
@@ -845,6 +871,10 @@ private suspend fun handleOpenID4VPBegin(
         "w3c_dc_mdoc_api" -> Protocol.W3C_DC_MDOC_API
         "w3c_dc_openid4vp_24" -> Protocol.W3C_DC_OPENID4VP_24
         "w3c_dc_openid4vp_29" -> Protocol.W3C_DC_OPENID4VP_29
+        "w3c_dc_openid4vp_29_and_mdoc_api" -> Protocol.W3C_DC_OPENID4VP_29_AND_MDOC_API
+        "w3c_dc_openid4vp_24_and_mdoc_api" -> Protocol.W3C_DC_OPENID4VP_24_AND_MDOC_API
+        "w3c_dc_mdoc_api_and_openid4vp_29" -> Protocol.W3C_DC_MDOC_API_AND_OPENID4VP_29
+        "w3c_dc_mdoc_api_and_openid4vp_24" -> Protocol.W3C_DC_MDOC_API_AND_OPENID4VP_24
         "uri_scheme_openid4vp_29" -> Protocol.URI_SCHEME_OPENID4VP_29
         else -> throw InvalidRequestException("Unknown protocol '$request.protocol'")
     }
@@ -1059,8 +1089,8 @@ private suspend fun handleOpenID4VPGetData(
     val session = Session.fromCbor(encodedSession.toByteArray())
 
     val lines = when (session.requestFormat) {
-        "mdoc" -> handleGetDataMdoc(session)
-        "vc" -> handleGetDataSdJwt(session, clientId())
+        "mdoc" -> handleGetDataMdoc(session, null)
+        "vc" -> handleGetDataSdJwt(session, null, clientId())
         else -> throw IllegalStateException("Invalid format ${session.requestFormat}")
     }
     val json = Json { ignoreUnknownKeys = true }
@@ -1104,7 +1134,8 @@ private suspend fun getIssuerTrustManager(): TrustManager {
 }
 
 private suspend fun handleGetDataMdoc(
-    session: Session
+    session: Session,
+    dcProtocol: String?,
 ): List<ResultLine> {
     val parser = DeviceResponseParser(session.deviceResponse!!, session.sessionTranscript!!)
     val deviceResponse = parser.parse()
@@ -1119,6 +1150,9 @@ private suspend fun handleGetDataMdoc(
     //  - etc/
     //
     val lines = mutableListOf<ResultLine>()
+    if (dcProtocol != null) {
+        lines.add(ResultLine("W3C DC Protocol", dcProtocol))
+    }
     lines.add(ResultLine("Response end-to-end encrypted", "${session.responseWasEncrypted}"))
     for (document in deviceResponse.documents) {
 
@@ -1232,9 +1266,14 @@ private suspend fun handleGetDataMdoc(
 
 private suspend fun handleGetDataSdJwt(
     session: Session,
+    dcProtocol: String?,
     clientIdToUse: String,
 ): List<ResultLine> {
     val lines = mutableListOf<ResultLine>()
+
+    if (dcProtocol != null) {
+        lines.add(ResultLine("W3C DC Protocol", dcProtocol))
+    }
 
     val trustManager = getIssuerTrustManager()
 
@@ -1340,7 +1379,8 @@ private fun createSessionTranscriptOpenID4VP(
     )
 }
 
-private suspend fun calcDcRequestString(
+private suspend fun calcDcRequest(
+    sessionId: String,
     documentTypeRepository: DocumentTypeRepository,
     format: String,
     session: Session,
@@ -1354,77 +1394,243 @@ private suspend fun calcDcRequestString(
     readerAuthKeyCertification: X509CertChain,
     signRequest: Boolean,
     encryptResponse: Boolean,
-): String {
+): DCBeginResponse {
     when (protocol) {
         Protocol.W3C_DC_PREVIEW -> {
-            return mdocCalcDcRequestStringPreview(
-                documentTypeRepository,
-                request,
-                nonce,
-                origin,
-                readerPublicKey
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "preview",
+                dcRequestString = mdocCalcDcRequestStringPreview(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerPublicKey
+                ),
+                dcRequestProtocol2 = null,
+                dcRequestString2 = null
             )
         }
         Protocol.W3C_DC_ARF -> {
-            return mdocCalcDcRequestStringArf(
-                documentTypeRepository,
-                request,
-                nonce,
-                origin,
-                readerKey,
-                readerPublicKey,
-                readerAuthKey,
-                readerAuthKeyCertification
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "austroads-request-forwarding-v2",
+                dcRequestString = mdocCalcDcRequestStringArf(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification
+                ),
+                dcRequestProtocol2 = null,
+                dcRequestString2 = null
             )
         }
         Protocol.W3C_DC_MDOC_API -> {
-            return mdocCalcDcRequestStringMdocApi(
-                documentTypeRepository,
-                request,
-                nonce,
-                origin,
-                readerKey,
-                readerPublicKey,
-                readerAuthKey,
-                readerAuthKeyCertification
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "org-iso-mdoc",
+                dcRequestString = mdocCalcDcRequestStringMdocApi(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification
+                ),
+                dcRequestProtocol2 = null,
+                dcRequestString2 = null
             )
         }
         Protocol.W3C_DC_OPENID4VP_24 -> {
-            return calcDcRequestStringOpenID4VP(
-                OpenID4VP.Version.DRAFT_24,
-                documentTypeRepository,
-                format,
-                session,
-                request,
-                nonce,
-                origin,
-                readerKey,
-                readerPublicKey,
-                readerAuthKey,
-                readerAuthKeyCertification,
-                signRequest,
-                encryptResponse,
-                OpenID4VP.ResponseMode.DC_API,
-                null
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "openid4vp",
+                dcRequestString = calcDcRequestStringOpenID4VP(
+                    OpenID4VP.Version.DRAFT_24,
+                    documentTypeRepository,
+                    format,
+                    session,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification,
+                    signRequest,
+                    encryptResponse,
+                    OpenID4VP.ResponseMode.DC_API,
+                    null
+                ),
+                dcRequestProtocol2 = null,
+                dcRequestString2 = null
             )
         }
         Protocol.W3C_DC_OPENID4VP_29 -> {
-            return calcDcRequestStringOpenID4VP(
-                OpenID4VP.Version.DRAFT_29,
-                documentTypeRepository,
-                format,
-                session,
-                request,
-                nonce,
-                origin,
-                readerKey,
-                readerPublicKey,
-                readerAuthKey,
-                readerAuthKeyCertification,
-                signRequest,
-                encryptResponse,
-                OpenID4VP.ResponseMode.DC_API,
-                null
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = if (signRequest) "openid4vp-v1-signed" else "openid4vp-v1-unsigned",
+                dcRequestString = calcDcRequestStringOpenID4VP(
+                    OpenID4VP.Version.DRAFT_29,
+                    documentTypeRepository,
+                    format,
+                    session,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification,
+                    signRequest,
+                    encryptResponse,
+                    OpenID4VP.ResponseMode.DC_API,
+                    null
+                ),
+                dcRequestProtocol2 = null,
+                dcRequestString2 = null
+            )
+        }
+        Protocol.W3C_DC_OPENID4VP_29_AND_MDOC_API -> {
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = if (signRequest) "openid4vp-v1-signed" else "openid4vp-v1-unsigned",
+                dcRequestString = calcDcRequestStringOpenID4VP(
+                    OpenID4VP.Version.DRAFT_29,
+                    documentTypeRepository,
+                    format,
+                    session,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification,
+                    signRequest,
+                    encryptResponse,
+                    OpenID4VP.ResponseMode.DC_API,
+                    null
+                ),
+                dcRequestProtocol2 = "org-iso-mdoc",
+                dcRequestString2 = mdocCalcDcRequestStringMdocApi(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification
+                ),
+            )
+        }
+        Protocol.W3C_DC_OPENID4VP_24_AND_MDOC_API -> {
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "openid4vp",
+                dcRequestString = calcDcRequestStringOpenID4VP(
+                    OpenID4VP.Version.DRAFT_24,
+                    documentTypeRepository,
+                    format,
+                    session,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification,
+                    signRequest,
+                    encryptResponse,
+                    OpenID4VP.ResponseMode.DC_API,
+                    null
+                ),
+                dcRequestProtocol2 = "org-iso-mdoc",
+                dcRequestString2 = mdocCalcDcRequestStringMdocApi(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification
+                ),
+            )
+        }
+        Protocol.W3C_DC_MDOC_API_AND_OPENID4VP_29 -> {
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "org-iso-mdoc",
+                dcRequestString = mdocCalcDcRequestStringMdocApi(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification
+                ),
+                dcRequestProtocol2 = if (signRequest) "openid4vp-v1-signed" else "openid4vp-v1-unsigned",
+                dcRequestString2 = calcDcRequestStringOpenID4VP(
+                    OpenID4VP.Version.DRAFT_29,
+                    documentTypeRepository,
+                    format,
+                    session,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification,
+                    signRequest,
+                    encryptResponse,
+                    OpenID4VP.ResponseMode.DC_API,
+                    null
+                ),
+            )
+        }
+        Protocol.W3C_DC_MDOC_API_AND_OPENID4VP_24 -> {
+            return DCBeginResponse(
+                sessionId = sessionId,
+                dcRequestProtocol = "org-iso-mdoc",
+                dcRequestString = mdocCalcDcRequestStringMdocApi(
+                    documentTypeRepository,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification
+                ),
+                dcRequestProtocol2 = "openid4vp",
+                dcRequestString2 = calcDcRequestStringOpenID4VP(
+                    OpenID4VP.Version.DRAFT_24,
+                    documentTypeRepository,
+                    format,
+                    session,
+                    request,
+                    nonce,
+                    origin,
+                    readerKey,
+                    readerPublicKey,
+                    readerAuthKey,
+                    readerAuthKeyCertification,
+                    signRequest,
+                    encryptResponse,
+                    OpenID4VP.ResponseMode.DC_API,
+                    null
+                ),
             )
         }
         else -> {

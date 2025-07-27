@@ -27,7 +27,7 @@ std::unique_ptr<Request> Request::parsePreview(cJSON* dataJson) {
         dataElements.push_back(MdocRequestDataElement(namespaceName, dataElementName, intentToRetain));
     }
 
-    return std::unique_ptr<Request> { new Request(docTypeValue, dataElements) };
+    return std::unique_ptr<Request> { new Request("preview", docTypeValue, dataElements) };
 }
 
 std::string base64UrlDecode(const std::string& data) {
@@ -50,7 +50,7 @@ std::string base64UrlDecode(const std::string& data) {
     return from_base64(s);
 }
 
-std::unique_ptr<Request> Request::parseMdocApi(cJSON* dataJson) {
+std::unique_ptr<Request> Request::parseMdocApi(const std::string& protocolName, cJSON* dataJson) {
     cJSON* deviceRequestJson = cJSON_GetObjectItem(dataJson, "deviceRequest");
     std::string deviceRequestBase64 = std::string(cJSON_GetStringValue(deviceRequestJson));
 
@@ -85,7 +85,7 @@ std::unique_ptr<Request> Request::parseMdocApi(cJSON* dataJson) {
         }
     }
 
-    return std::unique_ptr<Request> { new Request(docTypeValue, dataElements) };
+    return std::unique_ptr<Request> { new Request(protocolName, docTypeValue, dataElements) };
 }
 
 std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson, std::string protocolName) {
@@ -160,6 +160,7 @@ std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson, std::string pr
     }
 
     return std::unique_ptr<Request> { new Request(
+            protocolName,
             docTypeValue,
             dataElements,
             vctValues,

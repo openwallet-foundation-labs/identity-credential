@@ -100,6 +100,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -642,12 +643,21 @@ class App private constructor (val promptModel: PromptModel) {
      * This should be called when the main wallet application UI is running.
      */
     fun startExportDocumentsToDigitalCredentials() {
-        CoroutineScope(Dispatchers.IO).launch {
-            if (DigitalCredentials.Default.available) {
+        if (DigitalCredentials.Default.available) {
+            CoroutineScope(Dispatchers.IO).launch {
+                DigitalCredentials.Default.setSelectedProtocols(
+                    settingsModel.dcApiProtocols.value
+                )
                 DigitalCredentials.Default.startExportingCredentials(
                     documentStore = documentStore,
                     documentTypeRepository = documentTypeRepository,
                 )
+            }
+
+            CoroutineScope(Dispatchers.IO).launch {
+                settingsModel.dcApiProtocols.collect {
+                    DigitalCredentials.Default.setSelectedProtocols(it)
+                }
             }
         }
     }

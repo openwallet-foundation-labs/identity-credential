@@ -16,7 +16,7 @@ struct Credential {
     std::string subtitle;
     std::vector<uint8_t> bitmap;
 
-    std::string id;
+    std::string documentId;
 
     std::string mdocDocType;   // This is the empty string if not available as an ISO mdoc.
     std::map<std::string, MdocDataElement> dataElements;
@@ -48,5 +48,6 @@ struct VcClaim {
 
 struct CredentialDatabase {
     CredentialDatabase(const uint8_t* encodedDatabase, size_t encodedDatabaseLength);
+    std::vector<std::string> protocols;
     std::vector<Credential> credentials;
 };

@@ -20,6 +20,8 @@ struct VcRequestedClaim {
 };
 
 struct Request {
+    std::string protocol;
+
     std::string docType;  // empty string if not for mdoc
     std::vector<MdocRequestDataElement> dataElements;
 
@@ -27,6 +29,6 @@ struct Request {
     std::vector<VcRequestedClaim> vcClaims;
 
     static std::unique_ptr<Request> parsePreview(cJSON *requestJson);
-    static std::unique_ptr<Request> parseMdocApi(cJSON *requestJson);
+    static std::unique_ptr<Request> parseMdocApi(const std::string& protocolName, cJSON *requestJson);
     static std::unique_ptr<Request> parseOpenID4VP(cJSON *requestJson, std::string protocolValue);
 };
