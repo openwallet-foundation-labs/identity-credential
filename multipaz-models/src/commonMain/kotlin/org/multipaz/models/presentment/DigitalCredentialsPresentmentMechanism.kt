@@ -19,7 +19,7 @@ abstract class DigitalCredentialsPresentmentMechanism(
     val appId: String,
     val webOrigin: String?,
     val protocol: String,
-    val data: String,
+    val data: JsonObject,
     val document: Document?
 ): PresentmentMechanism {
 

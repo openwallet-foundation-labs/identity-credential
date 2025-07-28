@@ -22,10 +22,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import org.json.JSONObject
 import org.multipaz.compose.presentment.Presentment
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.context.initializeApplication
@@ -109,24 +111,31 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
     private suspend fun startPresentment(settings: Settings) {
         presentmentModel.setPromptModel(settings.promptModel)
         try {
-            val credentialRequest = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)
-            val credentialId = credentialRequest!!.selectedEntryId!!
+            val credentialRequest = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)!!
 
             val callingAppInfo = credentialRequest.callingAppInfo
             val callingPackageName = callingAppInfo.packageName
             val callingOrigin = callingAppInfo.getOrigin(settings.privilegedAllowList)
             val option = credentialRequest.credentialOptions[0] as GetDigitalCredentialOption
-            val json = JSONObject(option.requestJson)
-            val firstRequest = json.getJSONArray("requests").getJSONObject(0)
-
-            val document = settings.presentmentSource.documentStore.lookupForCredmanId(credentialId)
-                ?: throw Error("No registered document for ID $credentialId")
-
+            val json = Json.parseToJsonElement(option.requestJson).jsonObject
+            Logger.iJson(TAG, "Request Json", json)
+            Logger.i(TAG, "selectedEntryId: ${credentialRequest.selectedEntryId!!}")
+            // See Credential::addCredentialToPicker() for how we construct selectedEntryId
+            // to contain the protocol and documentId
+            val selectedEntryIdParts = credentialRequest.selectedEntryId!!.split(" ")
+            require(selectedEntryIdParts.size == 2)
+            val protocol = selectedEntryIdParts[0]
+            val document = settings.presentmentSource.documentStore.lookupForCredmanId(selectedEntryIdParts[1])
+                ?: throw Error("No registered document for ID ${selectedEntryIdParts[1]}")
+            // Find request matching the protocol for the selected entry...
+            val requestForSelectedEntry = json["requests"]!!.jsonArray.find {
+                (it as JsonObject)["protocol"]!!.jsonPrimitive.content == protocol
+            }!!.jsonObject
             val mechanism = object : DigitalCredentialsPresentmentMechanism(
                 appId = callingPackageName,
                 webOrigin = callingOrigin,
-                protocol = firstRequest.getString("protocol"),
-                data = firstRequest.getString("data"),
+                protocol = requestForSelectedEntry["protocol"]!!.jsonPrimitive.content,
+                data = requestForSelectedEntry["data"]!!.jsonObject,
                 document = document
             ) {
                 override fun sendResponse(
@@ -140,7 +149,7 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
                             put("data", data)
                         }
                     )
-                    Logger.i(TAG, "Size of JSON response: ${json.length} bytes")
+                    Logger.i(TAG, "Size of JSON response for protocol $protocol: ${json.length} bytes")
                     val response = GetCredentialResponse(DigitalCredential(json))
                     PendingIntentHandler.setGetCredentialResponse(
                         resultData,

@@ -625,7 +625,7 @@ fun EvidenceRequestOpenid4VpView(
                             protocol = "openid4vp",
                             data = buildJsonObject {
                                 put("request", evidenceRequest.request)
-                            }.toString(),
+                            },
                             document = viableCredentials.first().document
                         ) {
                             override fun sendResponse(protocol: String, data: JsonObject) {

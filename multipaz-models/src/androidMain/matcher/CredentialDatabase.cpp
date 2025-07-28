@@ -9,19 +9,27 @@ extern "C" {
 #include "cppbor_parse.h"
 
 CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t encodedDatabaseLength) {
-    auto [item, pos, message] = cppbor::parse(encodedDatabase, encodedDatabaseLength);
+    auto [item, pos, message] =
+            cppbor::parse(encodedDatabase, encodedDatabaseLength);
     if (item == nullptr) {
         printf("Error parsing CBOR: %s\n", message.c_str());
         return;
     }
-    auto creds = item->asArray();
-    for (auto i = creds->begin(); i != creds->end(); ++i) {
+    auto topMap = item->asMap();
+
+    auto protocolsArray = topMap->get("protocols")->asArray();
+    for (auto p = protocolsArray->begin(); p != protocolsArray->end(); ++p) {
+        protocols.push_back((*p)->asTstr()->value());
+    }
+
+    auto credentialsArray = topMap->get("credentials")->asArray();
+    for (auto i = credentialsArray->begin(); i != credentialsArray->end(); ++i) {
         auto cred = (*i)->asMap();
         auto title = cred->get("title")->asTstr()->value();
         auto subtitle = cred->get("subtitle")->asTstr()->value();
         auto bitmap = cred->get("bitmap")->asBstr()->value();
 
-        std::string id = "";
+        std::string documentId = "";
 
         std::string mdocDoctype = "";
         std::map mdocDataElements = std::map<std::string, MdocDataElement>();
@@ -32,7 +40,7 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
         auto& mdocPtr = cred->get("mdoc");
         if (mdocPtr != nullptr) {
             auto mdoc = mdocPtr->asMap();
-            id = mdoc->get("id")->asTstr()->value();
+            documentId = mdoc->get("documentId")->asTstr()->value();
             mdocDoctype = mdoc->get("docType")->asTstr()->value();
 
             auto namespaces = mdoc->get("namespaces")->asMap();
@@ -55,7 +63,7 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
         auto& sdjwtPtr = cred->get("sdjwt");
         if (sdjwtPtr != nullptr) {
             auto sdjwt = sdjwtPtr->asMap();
-            id = sdjwt->get("id")->asTstr()->value();
+            documentId = sdjwt->get("documentId")->asTstr()->value();
             vcVct = sdjwt->get("vct")->asTstr()->value();
 
             auto claims = sdjwt->get("claims")->asMap();
@@ -71,7 +79,7 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
 
         credentials.push_back(
             Credential(
-                title, subtitle, bitmap,id,
+                title, subtitle, bitmap, documentId,
                 mdocDoctype, mdocDataElements,
                 vcVct, vcClaims
             )
@@ -105,14 +113,15 @@ bool Credential::matchesRequest(const Request& request) {
 }
 
 void Credential::addCredentialToPicker(const Request& request) {
-    char* cred_id = (char*) id.c_str();
+    std::string selected_entry_id_str = request.protocol + " " + documentId;
+    char* selected_entry_id = (char*) strdup(selected_entry_id_str.c_str());
     void* icon = nullptr;
     if (bitmap.size() > 0) {
         icon = malloc(bitmap.size());
         memcpy(icon, bitmap.data(), bitmap.size());
     }
     ::AddStringIdEntry(
-            cred_id,
+            selected_entry_id,
             (char*) icon,
             bitmap.size(),
             (char*) strdup(title.c_str()),
@@ -128,7 +137,7 @@ void Credential::addCredentialToPicker(const Request& request) {
             auto it = dataElements.find(combinedName);
             if (it != dataElements.end()) {
                 const auto &dataElement = it->second;
-                ::AddFieldForStringIdEntry(cred_id,
+                ::AddFieldForStringIdEntry(selected_entry_id,
                                            strdup(dataElement.displayName.c_str()),
                                            strdup(dataElement.value.c_str())
                 );
@@ -139,7 +148,7 @@ void Credential::addCredentialToPicker(const Request& request) {
             auto it = vcClaims.find(requestedClaim.claimName);
             if (it != vcClaims.end()) {
                 const auto &claim = it->second;
-                ::AddFieldForStringIdEntry(cred_id,
+                ::AddFieldForStringIdEntry(selected_entry_id,
                                            strdup(claim.displayName.c_str()),
                                            strdup(claim.value.c_str())
                 );

@@ -52,7 +52,7 @@ class DigitalCredentialsPresentmentTest {
 
     class TestPresentmentMechanism(
         protocol: String,
-        data: String,
+        data: JsonObject,
         document: Document?,
         var response: String? = null,
         var closed: Boolean = false
@@ -124,7 +124,7 @@ class DigitalCredentialsPresentmentTest {
             Pair(null, null)
         }
 
-        val requestString = OpenID4VP.generateRequest(
+        val request = OpenID4VP.generateRequest(
             version = version,
             origin = ORIGIN,
             clientId = CLIENT_ID,
@@ -137,7 +137,7 @@ class DigitalCredentialsPresentmentTest {
             responseMode = OpenID4VP.ResponseMode.DC_API,
             responseUri = null,
             dclqQuery = dcql
-        ).toString()
+        )
 
         val protocol = when (version) {
             OpenID4VP.Version.DRAFT_24 -> "openid4vp"
@@ -151,7 +151,7 @@ class DigitalCredentialsPresentmentTest {
         }
         val presentmentMechanism = TestPresentmentMechanism(
             protocol = protocol,
-            data = requestString,
+            data = request,
             document = null,
         )
 

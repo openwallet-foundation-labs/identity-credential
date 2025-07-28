@@ -105,7 +105,7 @@ private suspend fun digitalCredentialsPreviewProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val previewRequest = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
+    val previewRequest = presentmentMechanism.data
     val selector = previewRequest["selector"]!!.jsonObject
     val nonceBase64 = previewRequest["nonce"]!!.jsonPrimitive.content
     val readerPublicKeyBase64 = previewRequest["readerPublicKey"]!!.jsonPrimitive.content
@@ -259,7 +259,7 @@ private suspend fun digitalCredentialsOpenID4VPProtocol(
         else -> throw IllegalStateException("Unexpected protocol ${presentmentMechanism.protocol}")
     }
     var requesterCertChain: X509CertChain? = null
-    val preReq = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
+    val preReq = presentmentMechanism.data
 
     val signedRequest = preReq["request"]
     val req = if (signedRequest != null) {
@@ -306,7 +306,7 @@ private suspend fun digitalCredentialsArfProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val arfRequest = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
+    val arfRequest = presentmentMechanism.data
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
@@ -411,7 +411,7 @@ private suspend fun digitalCredentialsMdocApiProtocol(
         trustPoint: TrustPoint?
     ) -> Boolean
 ) {
-    val arfRequest = Json.parseToJsonElement(presentmentMechanism.data).jsonObject
+    val arfRequest = presentmentMechanism.data
     val deviceRequestBase64 = arfRequest["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = arfRequest["encryptionInfo"]!!.jsonPrimitive.content
 
