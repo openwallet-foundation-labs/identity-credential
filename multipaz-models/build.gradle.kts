@@ -44,6 +44,11 @@ kotlin {
         }
     }
 
+    // we want some extra dependsOn calls to create
+    // javaSharedMain to share between JVM and Android,
+    // but otherwise want to follow default hierarchy.
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -69,6 +74,17 @@ kotlin {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(project(":multipaz-doctypes"))
+            }
+        }
+
+        val androidInstrumentedTest by getting {
+            dependsOn(commonTest)
+            dependencies {
+                implementation(libs.androidx.test.junit)
+                implementation(libs.androidx.espresso.core)
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.kotlinx.coroutines.android)
             }
         }
     }
@@ -106,6 +122,12 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path("src/androidInstrumentedTest/cpp/CMakeLists.txt")
+        }
     }
 }
 

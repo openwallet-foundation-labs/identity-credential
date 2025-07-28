@@ -3,7 +3,7 @@ WASM_CLANG = ~/wasi-sdk-20.0/bin/clang
 WASM_CLANGPP = ~/wasi-sdk-20.0/bin/clang++
 
 C_SOURCES = cJSON.c
-CXX_SOURCES = Request.cpp CredentialDatabase.cpp cppbor.cpp cppbor_parse.cpp main.cpp
+CXX_SOURCES = Request.cpp CredentialDatabase.cpp cppbor.cpp cppbor_parse.cpp main.cpp matcher.cpp
 
 OBJECTS = $(patsubst %.c, build/%.o,$(C_SOURCES)) $(patsubst %.cpp, build/%.o,$(CXX_SOURCES))
 

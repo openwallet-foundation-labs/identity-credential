@@ -368,7 +368,7 @@ class DigitalCredentialsPresentmentTest {
                           "claims": [
                             { "path": ["org.iso.18013.5.1", "age_over_21"] },
                             { "path": ["org.iso.18013.5.1", "portrait"] }
-                    ]}]}                
+                    ]}]}
                 """.trimIndent().trim(),
             expectedMdocResponse =
                 """

@@ -207,6 +207,7 @@ class DocumentStoreTestHarness {
     ) {
         docMdl = provisionDocument(
             documentStore = documentStore,
+            displayName = "mDL",
             dsKey = dsKey,
             dsCert = dsCert,
             documentType = DrivingLicense.getDocumentType(),
@@ -216,6 +217,7 @@ class DocumentStoreTestHarness {
         )
         docEuPid = provisionDocument(
             documentStore = documentStore,
+            displayName = "EU PID",
             dsKey = dsKey,
             dsCert = dsCert,
             documentType = EUPersonalID.getDocumentType(),
@@ -225,6 +227,7 @@ class DocumentStoreTestHarness {
         )
         docPhotoId = provisionDocument(
             documentStore = documentStore,
+            displayName = "Photo ID",
             dsKey = dsKey,
             dsCert = dsCert,
             documentType = PhotoID.getDocumentType(),
@@ -236,6 +239,7 @@ class DocumentStoreTestHarness {
 
     private suspend fun provisionDocument(
         documentStore: DocumentStore,
+        displayName: String,
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
         documentType: DocumentType,
@@ -243,7 +247,9 @@ class DocumentStoreTestHarness {
         validFrom: Instant,
         validUntil: Instant,
     ): Document {
-        val document = documentStore.createDocument {}
+        val document = documentStore.createDocument(
+            displayName = displayName
+        )
 
         if (documentType.mdocDocumentType != null) {
             addMdocCredential(
