@@ -121,7 +121,7 @@ private class NfcTagReader<T> {
             session.invalidateSessionWithErrorMessage("Dialog was canceled")
             throw e
         } catch (e: Throwable) {
-            session.invalidateSessionWithErrorMessage(e.message!!)
+            e.message?.let { session.invalidateSessionWithErrorMessage(it) } ?: session.invalidateSession()
             throw e
         }
     }
