@@ -86,42 +86,11 @@ private suspend fun updateCredman() {
         appInfo.nonLocalizedLabel.toString()
     }
 
-    val credentialsBuilder = CborArray.builder()
-
-    for ((_, regData) in exportedStores) {
-        for (documentId in regData.documentStore.listDocuments()) {
-            val document = regData.documentStore.lookupDocument(documentId) ?: continue
-
-            val mdocCredential = document.getCertifiedCredentials().find { it is MdocCredential }
-            if (mdocCredential != null) {
-                credentialsBuilder.add(
-                    exportMdocCredential(
-                        appName = appName,
-                        document = document,
-                        credential = mdocCredential as MdocCredential,
-                        documentTypeRepository = regData.documentTypeRepository
-                    )
-                )
-            }
-
-            val sdJwtVcCredential = document.getCertifiedCredentials().find { it is SdJwtVcCredential }
-            if (sdJwtVcCredential != null) {
-                credentialsBuilder.add(
-                    exportSdJwtVcCredential(
-                        appName = appName,
-                        document = document,
-                        credential = sdJwtVcCredential as SdJwtVcCredential,
-                        documentTypeRepository = regData.documentTypeRepository
-                    )
-                )
-            }
-        }
-    }
-
-    val credentialDatabase = buildCborMap {
-        putCborArray("protocols") { selectedProtocols.forEach { add(it) } }
-        put("credentials", credentialsBuilder.end().build())
-    }
+    val credentialDatabase = calculateCredentialDatabase(
+        appName = appName,
+        selectedProtocols = selectedProtocols,
+        stores = exportedStores.values.map { Pair(it.documentStore, it.documentTypeRepository) }
+    )
 
     val credentialDatabaseCbor = Cbor.encode(credentialDatabase)
     //Logger.iCbor(TAG, "credentialDatabaseCbor", credentialDatabaseCbor)
@@ -148,6 +117,49 @@ private suspend fun updateCredman() {
     )
         .addOnSuccessListener { Logger.i(TAG, "CredMan registry succeeded") }
         .addOnFailureListener { Logger.i(TAG, "CredMan registry failed $it") }
+}
+
+internal suspend fun calculateCredentialDatabase(
+    appName: String,
+    selectedProtocols: Set<String>,
+    stores: List<Pair<DocumentStore, DocumentTypeRepository>>
+): DataItem {
+    val credentialsBuilder = CborArray.builder()
+    for ((documentStore, documentTypeRepository) in stores) {
+        for (documentId in documentStore.listDocuments()) {
+            val document = documentStore.lookupDocument(documentId) ?: continue
+
+            val mdocCredential = document.getCertifiedCredentials().find { it is MdocCredential }
+            if (mdocCredential != null) {
+                credentialsBuilder.add(
+                    exportMdocCredential(
+                        appName = appName,
+                        document = document,
+                        credential = mdocCredential as MdocCredential,
+                        documentTypeRepository = documentTypeRepository
+                    )
+                )
+            }
+
+            val sdJwtVcCredential = document.getCertifiedCredentials().find { it is SdJwtVcCredential }
+            if (sdJwtVcCredential != null) {
+                credentialsBuilder.add(
+                    exportSdJwtVcCredential(
+                        appName = appName,
+                        document = document,
+                        credential = sdJwtVcCredential as SdJwtVcCredential,
+                        documentTypeRepository = documentTypeRepository
+                    )
+                )
+            }
+        }
+    }
+
+    val credentialDatabase = buildCborMap {
+        putCborArray("protocols") { selectedProtocols.forEach { add(it) } }
+        put("credentials", credentialsBuilder.end().build())
+    }
+    return credentialDatabase
 }
 
 private suspend fun exportMdocCredential(
@@ -222,27 +234,30 @@ private suspend fun exportSdJwtVcCredential(
     documentTypeRepository: DocumentTypeRepository
 ): DataItem {
     val documentMetadata = document.metadata
-    val cardArt = documentMetadata.cardArt!!.toByteArray()
-    val displayName = documentMetadata.displayName!!
+    val cardArt = documentMetadata.cardArt?.toByteArray()
+    val displayName = documentMetadata.displayName ?: "Unnamed Credential"
 
-    val options = BitmapFactory.Options()
-    options.inMutable = true
-    val credBitmap = BitmapFactory.decodeByteArray(
-        cardArt,
-        0,
-        cardArt.size,
-        options
-    )
-    val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 48, 48, true)
-    val stream = ByteArrayOutputStream()
-    scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
-    val cardArtResized = stream.toByteArray()
-    Logger.i(TAG, "Resized cardart to 48x48, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+    val cardArtResized = cardArt?.let {
+        val options = BitmapFactory.Options()
+        options.inMutable = true
+        val credBitmap = BitmapFactory.decodeByteArray(
+            cardArt,
+            0,
+            cardArt.size,
+            options
+        )
+        val scaledIcon = Bitmap.createScaledBitmap(credBitmap, 48, 48, true)
+        val stream = ByteArrayOutputStream()
+        scaledIcon.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        val cardArtResized = stream.toByteArray()
+        Logger.i(TAG, "Resized cardart to 48x48, ${cardArt.size} bytes to ${cardArtResized.size} bytes")
+        cardArtResized
+    }
 
     return buildCborMap {
         put("title", displayName)
         put("subtitle", appName)
-        put("bitmap", cardArtResized)
+        put("bitmap", cardArtResized ?: byteArrayOf())
         putCborMap("sdjwt") {
             put("documentId", document.identifier)
             put("vct", credential.vct)
