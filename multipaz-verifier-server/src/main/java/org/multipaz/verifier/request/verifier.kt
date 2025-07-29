@@ -1045,7 +1045,7 @@ private suspend fun handleOpenID4VPResponse(
                 add(Simple.NULL) // DeviceEngagementBytes
                 add(Simple.NULL) // EReaderKeyBytes
                 addCborArray {
-                    add("OpenID4VPDCAPIHandover")
+                    add("OpenID4VPHandover")
                     add(Crypto.digest(Algorithm.SHA256, handoverInfo))
                 }
             }
