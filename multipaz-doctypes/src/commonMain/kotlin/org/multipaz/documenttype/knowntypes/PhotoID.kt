@@ -125,16 +125,6 @@ object PhotoID {
                 SampleData.ISSUING_COUNTRY.toDataItem()
             )
             .addMdocAttribute(
-                DocumentAttributeType.Boolean,
-                "age_over_18",
-                "Older Than 18 Years",
-                "Indication whether the document holder is as old or older than 18",
-                true,
-                ISO_23220_2_NAMESPACE,
-                Icon.TODAY,
-                SampleData.AGE_OVER_18.toDataItem()
-            )
-            .addMdocAttribute(
                 DocumentAttributeType.Number,
                 "age_in_years",
                 "Age in Years",
