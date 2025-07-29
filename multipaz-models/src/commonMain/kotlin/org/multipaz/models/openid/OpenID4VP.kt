@@ -651,12 +651,17 @@ object OpenID4VP {
         )
         Logger.iCbor(TAG, "handoverInfo", handoverInfo)
 
+        val handoverString = if (responseUri != null) {
+            "OpenID4VPHandover"
+        } else {
+            "OpenID4VPDCAPIHandover"
+        }
         val encodedSessionTranscript = Cbor.encode(
             buildCborArray {
                 add(Simple.NULL) // DeviceEngagementBytes
                 add(Simple.NULL) // EReaderKeyBytes
                 addCborArray {
-                    add("OpenID4VPDCAPIHandover")
+                    add(handoverString)
                     add(Crypto.digest(Algorithm.SHA256, handoverInfo))
                 }
             }
