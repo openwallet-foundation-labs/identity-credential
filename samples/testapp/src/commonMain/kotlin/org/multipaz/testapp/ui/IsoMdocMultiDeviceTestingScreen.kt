@@ -35,6 +35,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.multipaz.compose.permissions.rememberBluetoothEnabledState
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.testapp.ui.ScanQrCodeDialog
 import org.multipaz.testapp.ui.ShowQrCodeDialog
@@ -50,6 +51,7 @@ fun IsoMdocMultiDeviceTestingScreen(
     showToast: (message: String) -> Unit,
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
+    val bleEnabledState = rememberBluetoothEnabledState()
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -158,6 +160,22 @@ fun IsoMdocMultiDeviceTestingScreen(
                 }
             ) {
                 Text("Request BLE permissions")
+            }
+        }
+    } else if (!bleEnabledState.isEnabled) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        bleEnabledState.enable()
+                    }
+                }
+            ) {
+                Text("Enable Bluetooth")
             }
         }
     } else {

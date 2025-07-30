@@ -90,6 +90,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.decodeImage
+import org.multipaz.compose.permissions.rememberBluetoothEnabledState
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.zkp.ZkDocument
@@ -141,6 +142,7 @@ fun IsoMdocProximityReadingScreen(
     val dropdownExpanded = remember { mutableStateOf(false) }
     val selectedRequest = remember { mutableStateOf(availableRequests[0]) }
     val blePermissionState = rememberBluetoothPermissionState()
+    val bleEnabledState = rememberBluetoothEnabledState()
     val coroutineScope = rememberCoroutineScope { app.promptModel }
     val readerShowQrScanner = remember { mutableStateOf(false) }
     val readerTransport = remember { mutableStateOf<MdocTransport?>(null) }
@@ -286,6 +288,22 @@ fun IsoMdocProximityReadingScreen(
                 }
             ) {
                 Text("Request BLE permissions")
+            }
+        }
+    }  else if (!bleEnabledState.isEnabled) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        bleEnabledState.enable()
+                    }
+                }
+            ) {
+                Text("Enable Bluetooth")
             }
         }
     } else {
