@@ -38,5 +38,6 @@
     <string name="selfie_check_title">Selfie Check</string>
     <string name="selfie_check_subtitle">Selfie Verification for Utopia Department of Motor Vehicles</string>
     <string name="selfie_check_dialog_title">Selfie Verification</string>
+    <string name="face_match_title">Face Matching</string>
 
 </resources>

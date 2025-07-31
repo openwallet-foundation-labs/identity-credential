@@ -3,15 +3,11 @@ package org.multipaz.compose.camera
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.get
 import kotlinx.cinterop.readBytes
-import kotlinx.io.bytestring.ByteString
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
-import org.multipaz.util.getByteString
-import org.multipaz.util.toByteArray
 import platform.CoreFoundation.CFDataGetBytePtr
 import platform.CoreFoundation.CFDataGetLength
 import platform.CoreFoundation.CFRelease
@@ -22,9 +18,7 @@ import platform.CoreGraphics.CGImageGetBytesPerRow
 import platform.CoreGraphics.CGImageGetDataProvider
 import platform.CoreGraphics.CGImageGetHeight
 import platform.CoreGraphics.CGImageGetWidth
-import platform.Foundation.NSData
 import platform.UIKit.UIImage
-import platform.UIKit.UIImagePNGRepresentation
 
 /**
  * iOS specific implementation of [org.multipaz.compose.camera.CameraImage].
@@ -66,7 +60,7 @@ internal fun UIImage.toSkiaImage(): Image? {
     CFRelease(imageRef)
 
     return Image.makeRaster(
-        imageInfo = ImageInfo(width = width, height = height, colorType = ColorType.RGBA_8888, alphaType = alphaType),
+        imageInfo = ImageInfo(width = width, height = height, colorType = ColorType.BGRA_8888, alphaType = alphaType),
         bytes = byteArray,
         rowBytes = bytesPerRow.toInt(),
     )
