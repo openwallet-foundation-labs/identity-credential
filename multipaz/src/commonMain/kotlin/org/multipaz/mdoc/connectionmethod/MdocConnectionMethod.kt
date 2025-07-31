@@ -100,6 +100,10 @@ abstract class MdocConnectionMethod {
                 record.type.decodeToString() == Nfc.EXTERNAL_TYPE_ISO_18013_5_NFC &&
                 record.id.decodeToString() == "nfc") {
                 return MdocConnectionMethodNfc.fromNdefRecord(record, role)
+            } else if (record.tnf == NdefRecord.Tnf.EXTERNAL_TYPE &&
+                record.type.decodeToString() == "iso.org:18013:deviceengagement" &&
+                record.id.decodeToString() == "mdoc") {
+                return null //TODO:AK: MdocConnectionMethod DirectAccess is needed?
             }
             // TODO: add support for Wifi Aware and others.
             Logger.w(TAG, "No support for NDEF record $record")

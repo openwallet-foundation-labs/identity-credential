@@ -17,6 +17,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.credential.Credential
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.device.AssertionBindingKeys
+import org.multipaz.directaccess.DirectAccessCredential
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.mdoc.credential.MdocCredential
@@ -281,7 +282,11 @@ class ProvisioningModel(
                     )
                 } else {
                     pendingCredentials.find {
-                        val attestation = (it as SecureAreaBoundCredential).getAttestation()
+                        val attestation = if (it is DirectAccessCredential) {
+                            it.attestation
+                        } else {
+                            (it as SecureAreaBoundCredential).getAttestation()
+                        }
                         attestation.publicKey == credentialData.secureAreaBoundKey
                     }
                 }
