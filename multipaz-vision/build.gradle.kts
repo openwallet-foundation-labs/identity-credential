@@ -128,7 +128,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.multipaz.mlkit"
+    namespace = "org.multipaz.vision"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
