@@ -20,18 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.launch
+import org.multipaz.compose.cards.WarningCard
 import org.multipaz.crypto.EcCurve
+import org.multipaz.models.digitalcredentials.DigitalCredentials
 import org.multipaz.testapp.App
 import org.multipaz.testapp.Platform
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.testapp.platform
-import org.multipaz.compose.cards.WarningCard
-import org.multipaz.models.digitalcredentials.DigitalCredentials
-import org.multipaz.testapp.platformCryptoInit
 import org.multipaz.testapp.platformRestartApp
 
 @Composable
@@ -293,6 +288,9 @@ fun SettingsScreen(
                 onCheckedChange = { app.settingsModel.presentmentPreferSignatureToKeyAgreement.value = !it },
             )
         }
+        item {
+            NfcRoutingChoice(app.settingsModel)
+        }
 
         item {
             HorizontalDivider(
@@ -331,3 +329,20 @@ private fun TestAppSettingsModel.swapNegotiatedHandoverOrder(index1: Int, index2
     list[index1] = tmp
     presentmentNegotiatedHandoverPreferredOrder.value = list
 }
+
+/**
+ * Compact Composable displaying two radio buttons in a single horizontal row for the mutually exclusive
+ * NFC communications routing set up either for the Host (TestApp) or SE (Secure Element) destinations.
+ *
+ * On the App restart the routing might be reset to default (TestApp), which will be indicated by
+ * both radio buttons being unchecked (see the TestApp General Settings screen section).
+ *
+ * Android implementation only. iOS marked as NOOP and not displaying this choice at all.
+ */
+@Composable
+expect fun NfcRoutingChoice(settingsModel: TestAppSettingsModel, modifier: Modifier = Modifier)
+
+
+
+
+
