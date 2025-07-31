@@ -26,6 +26,7 @@ import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
+import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.util.Logger
@@ -96,6 +97,17 @@ class MdocCredential : SecureAreaBoundCredential {
             return Pair(credentials, batchResult.openid4vciKeyAttestationJws)
         }
 
+        /**
+         * Create a [KeyBoundSdJwtVcCredential].
+         *
+         * @param document The document to add the credential to.
+         * @param asReplacementForIdentifier the identifier for the [Credential] this will replace when certified.
+         * @param domain The domain for the credential.
+         * @param secureArea The [SecureArea] to use for creating a key.
+         * @param docType The docType for the credential.
+         * @param createKeySettings The settings to use for key creation, including algorithm parameters.
+         * @return an uncertified [Credential] which has been added to [document].
+         */
         suspend fun create(
             document: Document,
             asReplacementForIdentifier: String?,
@@ -112,6 +124,36 @@ class MdocCredential : SecureAreaBoundCredential {
                 docType
             ).apply {
                 generateKey(createKeySettings)
+            }
+        }
+
+        /**
+         * Create a [MdocCredential] using a key that already exists.
+         *
+         * @param document The document to add the credential to.
+         * @param asReplacementForIdentifier the identifier for the [Credential] this will replace when certified.
+         * @param domain The domain for the credential.
+         * @param secureArea The [SecureArea] to use for creating a key.
+         * @param docType The docType for the credential.
+         * @param existingKeyAlias the alias for the existing key in [secureArea].
+         * @return an uncertified [Credential] which has been added to [document].
+         */
+        suspend fun createForExistingAlias(
+            document: Document,
+            asReplacementForIdentifier: String?,
+            domain: String,
+            secureArea: SecureArea,
+            docType: String,
+            existingKeyAlias: String,
+        ): MdocCredential {
+            return MdocCredential(
+                document,
+                asReplacementForIdentifier,
+                domain,
+                secureArea,
+                docType
+            ).apply {
+                useExistingKey(keyAlias = existingKeyAlias)
             }
         }
     }

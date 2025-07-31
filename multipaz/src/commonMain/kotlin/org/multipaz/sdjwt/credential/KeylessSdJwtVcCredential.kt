@@ -7,6 +7,7 @@ import org.multipaz.claim.JsonClaim
 import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.securearea.SecureArea
 
 class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
     override lateinit var vct: String
@@ -57,6 +58,15 @@ class KeylessSdJwtVcCredential : Credential, SdJwtVcCredential {
     companion object {
         const val CREDENTIAL_TYPE: String = "KeylessSdJwtVcCredential"
 
+        /**
+         * Create a [KeyBoundSdJwtVcCredential].
+         *
+         * @param document The document to add the credential to.
+         * @param asReplacementForIdentifier the identifier for the [Credential] this will replace when certified.
+         * @param domain The domain for the credential.
+         * @param vct The Verifiable Credential Type for the credential.
+         * @return an uncertified [Credential] which has been added to [document].
+         */
         suspend fun create(
             document: Document,
             asReplacementForIdentifier: String?,

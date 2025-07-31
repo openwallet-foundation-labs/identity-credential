@@ -75,7 +75,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.UnicodeString;
 
-class KeystoreIdentityCredential extends IdentityCredential {
+public class KeystoreIdentityCredential extends IdentityCredential {
 
     private static final String TAG = "KSIdentityCredential"; // limit to <= 23 chars
     private final KeystorePresentationSession mPresentationSession;
@@ -851,6 +851,18 @@ class KeystoreIdentityCredential extends IdentityCredential {
             throw new IllegalStateException("Error loading data");
         }
         return mData.getCredentialKeyAlias();
+    }
+
+    /**
+     * Gets a list of certified authentication keys.
+     *
+     * @return the certified authentication keys aliases and associated issuer-provided data.
+     */
+    public @NonNull List<kotlin.Pair<String, byte[]>> getAuthenticationKeys() {
+        if (!loadData()) {
+            throw new IllegalStateException("Error loading data");
+        }
+        return mData.getAuthenticationKeys();
     }
 
     @Override
