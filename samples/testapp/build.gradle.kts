@@ -100,7 +100,7 @@ kotlin {
                 implementation(project(":multipaz-doctypes"))
                 implementation(project(":multipaz-provisioning-api"))
                 implementation(project(":multipaz-compose"))
-                implementation(project(":multipaz-mlkit"))
+                implementation(project(":multipaz-vision"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.io.core)
                 implementation(libs.ktor.client.core)

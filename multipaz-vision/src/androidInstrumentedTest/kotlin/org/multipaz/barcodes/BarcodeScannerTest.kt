@@ -5,7 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.junit.Test
 import org.multipaz.compose.decodeImage
-import org.multipaz.multipaz_mlkit.generated.resources.Res
+import org.multipaz.multipaz_vision.generated.resources.Res
 import kotlin.test.assertEquals
 
 
