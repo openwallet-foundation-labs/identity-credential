@@ -41,7 +41,7 @@ import kotlin.concurrent.Volatile
  * When a [Credential] is created, it is not certified. In order to use the [Credential]
  * for presentation, call [Credential.certify] to certify the credential. This is usually
  * done by sending metadata about the [Credential] to the issuer and getting issuer-signed
- * data back, including the validity-period the credential.
+ * data back, including the validity-period of the credential.
  *
  * An unique identifier for the credential is available in the [Credential.identifier]
  * property which is set at credential creation time.
