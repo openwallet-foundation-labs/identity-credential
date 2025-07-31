@@ -3,6 +3,7 @@ package org.multipaz.nfc
 import android.nfc.TagLostException
 import android.nfc.tech.IsoDep
 import kotlinx.coroutines.withContext
+import org.multipaz.util.Logger
 import kotlin.coroutines.CoroutineContext
 
 class NfcIsoTagAndroid(
@@ -27,11 +28,13 @@ class NfcIsoTagAndroid(
         //
         val responseApduData = withContext(tagContext) {
             try {
+                Logger.dHex(TAG, "transceive: Sending APDU", encodedCommand)
                 tag.transceive(encodedCommand)
             } catch (e: TagLostException) {
                 throw NfcTagLostException("Tag was lost", e)
             }
         }
+        Logger.dHex(TAG, "transceive: Received APDU", responseApduData)
         return ResponseApdu.decode(responseApduData)
     }
 }
