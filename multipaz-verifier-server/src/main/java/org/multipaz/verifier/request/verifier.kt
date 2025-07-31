@@ -79,6 +79,7 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
@@ -292,6 +293,7 @@ private val documentTypeRepo: DocumentTypeRepository by lazy {
     repo.addDocumentType(EUCertificateOfResidence.getDocumentType())
     repo.addDocumentType(UtopiaNaturalization.getDocumentType())
     repo.addDocumentType(UtopiaMovieTicket.getDocumentType())
+    repo.addDocumentType(IDPass.getDocumentType())
     repo
 }
 
@@ -611,7 +613,7 @@ private suspend fun handleDcGetData(
         ?: throw InvalidRequestException("No session for sessionId ${request.sessionId}")
     val session = Session.fromCbor(encodedSession.toByteArray())
 
-    Logger.i(TAG, "Data received from WC3 DC API: protocol=${request.credentialProtocol} data=${request.credentialResponse}")
+    //Logger.i(TAG, "Data received from WC3 DC API: protocol=${request.credentialProtocol} data=${request.credentialResponse}")
 
     when (request.credentialProtocol) {
         "preview" -> handleDcGetDataPreview(session, request.credentialResponse)
@@ -708,7 +710,7 @@ private fun handleDcGetDataArf(
         session.sessionTranscript!!,
         encapsulatedPublicKey)
 
-    Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
+    //Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
     Logger.iCbor(TAG, "SessionTranscript", session.sessionTranscript!!)
 }
 
@@ -765,7 +767,7 @@ private fun handleDcGetDataMdocApi(
         session.sessionTranscript!!,
         encapsulatedPublicKey)
 
-    Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
+    //Logger.iCbor(TAG, "decrypted DeviceResponse", session.deviceResponse!!)
     Logger.iCbor(TAG, "SessionTranscript", session.sessionTranscript!!)
 }
 
@@ -787,7 +789,7 @@ private fun handleDcGetDataOpenID4VP(
     } else {
         response["vp_token"]!!.jsonObject
     }
-    Logger.iJson(TAG, "vpToken", vpToken)
+    //Logger.iJson(TAG, "vpToken", vpToken)
 
     // TODO: handle multiple vpTokens being returned
     val vpTokenForCred = when (version) {
@@ -987,7 +989,7 @@ private suspend fun handleOpenID4VPResponse(
     val session = Session.fromCbor(encodedSession.toByteArray())
 
     val responseString = requestData.decodeToString()
-    Logger.i(TAG, "TODO: look at $responseString")
+    //Logger.i(TAG, "responseString $responseString")
 
     val kvPairs = mutableMapOf<String, String>()
     for (part in responseString.split("&")) {
@@ -1004,7 +1006,7 @@ private suspend fun handleOpenID4VPResponse(
         session.responseWasEncrypted = true
         JsonWebEncryption.decrypt(responseJwtCs, session.encryptionKey)
     }
-    Logger.iJson(TAG, "responseObj", responseObj)
+    //Logger.iJson(TAG, "responseObj", responseObj)
 
     // We only support a simple cred so...
     val vpToken = responseObj["vp_token"]!!.jsonObject
@@ -1125,6 +1127,25 @@ private suspend fun getIssuerTrustManager(): TrustManager {
                 displayName = "OWF Multipaz TestApp",
                 displayIcon = null,
                 privacyPolicyUrl = "https://apps.multipaz.org",
+                testOnly = true,
+            )
+        )
+        // These two certificates are from https://developers.google.com/wallet/identity/verify/supported-issuers-iaca-certs#id-pass
+        trustManager.addX509Cert(
+            certificate = X509Cert(encodedCertificate = "308203973082031da0030201020214009f398d5fb28e9ed94d55cdc695b3b7f064d8ea300a06082a8648ce3d040303305b310b300906035504061302555331133011060355040a130a476f6f676c65204c4c43310f300d060355040b130657616c6c6574312630240603550403131d4964656e746974792043726564656e7469616c20526f6f742049414341301e170d3234303532323138313635335a170d3334303232303032303432385a305b310b300906035504061302555331133011060355040a130a476f6f676c65204c4c43310f300d060355040b130657616c6c6574312630240603550403131d4964656e746974792043726564656e7469616c20526f6f7420494143413076301006072a8648ce3d020106052b8104002203620004e2d11c1726faa9086920ec2a31193e46a0082d03c1269587e78da1ff4b243e72d40ec3fb612ad420df16652792a548b9b314dd1e449f78630042e5713c3d9215c9322baaf52bb5bb3aa26e7ad19c5001636df464d3253346d3951ef7922468bba38201a03082019c300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff020100301d0603551d0e041604143b893aa58d15f4a8a91b98f4bd07ec7e10ce9e2c301f0603551d230418301680143b893aa58d15f4a8a91b98f4bd07ec7e10ce9e2c30818d06082b06010505070101048180307e307c06082b060105050730028670687474703a2f2f7072697661746563612d636f6e74656e742d36356366646537372d303030302d323464652d396132332d3038396530383262666663632e73746f726167652e676f6f676c65617069732e636f6d2f30326462343630383061366436336563613736332f63612e6372743081820603551d1f047b30793077a075a0738671687474703a2f2f7072697661746563612d636f6e74656e742d36356366646537372d303030302d323464652d396132332d3038396530383262666663632e73746f726167652e676f6f676c65617069732e636f6d2f30326462343630383061366436336563613736332f63726c2e63726c30210603551d12041a3018861668747470733a2f2f7777772e676f6f676c652e636f6d300a06082a8648ce3d0403030368003065023100b408f1f380245431b956b0c80beec447aeedcf58611c6914cdd1aca595506d6aed4b5141d130c51ffdc1b97dd4ec83ef02304582a602afe836e0b655ad473ccb57900f8817ac699fec765f2050d4c5ee88407af0075fd435fd64dc50c0306e2966b8".fromHex()),
+            metadata = TrustMetadata(
+                displayName = "Google Wallet ID pass US IACA Root",
+                displayIcon = null,
+                privacyPolicyUrl = null,
+                testOnly = true,
+            )
+        )
+        trustManager.addX509Cert(
+            certificate = X509Cert(encodedCertificate = "308203953082031ca003020102021367543bbbef135c204a167ea39b3bcfc02c776c300a06082a8648ce3d040303305b310b300906035504061302584731133011060355040a130a476f6f676c65204c4c43310f300d060355040b130657616c6c6574312630240603550403131d4964656e746974792043726564656e7469616c20526f6f742049414341301e170d3235303330343230353231385a170d3335303330353036333231395a305b310b300906035504061302584731133011060355040a130a476f6f676c65204c4c43310f300d060355040b130657616c6c6574312630240603550403131d4964656e746974792043726564656e7469616c20526f6f7420494143413076301006072a8648ce3d020106052b8104002203620004d743f09260683dbc4b2f33f652987b354e799ccd77d13fb0a7cfd031d3dafd2297ccc0531c83456ffba1d0b9af2a77e0938c220e144418cf6dcbfcae2c1fd94fed9a6d2e9c0fb143caf855073c0d351d1556c08376abf639bf0a690ccb0172e7a38201a03082019c300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff020100301d0603551d0e041604141a44688d3bc310b2fd049077d50ee54065cf14e9301f0603551d230418301680141a44688d3bc310b2fd049077d50ee54065cf14e930818d06082b06010505070101048180307e307c06082b060105050730028670687474703a2f2f7072697661746563612d636f6e74656e742d36376635663433322d303030302d323932662d393164362d6163336562313465376236382e73746f726167652e676f6f676c65617069732e636f6d2f61613736303330653062323261336139356138622f63612e6372743081820603551d1f047b30793077a075a0738671687474703a2f2f7072697661746563612d636f6e74656e742d36376635663433322d303030302d323932662d393164362d6163336562313465376236382e73746f726167652e676f6f676c65617069732e636f6d2f61613736303330653062323261336139356138622f63726c2e63726c30210603551d12041a3018861668747470733a2f2f7777772e676f6f676c652e636f6d300a06082a8648ce3d04030303670030640230495e02e168f322951a4ef437027f0b306dd3c98d1ea06cc482d99d31f02afc574648037176f077ddf56d5bd0a13629a502304c272af8a89cf0a01ed58da5bb4a21be4c70493d6cdf8cad16a25c1253dd752efaad7e2b24b2d6c1275eee9602dcb998".fromHex()),
+            metadata = TrustMetadata(
+                displayName = "Google Wallet ID pass ROW IACA Root",
+                displayIcon = null,
+                privacyPolicyUrl = null,
                 testOnly = true,
             )
         )
