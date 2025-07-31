@@ -1624,6 +1624,17 @@ class CredentialData {
         return checkUserAuthenticationTimeout(acpAlias);
     }
 
+    @NonNull
+    List<kotlin.Pair<String, byte[]>> getAuthenticationKeys() {
+        ArrayList<kotlin.Pair<String, byte[]>> ret = new ArrayList<>();
+        for (AuthKeyData data : mAuthKeyDatas) {
+            if (!data.mAlias.isEmpty()) {
+                ret.add(new kotlin.Pair<>(data.mAlias, data.mStaticAuthenticationData));
+            }
+        }
+        return ret;
+    }
+
     // Note that a dynamic authentication key may have two Android Keystore keys associated with
     // it.. the obvious one is for a previously certificated key. This key may possibly have an
     // use-count which is already exhausted. The other one is for a key yet pending certification.
@@ -1632,7 +1643,7 @@ class CredentialData {
     // That is, it's better to use a key with an exhausted use-count (slightly bad for user privacy
     // in terms of linkability between multiple presentations) than the user not being able to
     // present their credential at all...
-    private static class AuthKeyData {
+    static class AuthKeyData {
         // The mAlias for the key in Android Keystore. Is set to the empty string if the key has not
         // yet been created. This is set to the empty string if no key has been certified.
         String mAlias = "";

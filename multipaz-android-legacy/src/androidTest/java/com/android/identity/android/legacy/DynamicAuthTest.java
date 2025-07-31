@@ -60,6 +60,7 @@ import javax.crypto.SecretKey;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.CborEncoder;
 import co.nstant.in.cbor.CborException;
+import kotlin.Pair;
 
 @LargeTest
 @RunWith(AndroidJUnit4.class)
@@ -321,6 +322,12 @@ public class DynamicAuthTest {
             assertTrue(false);
         }
         */
+
+        // Check we can get the authentication keys and associated auth data...
+        List<Pair<String, byte[]>> listOfAuthKeys = ((KeystoreIdentityCredential) credential).getAuthenticationKeys();
+        assertEquals(2, listOfAuthKeys.size());
+        assertArrayEquals(new byte[] {42, 43, 44}, listOfAuthKeys.get(0).getSecond());
+        assertArrayEquals(new byte[] {43, 44, 45}, listOfAuthKeys.get(1).getSecond());
 
         // Now use one of the keys...
         entriesToRequest = new LinkedHashMap<>();

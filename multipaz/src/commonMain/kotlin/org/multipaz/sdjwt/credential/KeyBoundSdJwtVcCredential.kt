@@ -1,6 +1,5 @@
 package org.multipaz.sdjwt.credential
 
-import kotlinx.serialization.json.JsonObject
 import org.multipaz.cbor.CborBuilder
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.MapBuilder
@@ -67,6 +66,17 @@ class KeyBoundSdJwtVcCredential : SecureAreaBoundCredential, SdJwtVcCredential {
             return Pair(credentials, batchResult.openid4vciKeyAttestationJws)
         }
 
+        /**
+         * Create a [KeyBoundSdJwtVcCredential].
+         *
+         * @param document The document to add the credential to.
+         * @param asReplacementForIdentifier the identifier for the [Credential] this will replace when certified.
+         * @param domain The domain for the credential.
+         * @param secureArea The [SecureArea] to use for creating a key.
+         * @param vct The Verifiable Credential Type for the credential.
+         * @param createKeySettings The settings to use for key creation, including algorithm parameters.
+         * @return an uncertified [Credential] which has been added to [document].
+         */
         suspend fun create(
             document: Document,
             asReplacementForIdentifier: String?,
@@ -83,6 +93,36 @@ class KeyBoundSdJwtVcCredential : SecureAreaBoundCredential, SdJwtVcCredential {
                 vct
             ).apply {
                 generateKey(createKeySettings)
+            }
+        }
+
+        /**
+         * Create a [KeyBoundSdJwtVcCredential] using a key that already exists.
+         *
+         * @param document The document to add the credential to.
+         * @param asReplacementForIdentifier the identifier for the [Credential] this will replace when certified.
+         * @param domain The domain for the credential.
+         * @param secureArea The [SecureArea] to use for creating a key.
+         * @param vct The Verifiable Credential Type for the credential.
+         * @param existingKeyAlias the alias for the existing key in [secureArea].
+         * @return an uncertified [Credential] which has been added to [document].
+         */
+        suspend fun createForExistingAlias(
+            document: Document,
+            asReplacementForIdentifier: String?,
+            domain: String,
+            secureArea: SecureArea,
+            vct: String,
+            existingKeyAlias: String,
+        ): KeyBoundSdJwtVcCredential {
+            return KeyBoundSdJwtVcCredential(
+                document,
+                asReplacementForIdentifier,
+                domain,
+                secureArea,
+                vct
+            ).apply {
+                useExistingKey(keyAlias = existingKeyAlias)
             }
         }
     }
