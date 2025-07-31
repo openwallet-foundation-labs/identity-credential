@@ -13,7 +13,7 @@
 
     <aid-group android:description="@string/nfc_ndef_service_aid_group_description" android:category="other">
         <!-- NFC Type 4 Tag -->
-        <aid-filter android:name="D2760000850101"/>
+        <!-- <aid-filter android:name="D2760000850101"/> -->
     </aid-group>
 
 </host-apdu-service>
