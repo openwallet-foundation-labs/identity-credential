@@ -1,6 +1,11 @@
 package org.multipaz.testapp
 
-import org.multipaz.compose.mdoc.MdocNfcDataTransferService
+import android.content.Intent
+import android.nfc.cardemulation.OffHostApduService
+import android.os.IBinder
 
-class TestAppMdocNfcDataTransferService: MdocNfcDataTransferService() {
+class TestAppMdocNfcDataTransferService : OffHostApduService() {
+  override fun onBind(p0: Intent?): IBinder? {
+    return null
+  }
 }

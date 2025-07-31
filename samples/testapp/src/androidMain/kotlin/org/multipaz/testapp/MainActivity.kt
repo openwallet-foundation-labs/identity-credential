@@ -2,6 +2,7 @@ package org.multipaz.testapp
 
 import android.content.ComponentName
 import android.content.Intent
+import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.cardemulation.CardEmulation
 import android.os.Bundle
@@ -23,6 +24,7 @@ class MainActivity : FragmentActivity() {
     companion object {
         private const val TAG = "MainActivity"
     }
+    private lateinit var powerOffReceiver: PowerOffReceiver
 
     override fun onResume() {
         super.onResume()
@@ -73,6 +75,13 @@ class MainActivity : FragmentActivity() {
                 ).show()
             }
         }
+
+        // On PowerOff route NFC to SE.
+        powerOffReceiver = PowerOffReceiver()
+        registerReceiver(powerOffReceiver, IntentFilter(Intent.ACTION_SHUTDOWN))
+        // Routing AIDs to host (app) by default.
+        // TODO: disabled in favor of the static routing until the dynamic routing is fixed in the OS.
+        // AidRegistrationUtil.routeAidsToHost(this)
     }
 
     override fun onNewIntent(intent: Intent) {
