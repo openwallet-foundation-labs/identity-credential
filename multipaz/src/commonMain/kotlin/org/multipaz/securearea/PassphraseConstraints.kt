@@ -11,7 +11,7 @@ import org.multipaz.cbor.annotation.CborSerializable
  * @param maxLength the maximum allowed length of the passphrase.
  * @param requireNumerical if `true`, each character in the passphrase must be decimal digits (0-9).
  */
-@CborSerializable(schemaId = "uvM3E3bDjLlMMDv9rQeipnZxlfnqpkbh401zi6v-nAk")
+@CborSerializable(schemaHash = "uvM3E3bDjLlMMDv9rQeipnZxlfnqpkbh401zi6v-nAk")
 data class PassphraseConstraints(
     val minLength: Int,
     val maxLength: Int,
