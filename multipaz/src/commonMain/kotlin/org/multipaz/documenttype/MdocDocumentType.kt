@@ -35,7 +35,7 @@ class MdocDocumentType private constructor(
      */
     data class Builder(
         val docType: String,
-        internal val namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf()
+        internal val namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf(),
     ) {
         /**
          * Add a data element to a namespace in the mDoc Document Type.
@@ -48,6 +48,7 @@ class MdocDocumentType private constructor(
          * @param mandatory indication whether the ISO mdoc attribute is mandatory.
          * @param icon the icon, if available.
          * @param sampleValue a sample value for the attribute, if available.
+         * @return the builder.
          */
         fun addDataElement(
             namespace: String,
@@ -71,6 +72,29 @@ class MdocDocumentType private constructor(
                 icon,
                 sampleValue
             )
+        }
+
+        /**
+         * Adds an existing namespace to this type.
+         *
+         * @param namespace the existing namespace to add.
+         * @return the builder.
+         */
+        fun addNamespace(
+            namespace: MdocNamespace
+        ) = apply {
+            namespace.dataElements.forEach { (dataElementName, dataElement) ->
+                addDataElement(
+                    namespace = namespace.namespace,
+                    type = dataElement.attribute.type,
+                    identifier = dataElement.attribute.identifier,
+                    displayName = dataElement.attribute.displayName,
+                    description = dataElement.attribute.description,
+                    mandatory = dataElement.mandatory,
+                    icon = dataElement.attribute.icon,
+                    sampleValue = dataElement.attribute.sampleValueMdoc
+                )
+            }
         }
 
         /**

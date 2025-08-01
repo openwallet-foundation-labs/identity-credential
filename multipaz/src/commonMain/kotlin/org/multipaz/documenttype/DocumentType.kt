@@ -97,6 +97,18 @@ class DocumentType private constructor(
         }
 
         /**
+         * Adds an existing namespace to this document type.
+         *
+         * @param namespace the existing namespace to add.
+         * @return the builder.
+         */
+        fun addMdocNamespace(
+            namespace: MdocNamespace
+        ) = apply {
+            mdocBuilder?.addNamespace(namespace)
+        }
+
+        /**
          * Add an attribute for both ISO mdoc and JSON-based document, using the same identifier.
          *
          * @param type the datatype of this attribute.
