@@ -85,6 +85,7 @@ kotlin {
         val androidInstrumentedTest by getting {
             dependsOn(commonTest)
             dependencies {
+                implementation(project(":multipaz-models:matcherTest"))
                 implementation(libs.androidx.test.junit)
                 implementation(libs.androidx.espresso.core)
                 implementation(libs.kotlin.test)
@@ -127,12 +128,6 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
-    }
-
-    externalNativeBuild {
-        cmake {
-            path("src/androidInstrumentedTest/cpp/CMakeLists.txt")
-        }
     }
 }
 
