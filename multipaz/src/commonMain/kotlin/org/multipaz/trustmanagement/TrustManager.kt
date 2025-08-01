@@ -1,8 +1,8 @@
 package org.multipaz.trustmanagement
 
 import org.multipaz.crypto.X509Cert
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Interface for checking if an entity is trusted.

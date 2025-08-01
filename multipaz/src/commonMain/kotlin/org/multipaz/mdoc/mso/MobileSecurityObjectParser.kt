@@ -20,7 +20,7 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.EcPublicKey
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.crypto.Algorithm
 
 /**

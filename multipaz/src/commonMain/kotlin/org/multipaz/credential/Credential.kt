@@ -29,8 +29,8 @@ import org.multipaz.securearea.SecureArea
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborMap
 import kotlin.concurrent.Volatile

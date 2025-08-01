@@ -20,7 +20,7 @@ private class AndroidScreenLockState(): ScreenLockState {
     override suspend fun launchSettingsPageWithScreenLock() {
         val intent = Intent(Settings.ACTION_SECURITY_SETTINGS)
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ContextCompat.startActivity(applicationContext, intent, null)
+        applicationContext.startActivity(intent)
     }
 }
 

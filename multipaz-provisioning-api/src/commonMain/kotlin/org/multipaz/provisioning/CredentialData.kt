@@ -2,7 +2,7 @@ package org.multipaz.provisioning
 
 import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.crypto.EcPublicKey
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * This data structure contains a data for a credential, minted by the issuer.

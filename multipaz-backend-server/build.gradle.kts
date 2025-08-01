@@ -13,6 +13,7 @@ kotlin {
 
     compilerOptions {
         allWarningsAsErrors = true
+        optIn.add("kotlin.time.ExperimentalTime")
     }
 }
 

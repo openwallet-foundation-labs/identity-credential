@@ -1,7 +1,7 @@
 package org.multipaz.mdoc.zkp
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.request.MdocRequest
 

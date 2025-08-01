@@ -12,7 +12,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.delay
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.decodeToString

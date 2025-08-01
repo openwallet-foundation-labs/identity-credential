@@ -62,9 +62,9 @@ import org.multipaz.mrtd.MrtdNfcData
 import org.multipaz.mrtd.MrtdNfcDataDecoder
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -724,7 +724,7 @@ class IssuingAuthorityState(
                     // date of birth cannot be in future
                     yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
                     monthNumber()
-                    dayOfMonth()
+                    day()
                 })
             val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
             // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
@@ -828,7 +828,7 @@ class IssuingAuthorityState(
                     // date of birth cannot be in future
                     yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
                     monthNumber()
-                    dayOfMonth()
+                    day()
                 })
             val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
             // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
@@ -951,7 +951,7 @@ class IssuingAuthorityState(
                     // date of birth cannot be in future
                     yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
                     monthNumber()
-                    dayOfMonth()
+                    day()
                 })
             val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
             // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
@@ -1134,7 +1134,7 @@ class IssuingAuthorityState(
             chars("-")
             monthNumber()
             chars("-")
-            dayOfMonth()
+            day()
         })
     }
 }

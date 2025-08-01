@@ -196,9 +196,7 @@ class DeviceRequestParser(
 
                     // parse nameSpaces
                     val nameSpaces = itemsRequest["nameSpaces"]
-                    if (nameSpaces != null) {
-                      parseNamespaces(nameSpaces, builder)
-                    }
+                    parseNamespaces(nameSpaces, builder)
                     _docRequests.add(builder.build())
                 }
             }

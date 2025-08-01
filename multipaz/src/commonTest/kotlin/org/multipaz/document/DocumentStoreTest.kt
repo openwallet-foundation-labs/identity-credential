@@ -38,7 +38,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 import kotlinx.io.bytestring.ByteString
 import kotlin.test.BeforeTest
 import kotlin.test.Test

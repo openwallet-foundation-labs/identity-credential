@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.9.3" type="baseline" client="gradle" dependencies="false" name="AGP (8.9.3)" variant="all" version="8.9.3">
+    <issue
+        id="LifecycleCurrentStateInComposition"
+        message="Lifecycle.currentState should not be called within composition"
+        errorLine1="    if (!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {"
+        errorLine2="                            ~~~~~~~~~~~~">
+        <location
+            file="src/androidMain/kotlin/org/multipaz/compose/prompt/BiometricPromptDialog.kt"
+            line="21"
+            column="29"/>
+    </issue>
+</issues>

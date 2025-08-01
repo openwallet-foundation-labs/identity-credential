@@ -15,7 +15,7 @@
  */
 package org.multipaz.mdoc.credential
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.json.JsonObject
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborBuilder

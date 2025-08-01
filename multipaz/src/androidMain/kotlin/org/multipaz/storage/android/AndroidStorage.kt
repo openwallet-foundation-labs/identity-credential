@@ -7,7 +7,7 @@ import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.coroutines.CoroutineContext
 
 /**

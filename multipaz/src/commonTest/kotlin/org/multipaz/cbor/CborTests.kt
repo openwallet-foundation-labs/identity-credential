@@ -2,7 +2,7 @@ package org.multipaz.cbor
 
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.test.Test
 import kotlin.test.assertContentEquals

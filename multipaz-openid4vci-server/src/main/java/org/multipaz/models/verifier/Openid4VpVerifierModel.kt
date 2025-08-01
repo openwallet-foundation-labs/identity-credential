@@ -1,7 +1,7 @@
 package org.multipaz.models.verifier
 
 import io.ktor.util.encodeBase64
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus

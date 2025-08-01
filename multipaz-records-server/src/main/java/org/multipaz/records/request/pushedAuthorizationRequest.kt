@@ -5,7 +5,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondText
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

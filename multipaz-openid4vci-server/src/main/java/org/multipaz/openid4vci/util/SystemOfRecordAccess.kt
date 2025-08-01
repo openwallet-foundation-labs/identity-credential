@@ -1,6 +1,6 @@
 package org.multipaz.openid4vci.util
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.annotation.CborSerializable
 
 /**

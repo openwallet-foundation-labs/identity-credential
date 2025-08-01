@@ -22,7 +22,7 @@ import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
 import org.multipaz.mdoc.TestVectors
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals

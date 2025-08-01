@@ -1,6 +1,6 @@
 package org.multipaz.crypto
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.multipaz.asn1.ASN1Integer

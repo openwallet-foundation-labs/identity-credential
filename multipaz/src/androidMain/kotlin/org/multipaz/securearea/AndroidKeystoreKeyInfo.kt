@@ -2,7 +2,7 @@ package org.multipaz.securearea
 
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Android Keystore specific class for information about a key.

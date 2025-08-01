@@ -3,7 +3,7 @@ package org.multipaz.securearea.cloud
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.KeyInfo
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Cloud Secure Area specific class for information about a key.

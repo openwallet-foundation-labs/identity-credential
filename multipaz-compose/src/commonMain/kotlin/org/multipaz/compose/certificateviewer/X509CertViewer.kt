@@ -25,7 +25,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.asn1.OID
@@ -167,13 +167,15 @@ private fun BasicInfo(data: CertificateViewData) {
         }
     }
 
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     RenderSection(
         // Little bit of an easter-egg but very useful: Copy the PEM-encoded certificate
         // to the clipboard when user taps the "Basic Information" string.
         //
         modifier = Modifier.clickable {
-            // TODO: Use setClip() when it's ready so we can set MIME type to application/x-pem-file
+            // TODO: Use LocalClipboard when ClipEntry is available to common,
+            //  code (see https://youtrack.jetbrains.com/issue/CMP-7624 for status)
             clipboardManager.setText(AnnotatedString(data.pem))
         },
         title = stringResource(Res.string.certificate_viewer_sub_basic_info),

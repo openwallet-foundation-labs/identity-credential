@@ -10,7 +10,7 @@ import org.multipaz.provisioning.KeyPossessionChallenge
 import org.multipaz.provisioning.KeyPossessionProof
 import org.multipaz.provisioning.RequestCredentials
 import org.multipaz.util.toBase64Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonPrimitive

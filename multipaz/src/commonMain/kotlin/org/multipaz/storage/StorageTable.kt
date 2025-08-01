@@ -1,7 +1,7 @@
 package org.multipaz.storage
 
 import org.multipaz.storage.base.BaseStorageTable
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 
 /**

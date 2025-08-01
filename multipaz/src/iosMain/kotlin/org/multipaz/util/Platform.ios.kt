@@ -13,6 +13,7 @@ import org.multipaz.prompt.PromptModel
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureEnclaveSecureArea
 import org.multipaz.storage.Storage
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.storage.sqlite.SqliteStorage
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager

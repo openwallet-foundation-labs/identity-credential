@@ -2,7 +2,7 @@ package org.multipaz.storage.base
 
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 
 abstract class BaseStorageTable(val spec: StorageTableSpec): StorageTable {

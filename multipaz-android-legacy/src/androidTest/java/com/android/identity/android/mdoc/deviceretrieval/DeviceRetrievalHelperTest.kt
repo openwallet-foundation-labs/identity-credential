@@ -70,9 +70,9 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
 import org.multipaz.util.Constants
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock.System.now
-import kotlinx.datetime.Instant
-import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
+import kotlin.time.Clock.System.now
+import kotlin.time.Instant
+import kotlin.time.Instant.Companion.fromEpochMilliseconds
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test

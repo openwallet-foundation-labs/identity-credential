@@ -61,7 +61,6 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.jetbrains.kotlin.jvm) apply false
-    alias(libs.plugins.gretty) apply false
     alias(libs.plugins.navigation.safe.args) apply false
     alias(libs.plugins.parcelable) apply false
     alias(libs.plugins.buildconfig) apply false

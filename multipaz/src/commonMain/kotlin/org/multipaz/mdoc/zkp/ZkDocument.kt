@@ -1,6 +1,6 @@
 package org.multipaz.mdoc.zkp
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.buildCborMap

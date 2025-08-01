@@ -15,6 +15,9 @@ buildConfig {
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
 }
 
 java {

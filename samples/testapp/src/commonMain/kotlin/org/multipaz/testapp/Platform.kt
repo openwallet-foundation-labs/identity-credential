@@ -6,7 +6,7 @@ import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.jetbrains.compose.resources.DrawableResource
 import org.multipaz.crypto.Algorithm

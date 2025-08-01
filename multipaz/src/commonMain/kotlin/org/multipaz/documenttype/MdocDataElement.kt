@@ -22,7 +22,7 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.util.Logger
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime

@@ -589,13 +589,11 @@ private fun RequestSection(
                     stringResource(Res.string.consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_anonymous)
                 }
             }
-            if (text != null) {
-                WarningCard {
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+            WarningCard {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

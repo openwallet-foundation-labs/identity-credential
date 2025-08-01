@@ -1,7 +1,7 @@
 package org.multipaz.provisioning
 
 import org.multipaz.cbor.annotation.CborSerializable
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Information about the capabilities of the wallet server, for the wallet application.

@@ -1,6 +1,6 @@
 package org.multipaz.trustmanagement
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.crypto.X509Cert
 
 /**

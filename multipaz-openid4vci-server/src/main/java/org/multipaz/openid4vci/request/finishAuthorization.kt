@@ -11,7 +11,7 @@ import io.ktor.http.encodeURLParameter
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject

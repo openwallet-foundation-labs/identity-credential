@@ -4,7 +4,7 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.securearea.config.SecureAreaConfigurationSoftware
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 import kotlinx.io.bytestring.buildByteString
 
 /**

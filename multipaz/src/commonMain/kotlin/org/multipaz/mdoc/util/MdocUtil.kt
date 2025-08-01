@@ -48,7 +48,7 @@ import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.util.Logger
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.buildCborMap
 import kotlin.random.Random
 

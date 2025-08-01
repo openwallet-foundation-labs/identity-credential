@@ -40,7 +40,7 @@ import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
 import org.multipaz.asn1.ASN1

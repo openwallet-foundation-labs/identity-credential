@@ -32,7 +32,7 @@ import org.multipaz.crypto.javaX509Certificate
 import org.multipaz.storage.android.AndroidStorage
 import org.multipaz.util.AndroidAttestationExtensionParser
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.junit.Assert
 import org.junit.Assume
 import org.junit.Before
@@ -47,7 +47,7 @@ import java.security.NoSuchAlgorithmException
 import java.security.NoSuchProviderException
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
-import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
+import kotlin.time.Instant.Companion.fromEpochMilliseconds
 import kotlinx.io.bytestring.ByteString
 
 class AndroidKeystoreSecureAreaTest {

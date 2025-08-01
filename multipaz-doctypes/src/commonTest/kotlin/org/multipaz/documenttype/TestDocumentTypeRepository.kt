@@ -10,7 +10,7 @@ import org.multipaz.cbor.Uint
 import org.multipaz.cbor.toDataItemDateTimeString
 import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.documenttype.knowntypes.DrivingLicense
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.multipaz.cbor.addCborMap

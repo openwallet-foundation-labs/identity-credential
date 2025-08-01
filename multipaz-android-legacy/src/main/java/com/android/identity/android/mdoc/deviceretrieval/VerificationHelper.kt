@@ -44,7 +44,7 @@ import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.multipaz.mdoc.role.MdocRole
 import java.io.IOException
 import java.util.Arrays

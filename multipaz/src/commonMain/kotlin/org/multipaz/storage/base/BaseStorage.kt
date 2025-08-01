@@ -5,8 +5,8 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Base class implementing common functionality for various [Storage] implementations.

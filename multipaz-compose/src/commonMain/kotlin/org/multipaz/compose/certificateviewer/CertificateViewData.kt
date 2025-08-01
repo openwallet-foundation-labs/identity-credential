@@ -1,6 +1,6 @@
 package org.multipaz.compose.certificateviewer
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.asn1.ASN1
 import org.multipaz.asn1.ASN1Boolean
 import org.multipaz.asn1.ASN1Integer

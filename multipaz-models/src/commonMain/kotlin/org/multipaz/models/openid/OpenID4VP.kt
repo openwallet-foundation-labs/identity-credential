@@ -1,6 +1,6 @@
 package org.multipaz.models.openid
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonObject

@@ -18,7 +18,7 @@ import org.multipaz.securearea.KeyAttestation
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject

@@ -51,8 +51,8 @@ import org.multipaz.testapp.platformCreateKeySettings
 import org.multipaz.testapp.platformSecureAreaHasKeyAgreement
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString

@@ -33,7 +33,7 @@ import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.SignatureVerificationException
 import org.multipaz.mdoc.zkp.ZkDocument

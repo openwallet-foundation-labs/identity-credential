@@ -16,7 +16,7 @@ import org.multipaz.provisioning.ProvisioningBackendSettings
 import org.multipaz.provisioning.toCbor
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.toBase64Url
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.encodeToByteString

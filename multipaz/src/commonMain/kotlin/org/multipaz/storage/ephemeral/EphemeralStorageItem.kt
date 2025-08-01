@@ -1,7 +1,7 @@
 package org.multipaz.storage.ephemeral
 
 import org.multipaz.cbor.annotation.CborSerializable
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 
 // TODO: make this class internal, needs a fix for the annotation processor

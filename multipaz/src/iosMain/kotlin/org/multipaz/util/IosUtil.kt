@@ -7,9 +7,12 @@ import kotlinx.cinterop.allocArrayOf
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.usePinned
 import platform.Foundation.NSData
+import platform.Foundation.NSDate
 import platform.Foundation.NSError
 import platform.Foundation.create
 import platform.posix.memcpy
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 // Various iOS related utilities
 //
@@ -35,3 +38,9 @@ fun ByteArray.toNSData(): NSData = memScoped {
 fun NSError.toKotlinError(): Error {
     return Error("NSError domain=${this.domain} code=${this.code}: ${this.localizedDescription}")
 }
+
+fun NSDate.toKotlinInstant(): Instant {
+    return toKotlinInstant()
+}
+
+fun Clock.Companion.getSystem(): Clock = Clock.System

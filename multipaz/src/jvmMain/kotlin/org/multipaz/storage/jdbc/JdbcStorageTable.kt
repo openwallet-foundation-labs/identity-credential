@@ -5,7 +5,7 @@ import org.multipaz.storage.NoRecordStorageException
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.base.SqlStatementMaker
 import org.multipaz.util.toBase64Url
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import java.sql.SQLException
 import kotlin.random.Random

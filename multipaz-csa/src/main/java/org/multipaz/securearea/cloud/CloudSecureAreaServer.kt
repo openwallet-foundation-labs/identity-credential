@@ -34,9 +34,9 @@ import org.multipaz.util.AndroidAttestationExtensionParser
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
 import org.multipaz.util.validateAndroidKeyAttestation
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimePeriod
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString

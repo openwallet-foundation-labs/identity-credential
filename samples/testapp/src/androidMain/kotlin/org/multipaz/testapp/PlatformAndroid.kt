@@ -19,7 +19,7 @@ import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.storage.Storage
 import org.multipaz.storage.android.AndroidStorage
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.app_icon

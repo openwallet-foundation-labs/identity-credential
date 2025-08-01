@@ -24,7 +24,7 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.util.Logger
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborArray

@@ -18,7 +18,7 @@ import org.multipaz.util.Logger
 import org.multipaz.util.toHex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 private val TAG = "SecureEnclaveSecureAreaScreen"
 

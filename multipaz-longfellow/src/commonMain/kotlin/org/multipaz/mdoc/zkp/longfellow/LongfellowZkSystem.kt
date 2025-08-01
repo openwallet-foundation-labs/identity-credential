@@ -19,7 +19,7 @@ import org.multipaz.mdoc.zkp.ZkDocumentData
 import org.multipaz.mdoc.zkp.ZkSystem
 import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.request.MdocRequest
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.putCborArray
 import org.multipaz.util.toHex
 import kotlin.collections.component1

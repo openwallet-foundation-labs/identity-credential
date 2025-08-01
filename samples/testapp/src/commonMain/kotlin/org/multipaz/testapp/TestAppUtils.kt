@@ -38,8 +38,8 @@ import multipazproject.samples.testapp.generated.resources.driving_license_card_
 import multipazproject.samples.testapp.generated.resources.movie_ticket_cart_art
 import multipazproject.samples.testapp.generated.resources.photo_id_card_art
 import multipazproject.samples.testapp.generated.resources.pid_card_art
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonPrimitive

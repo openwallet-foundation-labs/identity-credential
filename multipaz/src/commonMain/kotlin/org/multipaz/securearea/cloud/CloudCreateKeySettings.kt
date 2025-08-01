@@ -2,7 +2,7 @@ package org.multipaz.securearea.cloud
 
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.config.SecureAreaConfigurationCloud
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
 

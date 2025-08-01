@@ -80,8 +80,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
@@ -193,7 +193,7 @@ fun IsoMdocProximityReadingScreen(
             dismissButton = @Composable {
                 TextButton(
                     onClick = {
-                        connectionMethodPickerData.value!!.continuation.resume(null, null)
+                        connectionMethodPickerData.value!!.continuation.resume(null) { _, _, _ -> null }
                         connectionMethodPickerData.value = null
                     }
                 ) {
@@ -201,13 +201,13 @@ fun IsoMdocProximityReadingScreen(
                 }
             },
             onDismissRequest = {
-                connectionMethodPickerData.value!!.continuation.resume(null, null)
+                connectionMethodPickerData.value!!.continuation.resume(null) { _, _, _ -> null }
                 connectionMethodPickerData.value = null
             },
             confirmButton = @Composable {
                 TextButton(
                     onClick = {
-                        connectionMethodPickerData.value!!.continuation.resume(selectedOption, null)
+                        connectionMethodPickerData.value!!.continuation.resume(selectedOption) { _, _, _ -> null }
                         connectionMethodPickerData.value = null
                     }
                 ) {

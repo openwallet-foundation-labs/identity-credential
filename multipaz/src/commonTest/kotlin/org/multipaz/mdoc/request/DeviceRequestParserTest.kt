@@ -27,8 +27,8 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.mdoc.TestVectors
 import org.multipaz.util.fromHex
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.multipaz.testUtilSetupCryptoProvider
 import kotlin.test.BeforeTest
 import kotlin.test.Test

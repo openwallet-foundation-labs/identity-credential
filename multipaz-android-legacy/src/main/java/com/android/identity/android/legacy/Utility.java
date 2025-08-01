@@ -52,7 +52,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.UnicodeString;
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 
 /**
  * Miscellaneous utility functions that are useful when building mdoc applications.

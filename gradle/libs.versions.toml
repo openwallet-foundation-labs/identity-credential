@@ -1,82 +1,67 @@
 [versions]
-agp = "8.9.0"
-android-compileSdk = "35"
+agp = "8.11.1"
+android-compileSdk = "36"
 android-minSdk = "26"
-android-targetSdk = "35"
-androidx-activity-compose = "1.9.3"
-androidx-appcompat = "1.6.1"
-androidx-constraintlayout = "2.1.4"
-androidx-core-ktx = "1.13.1"
-androidx-espresso-core = "3.5.1"
+android-targetSdk = "36"
+androidx-activity-compose = "1.10.1"
+androidx-appcompat = "1.7.1"
+androidx-core-ktx = "1.16.0"
+androidx-espresso-core = "3.7.0"
 androidx-material = "1.12.0"
-androidx-test-junit = "1.1.5"
-compose-plugin = "1.7.1"
-faceDetection = "16.1.6"
+androidx-test-junit = "1.3.0"
+compose-plugin = "1.8.2"
+faceDetection = "16.1.7"
 junit = "4.13.2"
-kotlin = "2.1.21"
-kotlinx-coroutines = "1.8.1"
-kotlinx-io = "0.4.0"
-kotlinx-datetime = "0.6.0"
-kotlinx-serialization = "1.7.0"
+kotlin = "2.2.0"
+kotlinx-coroutines = "1.10.2"
+kotlinx-io = "0.8.0"
+kotlinx-datetime = "0.7.1"
+kotlinx-serialization = "1.9.0"
 bouncy-castle = "1.81"
-tink = "1.13.0"
-ksp = "2.1.21-2.0.1"
+tink = "1.18.0"
+ksp = "2.2.0-2.0.2"
 androidx-biometrics = "1.2.0-alpha05"
-uiToolingPreview = "1.7.6"
+uiToolingPreview = "1.8.3"
 volley = "1.2.1"
 cbor = "0.9"
 scuba = "0.0.26"
-jmrtd = "0.7.42"
-mlkit = "16.0.0"
-camera = "1.3.3"
-compose-material3 = "1.4.0-alpha05"
-compose-material-icons-extended = "1.6.7"
-androidx-navigation = "2.7.7"
-code-scanner = "2.3.2"
+jmrtd = "0.8.2"
+mlkit = "16.0.1"
+camera = "1.4.2"
 ktor = "2.3.13"
 logback = "1.5.18"
-javax-servlet-api = "4.0.1"
 androidx-lifecycle = "2.2.0"
-androidx-lifecycle-ktx = "2.8.2"
-compose-runtime-livedata = "1.6.8"
-accompanist-permissions = "0.34.0"
-work-version = "2.9.0"
-nimbus-sdk = "11.8"
+androidx-lifecycle-ktx = "2.9.2"
+accompanist-permissions = "0.37.3"
+nimbus-sdk = "11.27"
 zxing = "3.5.3"
-gretty = "4.1.4"
-hsqldb = "2.7.2"
-mysql = "8.0.16"
-postgresql = "42.7.4"
-compose-junit4 = "1.6.8"
-compose-test-manifest = "1.6.8"
-androidx-fragment = "1.8.0"
-navigation-plugin = "2.7.7"
-androidx-preference = "1.2.1"
-exif = "1.3.7"
+hsqldb = "2.7.4"
+mysql = "8.0.33"
+postgresql = "42.7.7"
+compose-junit4 = "1.8.3"
+compose-test-manifest = "1.8.3"
+navigation-plugin = "2.9.3"
 jetbrains-navigation = "2.8.0-alpha10"
 jetbrains-lifecycle = "2.8.2"
-cameraLifecycle = "1.3.4"
-buildconfig = "5.3.5"
-androidx-sqlite = "2.5.0-alpha12"
+buildconfig = "5.6.7"
+androidx-sqlite = "2.5.2"
 play-services-identity-credentials = "16.0.0-alpha08"
-androidx-credentials = "1.5.0-rc01"
+androidx-credentials = "1.5.0"
 androidx-credentials-registry-provider = "1.0.0-alpha01"
-errorprone = "2.38.0"
+errorprone = "2.41.0"
 mlkit-barcode-scanning = "17.3.0"
 semver = "3.0.0"
-skie = "0.10.2"
+skie = "0.10.5"
 process-phoenix = "3.0.0"
-litert = "1.3.0"
-litertGpu = "1.3.0"
-litertMetadata = "1.3.0"
-litertSupport = "1.3.0"
-tasksVision = "0.10.14"
+litert = "1.4.0"
+litertGpu = "1.4.0"
+litertMetadata = "1.4.0"
+litertSupport = "1.4.0"
 
 [libraries]
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
-kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref="kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref="kotlinx-coroutines" }
@@ -91,7 +76,6 @@ androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidx-espresso-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
-androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidx-constraintlayout" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
 bouncy-castle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncy-castle" }
 bouncy-castle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncy-castle" }
@@ -106,11 +90,6 @@ com-google-mlkit-text-recognition = { group = "com.google.mlkit", name = "text-r
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camera" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camera" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camera" }
-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "compose-material3" }
-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "compose-material-icons-extended" }
-androidx-navigation-runtime = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "androidx-navigation" }
-androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidx-navigation" }
-code-scanner = { module = "com.github.yuriy-budiyev:code-scanner", version.ref = "code-scanner" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -119,32 +98,23 @@ ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
-javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
 ktor-server-double-receive = { module = "io.ktor:ktor-server-double-receive", version.ref = "ktor" }
 ktor-server-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref="logback" }
 androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "androidx-lifecycle" }
-androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "androidx-lifecycle-ktx" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle-ktx" }
-compose-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "compose-runtime-livedata" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist-permissions"}
-androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "work-version"}
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
 mysql = { module = "mysql:mysql-connector-java", version.ref = "mysql" }
 compose-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref="compose-junit4" }
 compose-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref="compose-test-manifest" }
-androidx-navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "androidx-navigation" }
-androidx-navigation-ui = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "androidx-navigation" }
-androidx-preference = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference" }
-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exif" }
 jetbrains-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref="jetbrains-navigation" }
 jetbrains-navigation-runtime = { module = "org.jetbrains.androidx.navigation:navigation-runtime", version.ref="jetbrains-navigation" }
 jetbrains-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref="jetbrains-lifecycle" }
-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
 androidx-sqlite = { module="androidx.sqlite:sqlite", version.ref = "androidx-sqlite" }
 androidx-sqlite-framework = { module="androidx.sqlite:sqlite-framework", version.ref = "androidx-sqlite" }
 androidx-sqlite-bundled = { module="androidx.sqlite:sqlite-bundled", version.ref = "androidx-sqlite" }
@@ -156,8 +126,6 @@ errorprone-annotations = { module = "com.google.errorprone:error_prone_annotatio
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref="mlkit-barcode-scanning"}
 semver = { module = "io.github.z4kn4fein:semver", version.ref="semver" }
 process-phoenix = { module = "com.jakewharton:process-phoenix", version.ref="process-phoenix" }
-
-# LiteRT
 litert-gpu = { module = "com.google.ai.edge.litert:litert-gpu", version.ref = "litertGpu" }
 litert-metadata = { module = "com.google.ai.edge.litert:litert-metadata", version.ref = "litertMetadata" }
 litert-support = { module = "com.google.ai.edge.litert:litert-support", version.ref = "litertSupport" }
@@ -171,7 +139,6 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-gretty = { id = "org.gretty", version.ref = "gretty"}
 navigation-safe-args = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation-plugin" }
 parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
