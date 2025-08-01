@@ -14,7 +14,7 @@ import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.header
 import io.ktor.server.response.respondText
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.rpc.handler.InvalidRequestException

@@ -27,7 +27,7 @@ import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 import org.multipaz.document.DocumentStoreTest.TestSecureAreaBoundCredential
 import kotlin.test.BeforeTest
 import kotlin.test.Test

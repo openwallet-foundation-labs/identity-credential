@@ -25,6 +25,7 @@ import org.multipaz.models.presentment.UriSchemePresentmentMechanism
 import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
 import java.net.URL
+import androidx.core.net.toUri
 
 /**
  * Base class for activity used for credential presentments using URI schemes.
@@ -126,7 +127,7 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
                     startActivity(
                         Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse(uri)
+                            uri.toUri()
                         )
                     )
                 }

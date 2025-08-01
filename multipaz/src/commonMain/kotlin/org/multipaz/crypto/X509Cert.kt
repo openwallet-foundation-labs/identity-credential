@@ -18,7 +18,7 @@ import org.multipaz.asn1.OID
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.DataItem
 import org.multipaz.util.Logger
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.annotation.CborSerializationImplemented
 import kotlin.io.encoding.Base64

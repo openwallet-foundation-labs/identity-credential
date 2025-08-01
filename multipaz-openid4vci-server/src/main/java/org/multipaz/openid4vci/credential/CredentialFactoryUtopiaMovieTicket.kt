@@ -6,8 +6,8 @@ import org.multipaz.crypto.X509Cert
 import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.DataItem

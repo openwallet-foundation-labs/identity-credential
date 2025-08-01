@@ -3,7 +3,7 @@ package org.multipaz.securearea
 import android.os.Build
 import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.config.SecureAreaConfigurationAndroidKeystore
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 
 /**

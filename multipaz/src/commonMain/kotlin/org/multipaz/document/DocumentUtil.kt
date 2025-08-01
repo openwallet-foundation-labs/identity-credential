@@ -16,7 +16,7 @@
 package org.multipaz.document
 
 import org.multipaz.credential.Credential
-import kotlinx.datetime.Instant;
+import kotlin.time.Instant;
 
 /**
  * A set of utilities and helpers for working with documents.

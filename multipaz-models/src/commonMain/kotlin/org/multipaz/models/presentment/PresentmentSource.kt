@@ -1,6 +1,6 @@
 package org.multipaz.models.presentment
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.multipaz.credential.Credential
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.EcCurve

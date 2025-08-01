@@ -1,7 +1,7 @@
 package org.multipaz.securearea
 
 import org.multipaz.securearea.cloud.SimplePassphraseFailureEnforcer
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.junit.Assert
 import org.junit.Test
 import kotlin.time.Duration.Companion.minutes

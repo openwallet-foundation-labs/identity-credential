@@ -4,7 +4,7 @@ import org.multipaz.datetime.formatLocalized
 import org.multipaz.documenttype.DocumentAttribute
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.util.fromBase64Url
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -67,7 +67,7 @@ data class JsonClaim(
                     }
 
                     is DocumentAttributeType.IntegerOptions -> {
-                        val type = attribute!!.type as DocumentAttributeType.IntegerOptions
+                        val type = attribute.type
                         val option = type.options.find { it.value == value.jsonPrimitive.int }
                         option?.displayName ?: value.jsonPrimitive.content
                     }
@@ -81,12 +81,9 @@ data class JsonClaim(
                         value.jsonPrimitive.content
                     }
                     is DocumentAttributeType.StringOptions -> {
-                        val type = attribute.type as DocumentAttributeType.StringOptions
+                        val type = attribute.type
                         val option = type.options.find { it.value == value.jsonPrimitive.content }
                         option?.displayName ?: value.jsonPrimitive.content
-                    }
-                    else -> {
-                        value.toString()
                     }
                 }
 

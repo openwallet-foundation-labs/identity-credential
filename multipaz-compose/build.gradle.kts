@@ -19,6 +19,11 @@ val projectVersionName: String by rootProject.extra
 kotlin {
     jvmToolchain(17)
 
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
@@ -57,7 +62,6 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.ui)
                 implementation(compose.components.resources)
-                implementation(compose.components.uiToolingPreview)
                 implementation(compose.materialIconsExtended)
                 implementation(libs.jetbrains.navigation.compose)
                 implementation(libs.jetbrains.navigation.runtime)
@@ -66,7 +70,6 @@ kotlin {
                 api(compose.material3)
                 api(compose.ui)
                 api(compose.components.resources)
-                api(compose.components.uiToolingPreview)
                 api(compose.materialIconsExtended)
                 api(libs.jetbrains.navigation.compose)
                 api(libs.jetbrains.navigation.runtime)
@@ -135,6 +138,10 @@ android {
         singleVariant("release") {
             withSourcesJar()
         }
+    }
+
+    lint {
+        baseline = file("lint-baseline.xml")
     }
 }
 

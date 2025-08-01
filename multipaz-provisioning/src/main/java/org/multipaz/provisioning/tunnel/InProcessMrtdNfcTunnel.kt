@@ -10,7 +10,7 @@ import org.multipaz.mrtd.MrtdNfc
 import org.multipaz.mrtd.MrtdNfcChipAccess
 import org.multipaz.mrtd.MrtdNfcData
 import org.multipaz.mrtd.MrtdNfcDataReader
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isEmpty
 import net.sf.scuba.smartcards.CardService

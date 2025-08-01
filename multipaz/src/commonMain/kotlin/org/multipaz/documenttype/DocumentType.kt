@@ -16,7 +16,7 @@
 
 package org.multipaz.documenttype
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.DataItem
 import kotlinx.serialization.json.JsonElement
 import org.multipaz.cbor.Bstr

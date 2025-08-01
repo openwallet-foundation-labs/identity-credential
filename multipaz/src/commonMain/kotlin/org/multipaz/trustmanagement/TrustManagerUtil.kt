@@ -17,7 +17,7 @@ package org.multipaz.trustmanagement
 
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.util.toHex
 import kotlin.collections.containsKey

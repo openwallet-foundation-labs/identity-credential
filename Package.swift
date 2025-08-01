@@ -12,7 +12,7 @@ let package = Package(
    targets: [
       .binaryTarget(
          name: "Multipaz",
-         url: "https://apps.multipaz.org/xcf/Multipaz-0.92.1.xcframework.zip",
-         checksum:"07a728870baf73ed3111a2f8a50f3e7b83f1625b76343b0a9f7b5152cab47680")
+         url: "https://apps.multipaz.org/xcf/Multipaz-0.93.0-pre.35.ffb1f3df.xcframework.zip",
+         checksum:"1f578fdd49ad6de39e5f5077a684fe2008927836ca5aac4dfe8fd365ec6ec4e3")
    ]
 )

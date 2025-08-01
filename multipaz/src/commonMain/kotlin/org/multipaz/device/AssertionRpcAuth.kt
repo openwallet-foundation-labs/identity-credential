@@ -1,6 +1,6 @@
 package org.multipaz.device
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.rpc.handler.RpcAuthInspectorAssertion
 import org.multipaz.rpc.handler.RpcAuthIssuerAssertion

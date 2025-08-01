@@ -108,8 +108,8 @@ class CborSymbolProcessor(
                 "kotlin.Float" -> return "$code.asFloat"
                 "kotlin.Double" -> return "$code.asDouble"
                 "kotlin.Boolean" -> return "$code.asBoolean"
-                "kotlinx.datetime.Instant" -> "$code.asDateTimeString"
-                "kotlinx.datetime.LocalDate" -> "$code.asDateString"
+                "kotlin.time.Instant" -> "$code.asDateTimeString"
+                "kotlin.time.LocalDate" -> "$code.asDateString"
                 DATA_ITEM_CLASS -> return code
                 else -> return if (declaration is KSClassDeclaration &&
                     declaration.classKind == ClassKind.ENUM_CLASS
@@ -250,7 +250,7 @@ class CborSymbolProcessor(
                     return "$code.toDataItem()"
                 }
 
-                "kotlinx.datetime.Instant" -> {
+                "kotlin.time.Instant" -> {
                     codeBuilder.importQualifiedName(TO_DATAITEM_DATETIMESTRING_FUN)
                     return "$code.toDataItemDateTimeString()"
                 }
@@ -1013,7 +1013,7 @@ class CborSymbolProcessor(
             "kotlin.Float" -> simpleLeaf("Float")
             "kotlin.Double" -> simpleLeaf("Double")
             "kotlin.Boolean" -> simpleLeaf("Boolean")
-            "kotlinx.datetime.Instant" -> simpleLeaf("DateTimeString")
+            "kotlin.time.Instant" -> simpleLeaf("DateTimeString")
             "kotlinx.datetime.LocalDate" -> simpleLeaf("DateString")
             DATA_ITEM_CLASS -> simpleLeaf("Any")
             else -> {

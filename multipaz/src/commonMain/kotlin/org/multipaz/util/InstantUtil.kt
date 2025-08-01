@@ -1,6 +1,6 @@
 package org.multipaz.util
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Returns a new [Instant] with the fractional part of seconds removed.

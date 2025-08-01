@@ -5,8 +5,8 @@ import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.OID
 import org.multipaz.util.fromHex
 import org.multipaz.util.toHex
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.multipaz.testUtilSetupCryptoProvider
 import kotlin.test.BeforeTest
 import kotlin.test.Test

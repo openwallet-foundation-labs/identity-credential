@@ -1,6 +1,6 @@
 package org.multipaz.records.data
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.annotation.CborSerializable
 

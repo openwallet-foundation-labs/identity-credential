@@ -4,7 +4,7 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.storage.base.BaseStorage
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.StorageTableSpec
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 

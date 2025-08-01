@@ -317,7 +317,7 @@ private class CameraManager(
         memScoped {
             val error: ObjCObjectVar<NSError?> = alloc()
             val input = AVCaptureDeviceInput(device, error.ptr)
-            if (input != null) {
+            if (error.value == null) {
                 if (captureSession.canAddInput(input)) {
                     captureSession.addInput(input)
                 } else {

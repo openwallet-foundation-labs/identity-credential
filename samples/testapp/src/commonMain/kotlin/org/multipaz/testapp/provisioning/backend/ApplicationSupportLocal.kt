@@ -4,7 +4,7 @@ import org.multipaz.testapp.provisioning.openid4vci.decodeUrlQuery
 import org.multipaz.testapp.provisioning.openid4vci.validateDeviceAssertionBindingKeys
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString

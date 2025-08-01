@@ -10,7 +10,7 @@ import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.storage.base.SqlStatementMaker
 import org.multipaz.util.toBase64Url
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlin.random.Random
 

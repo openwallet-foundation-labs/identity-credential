@@ -6,7 +6,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import org.multipaz.records.data.AuthorizationData
 import org.multipaz.records.data.Identity

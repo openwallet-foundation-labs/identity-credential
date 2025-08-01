@@ -24,9 +24,9 @@ import org.multipaz.multipaz_compose.generated.resources.duration_year
 import org.multipaz.multipaz_compose.generated.resources.duration_years_and_months
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimePeriod
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.monthsUntil
 import kotlinx.datetime.plus

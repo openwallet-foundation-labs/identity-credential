@@ -53,7 +53,7 @@ object MdocTestDataProvider {
         val fixedDate = LocalDateTime(
             year = 2025,
             month = Month(7),
-            dayOfMonth = 3,
+            day = 3,
             hour = 0,
             minute = 0,
             second = 0

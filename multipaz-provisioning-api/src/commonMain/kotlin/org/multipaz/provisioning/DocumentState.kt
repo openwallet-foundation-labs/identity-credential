@@ -3,7 +3,7 @@ package org.multipaz.provisioning
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.buildCborMap
 

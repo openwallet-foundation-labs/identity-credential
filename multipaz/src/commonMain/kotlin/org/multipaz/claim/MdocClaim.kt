@@ -8,7 +8,7 @@ import org.multipaz.cbor.Tagged
 import org.multipaz.datetime.formatLocalized
 import org.multipaz.documenttype.DocumentAttribute
 import org.multipaz.documenttype.DocumentAttributeType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -20,7 +20,6 @@ import kotlinx.datetime.toLocalDateTime
  *
  * @property namespaceName the mdoc namespace.
  * @property dataElementName the data element name.
- * @property intentToRetain `true` if the requester intents to retain the value.
  * @property value the value of the claim.
  */
 data class MdocClaim(
@@ -116,7 +115,7 @@ data class MdocClaim(
                     }
 
                     is DocumentAttributeType.IntegerOptions -> {
-                        val type = attribute!!.type as DocumentAttributeType.IntegerOptions
+                        val type = attribute.type
                         val option = type.options.find { it.value == value.asNumber.toInt() }
                         option?.displayName ?: value.asNumber.toString()
                     }
@@ -137,10 +136,6 @@ data class MdocClaim(
                         val type = attribute.type
                         val option = type.options.find { it.value == value.asTstr }
                         option?.displayName ?: value.asTstr
-                    }
-
-                    else -> {
-                        Cbor.toDiagnostics(value, diagnosticsOptions)
                     }
                 }
 

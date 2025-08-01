@@ -1,7 +1,6 @@
 package org.multipaz.asn1
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -27,7 +26,7 @@ class ASN1Time(
                 ldt.format(LocalDateTime.Format {
                     yearTwoDigits(if (ldt.year < 2000) 1900 else 2000)
                     monthNumber()
-                    dayOfMonth()
+                    day()
                     hour()
                     minute()
                     second()
@@ -51,7 +50,7 @@ class ASN1Time(
                         LocalDateTime.Format {
                             year()
                             monthNumber()
-                            dayOfMonth()
+                            day()
                             hour()
                             minute()
                             second()
@@ -65,7 +64,7 @@ class ASN1Time(
                         LocalDateTime.Format {
                             year()
                             monthNumber()
-                            dayOfMonth()
+                            day()
                             hour()
                             minute()
                             second()

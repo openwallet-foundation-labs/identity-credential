@@ -4,8 +4,8 @@ import org.multipaz.storage.base.BaseStorage
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.storage.base.SqlStatementMaker
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.ArrayDeque

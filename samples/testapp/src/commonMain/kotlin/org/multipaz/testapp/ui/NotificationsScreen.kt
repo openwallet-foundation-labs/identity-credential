@@ -20,7 +20,7 @@ import org.multipaz.datetime.formatLocalized
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.driving_license_card_art
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.ExperimentalResourceApi

@@ -1,6 +1,6 @@
 package org.multipaz.mdoc.vical
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * The data in a VICAL according to ISO/IEC 18013-5:2021.

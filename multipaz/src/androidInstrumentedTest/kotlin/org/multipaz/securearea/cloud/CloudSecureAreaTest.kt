@@ -25,8 +25,8 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

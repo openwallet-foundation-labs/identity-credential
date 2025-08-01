@@ -17,7 +17,7 @@ import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.multipaz.mdoc.role.MdocRole
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit

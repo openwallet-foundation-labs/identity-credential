@@ -28,7 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.multipaz.compose.camera.Camera
 import org.multipaz.compose.camera.CameraCaptureResolution
 import org.multipaz.compose.camera.CameraFrame

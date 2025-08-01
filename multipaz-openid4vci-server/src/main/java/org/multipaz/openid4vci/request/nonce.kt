@@ -4,7 +4,7 @@ import io.ktor.http.ContentType
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.header
 import io.ktor.server.response.respondText
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.buildByteString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put

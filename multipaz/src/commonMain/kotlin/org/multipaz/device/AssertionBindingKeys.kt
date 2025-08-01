@@ -1,7 +1,7 @@
 package org.multipaz.device
 
 import org.multipaz.crypto.EcPublicKey
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 
 /**

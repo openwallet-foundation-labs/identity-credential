@@ -1,7 +1,7 @@
 package org.multipaz.rpc.handler
 
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.DataItem

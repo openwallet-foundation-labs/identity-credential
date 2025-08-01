@@ -5,6 +5,9 @@ plugins {
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
 }
 
 android {

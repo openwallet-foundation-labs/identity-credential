@@ -6,9 +6,8 @@ import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.ASN1OctetString
 import org.multipaz.asn1.ASN1Sequence
 import org.multipaz.util.toHex
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.datetime.toKotlinInstant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteStringBuilder
 import org.multipaz.testUtilSetupCryptoProvider
 import kotlin.test.BeforeTest
@@ -19,6 +18,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinInstant
 
 class X509CertTestsJvm {
     @BeforeTest

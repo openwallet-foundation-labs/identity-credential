@@ -9,6 +9,10 @@ val projectVersionName: String by rootProject.extra
 kotlin {
     jvmToolchain(17)
 
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
+
     jvm()
 
     listOf(

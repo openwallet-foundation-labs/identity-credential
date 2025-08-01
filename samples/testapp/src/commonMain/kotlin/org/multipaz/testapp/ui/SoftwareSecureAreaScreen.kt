@@ -20,7 +20,7 @@ import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.crypto.Algorithm
 

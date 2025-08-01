@@ -2,7 +2,7 @@ package org.multipaz.openid4vci.util
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.Crypto

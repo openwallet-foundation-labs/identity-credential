@@ -191,9 +191,9 @@ public class UtilTest {
                             docType,
                             EcPublicKeyJvmKt.toEcPublicKey(authKey, EcCurve.P256))
                             .setValidityInfo(
-                                    kotlinx.datetime.Instant.Companion.fromEpochMilliseconds(signedDate.toEpochMilli()),
-                                    kotlinx.datetime.Instant.Companion.fromEpochMilliseconds(validFromDate.toEpochMilli()),
-                                    kotlinx.datetime.Instant.Companion.fromEpochMilliseconds(validToDate.toEpochMilli()),
+                                    kotlin.time.Instant.Companion.fromEpochMilliseconds(signedDate.toEpochMilli()),
+                                    kotlin.time.Instant.Companion.fromEpochMilliseconds(validFromDate.toEpochMilli()),
+                                    kotlin.time.Instant.Companion.fromEpochMilliseconds(validToDate.toEpochMilli()),
                                     null);
 
             Random r = new SecureRandom();

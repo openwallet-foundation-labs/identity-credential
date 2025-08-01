@@ -63,7 +63,7 @@ import org.multipaz.util.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.crypto.Algorithm
 import org.multipaz.util.Platform

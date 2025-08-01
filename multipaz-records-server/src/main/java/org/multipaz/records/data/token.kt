@@ -1,6 +1,6 @@
 package org.multipaz.records.data
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteStringBuilder
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Uint

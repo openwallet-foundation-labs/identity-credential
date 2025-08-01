@@ -6,7 +6,7 @@ import org.multipaz.cose.CoseLabel
 import org.multipaz.cose.CoseMac0
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteStringBuilder
 
