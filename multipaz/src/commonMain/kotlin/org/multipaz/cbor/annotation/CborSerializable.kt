@@ -20,9 +20,13 @@ package org.multipaz.cbor.annotation
  *
  * Single-level sealed class hierarchies are supported. Annotation is required only on the root
  * class of the sealed hierarchy. A special key ("type" by default, see [typeKey]) is added to
- * CBOR map to indicate the actual value type (type id). It is recommended that leaf class names
- * include base class name either as a prefix or a suffix. Type id is generated from the leaf
- * class name, stripping base class name if possible or can be specified explicitly by [typeId].
+ * CBOR map to indicate the actual value type (type id). To avoid name conflicts it is
+ * recommended that either:
+ *   - leaf class names include base class name either as a prefix or a suffix (type id is
+ *     generated from the leaf class name, stripping base class name),
+ *   - or, leaf classes are scoped in the base class,
+ *   - or, leaf classes and the base class are scoped in some other class or object,
+ *   - or, explicit [typeId] is specified.
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
