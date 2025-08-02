@@ -61,6 +61,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep Link Configuration -->
+            
+            <!-- 1. HTTPS App Links (default) - Requires .well-known/assetlinks.json -->
+            <!-- Examples: https://apps.multipaz.org/landing/ -->
+            <!-- Must match ApplicationSupportLocal.APP_LINK_SERVER -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -76,6 +81,20 @@
                     android:pathPattern="/landing/.*"/>
             </intent-filter>
 
+            <!-- 2. Custom URI Scheme - App-specific URLs -->
+            <!-- Examples: multipaz-test-app://landing -->
+            <!-- Must match ApplicationSupportLocal.APP_LINK_SERVER -->
+            <!-- This is an alternative to HTTPS App Links (above) which require .well-known/assetlinks.json -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="multipaz-test-app"/>
+                <data android:host="landing"/>
+            </intent-filter>
+
+            <!-- 3. OpenID4VCI Credential Offers -->
+            <!-- Examples: openid-credential-offer://, haip:// -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -86,15 +105,6 @@
                 <data android:scheme="haip"/>
                 <!-- Accept all hosts for any of the defined schemes above -->
                 <data android:host="*"/>
-            </intent-filter>
-            
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Custom URI scheme -->
-                <data android:scheme="multipaz-test-app"/>
-                <data android:host="landing"/>
             </intent-filter>
         </activity>
 
