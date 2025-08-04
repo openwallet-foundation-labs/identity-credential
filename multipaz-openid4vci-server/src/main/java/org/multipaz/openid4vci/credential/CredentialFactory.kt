@@ -44,6 +44,7 @@ internal interface CredentialFactory {
                 CredentialFactoryMdl(),
                 CredentialFactoryUtopiaNaturatization(),
                 CredentialFactoryUtopiaMovieTicket(),
+                CredentialFactoryUtopiaMdl()
             )
             byOfferId = makers.associateBy { it.offerId }
             supportedScopes = makers.map { it.scope }.toSet()
