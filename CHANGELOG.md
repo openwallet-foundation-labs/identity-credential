@@ -5,11 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.93.0] - Not yet released, expected end of July 2025
-- TODO: add items as needed
+## [0.93.0] - 2025-08-04
+Changes since Multipaz 0.92.1 include:
+- TrustManager rearchitecture to better support applications allowing
+  the user to add/remove/edit entries, e.g. [Multipaz Identity Reader](https://apps.multipaz.org).
+- W3C Digital Credential improvements on Android to include the Exchange Protocol, as required.
+- Make DeviceRequestGenerator work with keys in a `SecureArea`.
+- New system-of-record server and OpenID4VCI interoperability fixes.
+- Allow scanning NFC without a dialog, for platforms that support it (e.g. Android).
+- Support for [Longfellow ZK](https://github.com/google/longfellow-zk) and new ZKP plumbing in
+  latest [ISO/IEC 18013-5 Second Edition drafts](https://github.com/ISOWG10/ISO-18013).
+- OpenID4VP 1.0 support using URI schemes.
+- Support requests with multiple protocols in W3C DC API in verifier.multipaz.org and properly
+  handle it in Multipaz Test App.
+- Unit tests for Android Credential Manager Matcher.
+- Face matching support in multipaz-vision, using [LiteRT](https://ai.google.dev/edge/litert)
+  and [FaceNet](https://en.wikipedia.org/wiki/FaceNet).
+- Update of all dependencies to latest version, including kotlinx-datetime 0.7.1 which includes
+  the migration of `Instant` and `Clock` from `kotlinx.datetime` to `kotlin.time`.
+- Bug fixes and other enhancements.
 
 ## [0.92.1] - 2025-06-27
-Changes since Multipaz 0.92.1 include
+Changes since Multipaz 0.92.1 include:
 - Fix BLE GATT on older Android devices.
 - Pass the full JWS for OpenID4VCI key attestations, not just the body of the JWT.
 
