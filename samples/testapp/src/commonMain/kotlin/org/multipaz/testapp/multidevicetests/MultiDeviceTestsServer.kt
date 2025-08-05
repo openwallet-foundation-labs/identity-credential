@@ -188,7 +188,7 @@ class MultiDeviceTestsServer(
                 val sessionEncryption = SessionEncryption(
                     role = MdocRole.MDOC,
                     eSelfKey = eDeviceKey,
-                    remotePublicKey = eReaderKey,
+                    remotePublicKey = eReaderKey.publicKey,
                     encodedSessionTranscript = encodedSessionTranscript
                 )
                 val (deviceRequest, statusCode) = sessionEncryption.decryptMessage(sessionEstablishmentMessage)
