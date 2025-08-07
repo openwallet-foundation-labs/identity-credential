@@ -93,7 +93,8 @@ internal class CredentialLoader {
         val dataItem = Cbor.decode(blob.toByteArray())
         val credentialType = dataItem["credentialType"].asTstr
         val createCredentialFunction = createCredentialFunctions[credentialType]
-            ?: throw IllegalStateException("Credential type $credentialType not registered")
+            ?: throw IllegalStateException(
+                "Credential type '$credentialType' not registered, have: ${createCredentialFunctions.keys.joinToString(", ") { "'$it'" }}")
         val credential = createCredentialFunction.invoke(document)
         credential._identifier = identifier
         credential.deserialize(dataItem)
