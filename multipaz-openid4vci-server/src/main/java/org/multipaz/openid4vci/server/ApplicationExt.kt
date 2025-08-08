@@ -167,7 +167,8 @@ fun Application.traceCalls(configuration: ServerConfiguration) {
         if (call.request.httpMethod == HttpMethod.Post || call.request.httpMethod == HttpMethod.Put) {
             val contentType = call.request.contentType()
             if (contentType == ContentType.Application.Json ||
-                contentType == ContentType.Application.FormUrlEncoded) {
+                contentType == ContentType.Application.FormUrlEncoded ||
+                contentType == ContentType.Application.FormUrlEncoded.withParameter("charset", "UTF-8")) {
                 trace.println()
                 trace.println(call.receiveText())
             } else {

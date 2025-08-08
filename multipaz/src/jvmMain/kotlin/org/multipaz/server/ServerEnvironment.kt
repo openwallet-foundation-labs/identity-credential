@@ -21,6 +21,7 @@ import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTableSpec
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.storage.jdbc.JdbcStorage
 import java.io.File
 import kotlin.random.Random
@@ -68,11 +69,15 @@ class ServerEnvironment(
 
         private suspend fun initialize(configuration: Configuration): ServerEnvironment {
 
-            val storage = JdbcStorage(
-                configuration.getValue("database_connection") ?: defaultDatabase(),
-                configuration.getValue("database_user") ?: "",
-                configuration.getValue("database_password") ?: ""
-            )
+            val storage = when (val engine = configuration.getValue("database_engine")) {
+                "jdbc", null -> JdbcStorage(
+                    configuration.getValue("database_connection") ?: defaultDatabase(),
+                    configuration.getValue("database_user") ?: "",
+                    configuration.getValue("database_password") ?: ""
+                )
+                "ephemeral" -> EphemeralStorage()
+                else -> throw IllegalArgumentException("Unknown database engine: $engine")
+            }
 
             val httpClient = HttpClient(Java) {
                 followRedirects = false
