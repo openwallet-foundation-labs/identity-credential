@@ -12,4 +12,10 @@ add_library(
         ../src/androidMain/matcher/cppbor_parse.cpp
         ../src/androidMain/matcher/cJSON.c
         ../src/androidMain/matcher/matcher.cpp
+        ../src/androidMain/matcher/logger.cpp
+        ../src/androidMain/matcher/dcql.cpp
 )
+
+target_link_libraries(MatcherTest android log)
+
+target_compile_definitions(MatcherTest PRIVATE MATCHER_TEST_BUILD)

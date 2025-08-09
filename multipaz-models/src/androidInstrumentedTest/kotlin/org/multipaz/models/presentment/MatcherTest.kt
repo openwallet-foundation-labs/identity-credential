@@ -25,7 +25,7 @@ import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 
-// Tests for the matched in multipaz-models/src/androidMain/matcher ...
+// Tests for the matcher in multipaz-models/src/androidMain/matcher ...
 class MatcherTest {
     companion object {
         private const val TAG = "MatcherTest"
@@ -47,10 +47,12 @@ class MatcherTest {
         version: OpenID4VP.Version,
         signRequest: Boolean,
         encryptionKey: EcPrivateKey?,
+        harnessInitializer: suspend (harness: DocumentStoreTestHarness) -> Unit,
         dcql: String,
     ): String {
         val harness = DocumentStoreTestHarness()
         harness.initialize()
+        harnessInitializer(harness)
 
         val readerTrustManager = TrustManagerLocal(EphemeralStorage())
         val presentmentSource = SimplePresentmentSource(
@@ -131,6 +133,7 @@ class MatcherTest {
             version = OpenID4VP.Version.DRAFT_29,
             signRequest = true,
             encryptionKey = null,
+            harnessInitializer = { harness -> harness.provisionStandardDocuments() },
             dcql =
                 """
                     {
@@ -161,6 +164,7 @@ class MatcherTest {
             version = OpenID4VP.Version.DRAFT_29,
             signRequest = true,
             encryptionKey = null,
+            harnessInitializer = { harness -> harness.provisionStandardDocuments() },
             dcql =
                 """
                     {
@@ -200,5 +204,92 @@ class MatcherTest {
                 """.trimIndent().trim() + "\n",
             matcherResult
         )
+    }
+
+    @Test
+    fun testMatcher_mDL_or_PID() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness -> harness.provisionStandardDocuments() },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "mdl",
+                          "format": "mso_mdoc",
+                          "meta": {
+                            "doctype_value": "org.iso.18013.5.1.mDL"
+                          },
+                          "claims": [
+                            {
+                              "path": [
+                                "org.iso.18013.5.1",
+                                "given_name"
+                              ]
+                            },
+                            {
+                              "path": [
+                                "org.iso.18013.5.1",
+                                "family_name"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": [
+                              "urn:eudi:pid:1"
+                            ]
+                          },
+                          "claims": [
+                            {
+                              "path": [
+                                "family_name"
+                              ]
+                            },
+                            {
+                              "path": [
+                                "given_name"
+                              ]
+                            }
+                          ]
+                        }
+                      ],
+                      "credential_sets": [
+                        {
+                          "options": [
+                            [
+                              "mdl"
+                            ],
+                            [
+                              "pid"
+                            ]
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Entry
+                  cred_id openid4vp-v1-signed __mDL__
+                  Given Names: Erika
+                  Family Name: Mustermann
+                """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+        /*
+                Entry
+                  cred_id openid4vp-v1-signed __EU PID__
+                  Given Names: Erika
+                  Family Name: Mustermann
+
+         */
     }
 }

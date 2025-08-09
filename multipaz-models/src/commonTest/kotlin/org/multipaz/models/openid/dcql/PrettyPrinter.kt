@@ -134,7 +134,7 @@ internal fun RequestedClaim.print(pp: PrettyPrinter) {
     }
 }
 
-internal fun CredentialResponse.print(pp: PrettyPrinter) {
+internal fun DcqlCredentialQueryResponse.print(pp: PrettyPrinter) {
     pp.append("response:")
     pp.pushIndent()
     pp.append("credentialQuery:")
@@ -184,7 +184,7 @@ internal fun CredentialResponse.print(pp: PrettyPrinter) {
 }
 
 
-fun List<CredentialResponse>.prettyPrint(): String {
+fun List<DcqlCredentialQueryResponse>.prettyPrint(): String {
     val pp = PrettyPrinter()
     pp.append("responses:")
     pp.pushIndent()

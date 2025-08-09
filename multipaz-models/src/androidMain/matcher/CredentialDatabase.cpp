@@ -1,5 +1,6 @@
 
 #include "CredentialDatabase.h"
+#include "Request.h"
 
 extern "C" {
 #include "credentialmanager.h"
@@ -30,12 +31,9 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
         auto bitmap = cred->get("bitmap")->asBstr()->value();
 
         std::string documentId = "";
-
         std::string mdocDoctype = "";
-        std::map mdocDataElements = std::map<std::string, MdocDataElement>();
-
         std::string vcVct = "";
-        std::map vcClaims = std::map<std::string, VcClaim>();
+        std::map resultingClaims = std::map<std::string, Claim>();
 
         auto& mdocPtr = cred->get("mdoc");
         if (mdocPtr != nullptr) {
@@ -55,7 +53,7 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
                     auto value = dataElementDetailsArray->get(1)->asTstr()->value();
 
                     auto combinedName = namespaceName + "." + dataElementName;
-                    mdocDataElements[combinedName] = MdocDataElement(namespaceName, dataElementName, displayName, value);
+                    resultingClaims[combinedName] = Claim(combinedName, displayName, value);
                 }
             }
         }
@@ -73,21 +71,27 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
                 auto displayName = claimDetailsArray->get(0)->asTstr()->value();
                 auto value = claimDetailsArray->get(1)->asTstr()->value();
 
-                vcClaims[claimName] = VcClaim(claimName, displayName, value);
+                resultingClaims[claimName] = Claim(claimName, displayName, value);
             }
         }
 
         credentials.push_back(
             Credential(
                 title, subtitle, bitmap, documentId,
-                mdocDoctype, mdocDataElements,
-                vcVct, vcClaims
+                mdocDoctype,
+                vcVct,
+                resultingClaims
             )
         );
     }
 }
 
+Claim* findMatchingClaim(const DcqlRequestedClaim& claim) {
+    return nullptr;
+}
+
 bool Credential::matchesRequest(const Request& request) {
+    /*
     if (request.docType.size() > 0 && request.docType == mdocDocType) {
         // Semantics is that we match if at least one of the requested data elements
         // exist in the credential
@@ -109,6 +113,7 @@ bool Credential::matchesRequest(const Request& request) {
             }
         }
     }
+     */
     return false;
 }
 
@@ -130,6 +135,7 @@ void Credential::addCredentialToPicker(const Request& request) {
             nullptr
     );
 
+    /*
     if (request.docType.size() > 0) {
         for (const auto &requestedDataElement: request.dataElements) {
             auto combinedName =
@@ -155,5 +161,6 @@ void Credential::addCredentialToPicker(const Request& request) {
             }
         }
     }
+     */
 }
 

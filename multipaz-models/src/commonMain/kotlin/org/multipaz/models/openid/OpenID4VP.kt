@@ -6,12 +6,10 @@ import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
-import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -38,16 +36,14 @@ import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.response.DocumentGenerator
-import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.mdoc.zkp.ZkSystem
 import org.multipaz.mdoc.zkp.ZkSystemSpec
-import org.multipaz.models.openid.dcql.CredentialResponse
-import org.multipaz.models.openid.dcql.CredentialResponseMatch
+import org.multipaz.models.openid.dcql.DcqlCredentialQueryResponse
+import org.multipaz.models.openid.dcql.DcqlCredentialQueryResponseMatch
 import org.multipaz.models.openid.dcql.DcqlQuery
 import org.multipaz.models.presentment.PresentmentCanceled
 import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.models.presentment.findTrustPoint
-import org.multipaz.models.presentment.getDocumentsMatchingRequest
 import org.multipaz.request.JsonRequest
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequest
@@ -61,7 +57,6 @@ import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
-import org.multipaz.util.fromHex
 import org.multipaz.util.toBase64Url
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
@@ -526,8 +521,8 @@ object OpenID4VP {
 
     private suspend fun openID4VPMsoMdoc(
         version: Version,
-        credentialResponse: CredentialResponse,
-        credentialResponseMatch: CredentialResponseMatch,
+        credentialResponse: DcqlCredentialQueryResponse,
+        credentialResponseMatch: DcqlCredentialQueryResponseMatch,
         source: PresentmentSource,
         showConsentPrompt: suspend (
             credential: Credential,
@@ -722,8 +717,8 @@ object OpenID4VP {
 
     private suspend fun openID4VPSdJwt(
         version: Version,
-        credentialResponse: CredentialResponse,
-        credentialResponseMatch: CredentialResponseMatch,
+        credentialResponse: DcqlCredentialQueryResponse,
+        credentialResponseMatch: DcqlCredentialQueryResponseMatch,
         source: PresentmentSource,
         showConsentPrompt: suspend (
             credential: Credential,

@@ -47,8 +47,8 @@ data class DcqlQuery(
     suspend fun execute(
         presentmentSource: PresentmentSource,
         keyAgreementPossible: List<EcCurve> = emptyList()
-    ): List<CredentialResponse> {
-        val result = mutableListOf<CredentialResponse>()
+    ): List<DcqlCredentialQueryResponse> {
+        val result = mutableListOf<DcqlCredentialQueryResponse>()
         for (credentialQuery in credentialQueries) {
             val credsSatisfyingMeta = when (credentialQuery.format) {
                 "mso_mdoc", "mso_mdoc_zk" -> {
@@ -76,7 +76,7 @@ data class DcqlQuery(
                 else -> emptyList()
             }
 
-            val matches = mutableListOf<CredentialResponseMatch>()
+            val matches = mutableListOf<DcqlCredentialQueryResponseMatch>()
             for (cred in credsSatisfyingMeta) {
                 val claimsInCredential = cred.getClaims(documentTypeRepository = presentmentSource.documentTypeRepository)
                 if (credentialQuery.claimSets.isEmpty()) {
@@ -95,7 +95,7 @@ data class DcqlQuery(
                     if (!didNotMatch) {
                         // All claims matched, we have a candidate
                         matches.add(
-                            CredentialResponseMatch(
+                            DcqlCredentialQueryResponseMatch(
                                 credential = presentmentSource.selectCredential(
                                     document = cred.document,
                                     requestedClaims = credentialQuery.claims,
@@ -127,7 +127,7 @@ data class DcqlQuery(
                         if (!didNotMatch) {
                             // All claims matched, we have a candidate
                             matches.add(
-                                CredentialResponseMatch(
+                                DcqlCredentialQueryResponseMatch(
                                     credential = presentmentSource.selectCredential(
                                         document = cred.document,
                                         requestedClaims = credentialQuery.claims,
@@ -142,7 +142,7 @@ data class DcqlQuery(
                 }
             }
             result.add(
-                CredentialResponse(
+                DcqlCredentialQueryResponse(
                     credentialQuery = credentialQuery,
                     credentialSetQuery = null,
                     matches = matches
@@ -175,7 +175,7 @@ data class DcqlQuery(
         //       required attribute is true or omitted, and
         //     - optionally, any of the other Credential Set Queries.
         //
-        val csqRet = mutableListOf<CredentialResponse>()
+        val csqRet = mutableListOf<DcqlCredentialQueryResponse>()
         for (csq in credentialSetQueries) {
             // In this case, simply go through all the matches produced above and pick the
             // credentials from the highest preferred option. If none of them work, bail only
@@ -187,7 +187,7 @@ data class DcqlQuery(
                     for (credentialId in option.credentialIds) {
                         val responseMatched = result.find { it.credentialQuery.id == credentialId }!!
                         csqRet.add(
-                            CredentialResponse(
+                            DcqlCredentialQueryResponse(
                                 credentialQuery = responseMatched.credentialQuery,
                                 credentialSetQuery = csq,
                                 matches = responseMatched.matches

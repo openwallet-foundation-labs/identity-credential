@@ -93,7 +93,7 @@ private suspend fun updateCredman() {
     )
 
     val credentialDatabaseCbor = Cbor.encode(credentialDatabase)
-    //Logger.iCbor(TAG, "credentialDatabaseCbor", credentialDatabaseCbor)
+    Logger.iCbor(TAG, "credentialDatabaseCbor", credentialDatabaseCbor)
     val client = IdentityCredentialManager.getClient(applicationContext)
     client.registerCredentials(
         RegistrationRequest(
@@ -265,11 +265,12 @@ private suspend fun exportSdJwtVcCredential(
                 val claims = credential.getClaimsImpl(documentTypeRepository)
                 for (claim in claims) {
                     val claimName = claim.claimPath[0].jsonPrimitive.content
-                    val claimDisplayName = getAttributeForJsonClaim(
+                    val claimAttr = getAttributeForJsonClaim(
                         documentTypeRepository,
                         credential.vct,
                         claim.claimPath,
-                    )?.displayName ?: claimName
+                    )
+                    val claimDisplayName = claimAttr?.displayName ?: claimName
                     putCborArray(claimName) {
                         add(claimDisplayName)
                         add(claim.render())
@@ -279,13 +280,10 @@ private suspend fun exportSdJwtVcCredential(
                     // right now. In the future we'll modify the matcher to be smarter about things.
                     //
                     if (claim.value is JsonObject) {
-                        for ((subClaimName, subClaimValue) in claim.value) {
-                            val subClaimDisplayName = getAttributeForJsonClaim(
-                                documentTypeRepository,
-                                credential.vct,
-                                JsonArray(listOf(JsonPrimitive(claimName), JsonPrimitive(subClaimName))),
-                            )?.displayName ?: subClaimName
-                            putCborArray("$claimName.$subClaimName") {
+                        for ((subClaimIdentifier, subClaimValue) in claim.value) {
+                            val subClaimAttr = claimAttr?.embeddedAttributes?.find { it.identifier == subClaimIdentifier }
+                            val subClaimDisplayName = subClaimAttr?.displayName ?: subClaimIdentifier
+                            putCborArray("$claimName.$subClaimIdentifier") {
                                 add(subClaimDisplayName)
                                 add(subClaimValue.toString())
                             }

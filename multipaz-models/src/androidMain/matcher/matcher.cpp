@@ -57,23 +57,24 @@ extern "C" void matcher(void) {
             if (protocolValue == "preview") {
                 // The OG "preview" protocol.
                 //
-                r = std::move(Request::parsePreview(protocolData));
+                r = std::move(MdocRequest::parsePreview(protocolData));
             } else if (protocolValue == "openid4vp" ||
                        protocolValue == "openid4vp-v1-unsigned" ||
                        protocolValue == "openid4vp-v1-signed") {
                 // OpenID4VP
                 //
-                r = std::move(Request::parseOpenID4VP(protocolData, protocolValue));
+                r = std::move(OpenID4VPRequest::parseOpenID4VP(protocolData, protocolValue));
             } else if (protocolValue == "org.iso.mdoc" || protocolValue == "org-iso-mdoc") {
                 // 18013-7 Annex C
                 //
-                r = std::move(Request::parseMdocApi(protocolValue, protocolData));
+                r = std::move(MdocRequest::parseMdocApi(protocolValue, protocolData));
             } else if (protocolValue == "austroads-request-forwarding-v2") {
                 // From a matcher point of view, ARFv2 is structurally equivalent to mdoc-api
                 //
-                r = std::move(Request::parseMdocApi(protocolValue, protocolData));
+                r = std::move(MdocRequest::parseMdocApi(protocolValue, protocolData));
             }
 
+            /*
             if (r) {
                 if (std::find(db->protocols.begin(), db->protocols.end(), r->protocol) != db->protocols.end()) {
                     for (auto &credential: db->credentials) {
@@ -88,6 +89,7 @@ extern "C" void matcher(void) {
                     }
                 }
             }
+             */
         }
     }
 }
