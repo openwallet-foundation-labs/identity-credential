@@ -180,9 +180,10 @@ internal suspend fun mdocPresentment(
                 // credential that can satisfy the request...
                 //
                 val trustPoint = source.findTrustPoint(request)
-                if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
-                    continue
-                }
+                // todo: AK: Temporary removed due to a bug.
+//                if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
+//                    continue
+//                }
 
                 val documentBytes = calcDocument(
                     credential = mdocCredential,

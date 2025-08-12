@@ -22,7 +22,7 @@ import org.multipaz.crypto.EcSignature
 /**
  * An interface to a Secure Area.
  *
- * This interface exists to abstract the underlying secure area used
+ * This interface exists to abstract the underlying secure area
  * used for creation of key material and other security objects related
  * to identity documents and associated credentials.
  *

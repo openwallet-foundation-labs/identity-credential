@@ -13,7 +13,7 @@
 
     <aid-group android:description="@string/mdoc_nfc_data_transfer_service_aid_group_description" android:category="other">
         <!-- Defined in ISO 18013-5:2021 clause 8.3.3.1.2 -->
-        <aid-filter android:name="A0000002480400"/>
+        <!-- <aid-filter android:name="A0000002480400"/> -->
     </aid-group>
 
 </host-apdu-service>

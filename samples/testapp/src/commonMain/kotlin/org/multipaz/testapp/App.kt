@@ -114,6 +114,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.directaccess.DirectAccessCredential
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.facematch.FaceMatchLiteRtModel
@@ -284,6 +285,9 @@ class App private constructor (val promptModel: PromptModel) {
             secureAreaRepository = secureAreaRepository
         ) {
             //setTableSpec(testDocumentTableSpec)
+            addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
+                    document -> DirectAccessCredential(document)
+            }
         }
     }
 
@@ -1122,7 +1126,7 @@ class App private constructor (val promptModel: PromptModel) {
             when (snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "OK",
-                duration = SnackbarDuration.Short,
+                duration = SnackbarDuration.Indefinite,
             )) {
                 SnackbarResult.Dismissed -> {
                 }
