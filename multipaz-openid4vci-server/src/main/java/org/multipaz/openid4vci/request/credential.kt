@@ -225,7 +225,7 @@ private suspend fun readSystemOfRecord(state: IssuanceState): DataItem {
                 put("birth_date", LocalDate.parse(birthDate).toDataItemFullDate())
             }
             putCborMap("records") {
-                putCborMap("mDL") {
+                putCborMap("membership") {
                     putCborMap("") {}
                 }
                 putCborMap("naturalization") {

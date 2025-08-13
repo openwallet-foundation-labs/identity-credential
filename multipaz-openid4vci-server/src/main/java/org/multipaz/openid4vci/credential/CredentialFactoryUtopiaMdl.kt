@@ -3,8 +3,6 @@ package org.multipaz.openid4vci.credential
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
-import org.multipaz.cbor.Tagged
-import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseLabel
@@ -14,8 +12,7 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.documenttype.knowntypes.DrivingLicense
-import org.multipaz.documenttype.knowntypes.EUPersonalID
+import org.multipaz.documenttype.knowntypes.UtopiaMembership
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
@@ -31,6 +28,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.yearsUntil
 import org.multipaz.cbor.RawCbor
 import org.multipaz.cbor.Simple
+import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Uint
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
@@ -41,17 +39,17 @@ import org.multipaz.util.Logger
 import kotlin.time.Duration.Companion.days
 
 /**
- * Factory for Driver's License credentials.
+ * Factory for Utopia Wholesale Membership mdoc credentials.
  */
 internal class CredentialFactoryUtopiaMdl : CredentialFactory {
     override val offerId: String
         get() = "utopia_wholesale"
 
     override val scope: String
-        get() = "utopia_wholesale_mDL"
+        get() = "utopia_wholesale_membership"
 
     override val format: Openid4VciFormat
-        get() = openId4VciFormatMdl
+        get() = Openid4VciFormatMdoc(UtopiaMembership.DOCTYPE)
 
     override val proofSigningAlgorithms: List<String>
         get() = CredentialFactory.DEFAULT_PROOF_SIGNING_ALGORITHMS
@@ -85,10 +83,11 @@ internal class CredentialFactoryUtopiaMdl : CredentialFactory {
         }
 
         val records = data["records"]
-        if (!records.hasKey("mDL")) {
-            throw IllegalArgumentException("No membership was issued to this person")
+        val membershipData: DataItem = if (records.hasKey("membership")) {
+            records["membership"].asMap.values.firstOrNull() ?: buildCborMap { }
+        } else {
+            buildCborMap { }
         }
-        val mdlData = records["mDL"].asMap.values.firstOrNull() ?: buildCborMap { }
 
         // Create AuthKeys and MSOs, make sure they're valid for 30 days. Also make
         // sure to not use fractional seconds as 18013-5 calls for this (clauses 7.1
@@ -99,7 +98,7 @@ internal class CredentialFactoryUtopiaMdl : CredentialFactory {
         val validUntil = validFrom + 30.days
 
         // Generate an MSO and issuer-signed data for this authentication key.
-        val docType = DrivingLicense.MDL_DOCTYPE
+        val docType = UtopiaMembership.DOCTYPE
         val msoGenerator = MobileSecurityObjectGenerator(
             Algorithm.SHA256,
             docType,
@@ -107,10 +106,9 @@ internal class CredentialFactoryUtopiaMdl : CredentialFactory {
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
 
-        // As we do not have driver license database, just make up some data to fill mDL
-        // for demo purposes. Take what we can from the PID that was presented as evidence.
-        val mdocType = DrivingLicense.getDocumentType()
-            .mdocDocumentType!!.namespaces[DrivingLicense.MDL_NAMESPACE]!!
+        // Build membership mdoc using core data and any membership record values when present.
+        val mdocType = UtopiaMembership.getDocumentType()
+            .mdocDocumentType!!.namespaces[UtopiaMembership.NAMESPACE]!!
 
         val timeZone = TimeZone.currentSystemDefault()
         val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
@@ -119,16 +117,15 @@ internal class CredentialFactoryUtopiaMdl : CredentialFactory {
         val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
 
         val issuerNamespaces = buildIssuerNamespaces {
-            addNamespace(DrivingLicense.MDL_NAMESPACE) {
-                // Transfer core fields
+            addNamespace(UtopiaMembership.NAMESPACE) {
+                // Core
                 addDataElement("family_name", coreData["family_name"])
                 addDataElement("given_name", coreData["given_name"])
                 addDataElement("portrait", Bstr(portrait))
-                addDataElement("birth_date", dateOfBirth.toDataItemFullDate())
-                val added = mutableSetOf("family_name", "given_name", "portrait", "birth_date")
+                val added = mutableSetOf("family_name", "given_name", "portrait")
 
-                // Transfer fields from mDL record that have counterparts in the mDL credential
-                for ((nameItem, value) in mdlData.asMap) {
+                // Transfer any record fields that match the membership schema
+                for ((nameItem, value) in membershipData.asMap) {
                     val name = nameItem.asTstr
                     if (mdocType.dataElements.contains(name)) {
                         addDataElement(name, value)
@@ -136,37 +133,12 @@ internal class CredentialFactoryUtopiaMdl : CredentialFactory {
                     }
                 }
 
-                // Values derived from the birth_date
-                addDataElement("age_in_years",
-                    Uint(dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toULong()))
-                addDataElement("age_birth_year", Uint(dateOfBirth.year.toULong()))
-                addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
-                addDataElement( "age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
-
-//                addDataElement(
-//                    "driving_privileges",
-//                    buildCborArray {
-//                        addCborMap {
-//                            put("vehicle_category_code", "A")
-//                            put("issue_date", Tagged(1004, Tstr("2018-08-09")))
-//                            put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-//                        }
-//                        addCborMap {
-//                            put("vehicle_category_code", "B")
-//                            put("issue_date", Tagged(1004, Tstr("2017-02-23")))
-//                            put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-//                        }
-//                    }
-//                )
-//                added.add("driving_privileges")
-
-                // Add all mandatory elements for completeness. This will come from the System of
-                // Record in the future
-                for ((elementName, data) in mdocType.dataElements) {
-                    if (!data.mandatory || added.contains(elementName)) {
+                // Add mandatory elements not provided by record or core using sample values
+                for ((elementName, dataElement) in mdocType.dataElements) {
+                    if (!dataElement.mandatory || added.contains(elementName)) {
                         continue
                     }
-                    val value = data.attribute.sampleValueMdoc
+                    val value = dataElement.attribute.sampleValueMdoc
                     if (value != null) {
                         addDataElement(elementName, value)
                     } else {
