@@ -52,6 +52,9 @@ internal data class IssuerConfiguration(
             val credentials = mutableMapOf<String, CredentialMetadata>()
             val credentialConfigurations = mutableMapOf<String, CredentialConfiguration>()
 
+            val batchIssuance = credentialMetadata.objOrNull("batch_credential_issuance")
+            val maxBatchSize = batchIssuance?.integer("batch_size") ?: 1
+
             for ((id, config) in credentialMetadata.obj("credential_configurations_supported")) {
                 if (config !is JsonObject) {
                     throw IllegalStateException("Invalid credential configuration: '$id'")
@@ -72,10 +75,11 @@ internal data class IssuerConfiguration(
                     Logger.e(TAG, "Unsupported key proof type", err)
                     continue
                 }
-                val batchIssuance = config.objOrNull("batch_credential_issuance")
-                val maxBatchSize = batchIssuance?.integer("batch_size") ?: 1
                 credentials[id] = CredentialMetadata(
-                    display = extractDisplay(config.objOrNull("credential_metadata"), clientPreferences),
+                    display = extractDisplay(
+                        element = config.objOrNull("credential_metadata") ?: config,
+                        clientPreferences = clientPreferences
+                    ),
                     format = format,
                     keyProofType = keyProofType,
                     maxBatchSize = maxBatchSize
