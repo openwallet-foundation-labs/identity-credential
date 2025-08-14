@@ -12,7 +12,7 @@ sealed class KeyBindingInfo {
     /** Keys are supplied using Openid4Vci-defined proof-of-possession JWT */
     data class OpenidProofOfPossession(
         val jwtList: List<String>
-    )
+    ): KeyBindingInfo()
 
     /** Keys are supplied using [KeyAttestation] objects */
     data class Attestation(

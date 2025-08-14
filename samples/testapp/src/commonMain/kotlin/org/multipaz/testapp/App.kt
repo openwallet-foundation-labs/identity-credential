@@ -31,11 +31,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import org.multipaz.testapp.provisioning.backend.ApplicationSupportLocal
-import org.multipaz.testapp.provisioning.backend.ProvisioningBackendProviderLocal
-import org.multipaz.testapp.provisioning.backend.ProvisioningBackendProviderRemote
-import org.multipaz.testapp.provisioning.model.ProvisioningModel
-import org.multipaz.testapp.provisioning.openid4vci.extractCredentialIssuerData
+import io.ktor.client.HttpClient
 import org.multipaz.testapp.ui.AppTheme
 import org.multipaz.testapp.ui.BarcodeScanningScreen
 import org.multipaz.testapp.ui.CameraScreen
@@ -93,7 +89,6 @@ import org.multipaz.testapp.ui.SoftwareSecureAreaScreen
 import org.multipaz.testapp.ui.StartScreen
 import org.multipaz.testapp.ui.VerifierType
 import org.multipaz.util.Logger
-import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.back_button
 import io.ktor.http.decodeURLPart
 import kotlinx.coroutines.CoroutineScope
@@ -103,16 +98,18 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.io.bytestring.ByteString
+import multipazproject.samples.testapp.generated.resources.Res
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.document.AbstractDocumentMetadata
+import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.facematch.FaceMatchLiteRtModel
@@ -120,11 +117,12 @@ import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
 import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.models.presentment.SimplePresentmentSource
+import org.multipaz.models.provisioning.ProvisioningModel
 import org.multipaz.prompt.PromptModel
-import org.multipaz.provisioning.WalletApplicationCapabilities
-import org.multipaz.provisioning.evidence.Openid4VciCredentialOffer
+import org.multipaz.provision.Display
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.testapp.provisioning.ProvisioningSupport
 import org.multipaz.util.Platform
 import org.multipaz.testapp.ui.FaceMatchScreen
 import org.multipaz.testapp.ui.TrustManagerScreen
@@ -167,9 +165,9 @@ class App private constructor (val promptModel: PromptModel) {
 
     private lateinit var provisioningModel: ProvisioningModel
 
-    private val credentialOffers = Channel<Openid4VciCredentialOffer>()
+    private val credentialOffers = Channel<String>()
 
-    private val provisioningBackendProviderLocal = ProvisioningBackendProviderLocal()
+    private val provisioningSupport = ProvisioningSupport()
 
     lateinit var zkSystemRepository: ZkSystemRepository
 
@@ -299,29 +297,15 @@ class App private constructor (val promptModel: PromptModel) {
         generateTrustManagers()
     }
 
-    private val useWalletServer = false
-
     private suspend fun provisioningModelInit() {
-        val backendProvider = if (useWalletServer) {
-            ProvisioningBackendProviderRemote(
-                baseUrl = "http://localhost:8080/server"
-            ) {
-                WalletApplicationCapabilities(
-                    generatedAt = Clock.System.now(),
-                    androidKeystoreAttestKeyAvailable = true,
-                    androidKeystoreStrongBoxAvailable = true,
-                    androidIsEmulator = platformIsEmulator,
-                    directAccessSupported = false,
-                )
-            }
-        } else {
-            provisioningBackendProviderLocal
-        }
         provisioningModel = ProvisioningModel(
-            backendProvider,
-            documentStore,
-            promptModel,
-            secureAreaRepository
+            documentStore = documentStore,
+            secureArea = Platform.getSecureArea(),
+            httpClient = HttpClient(platformHttpClientEngineFactory()) {
+                followRedirects = false
+            },
+            promptModel = promptModel,
+            documentMetadataInitializer = App::initializeDocumentMetadata
         )
     }
 
@@ -684,21 +668,13 @@ class App private constructor (val promptModel: PromptModel) {
             || url.startsWith(HAIP_URL_SCHEME)) {
             val queryIndex = url.indexOf('?')
             if (queryIndex >= 0) {
-                val query = url.substring(queryIndex + 1)
                 CoroutineScope(Dispatchers.Default).launch {
-                    val offer = extractCredentialIssuerData(query)
-                    if (offer != null) {
-                        Logger.i(TAG, "Process credential offer '$query'")
-                        credentialOffers.send(offer)
-                    }
+                    credentialOffers.send(url)
                 }
             }
-        } else if (url.startsWith(ApplicationSupportLocal.APP_LINK_BASE_URL)) {
+        } else if (url.startsWith(ProvisioningSupport.APP_LINK_BASE_URL)) {
             CoroutineScope(Dispatchers.Default).launch {
-                withContext(provisioningModel.coroutineContext) {
-                    provisioningBackendProviderLocal.getApplicationSupport()
-                        .onLandingUrlNavigated(url)
-                }
+                provisioningSupport.processAppLinkInvocation(url)
             }
         }
     }
@@ -727,6 +703,21 @@ class App private constructor (val promptModel: PromptModel) {
             override suspend fun schemaUpgrade(oldTable: BaseStorageTable) {
                 oldTable.deleteAll()
             }
+        }
+
+        private suspend fun initializeDocumentMetadata(
+            metadata: AbstractDocumentMetadata,
+            credentialDisplay: Display,
+            issuerDisplay: Display
+        ) {
+            (metadata as DocumentMetadata).setMetadata(
+                displayName = credentialDisplay.text,  // TODO: customize after provisioning?
+                typeDisplayName = credentialDisplay.text,
+                cardArt = credentialDisplay.logo
+                    ?: ByteString(Res.readBytes("drawable/card_generic.png")),
+                issuerLogo = issuerDisplay.logo,
+                other = null
+            )
         }
     }
 
@@ -765,8 +756,11 @@ class App private constructor (val promptModel: PromptModel) {
         LaunchedEffect(true) {
             while (true) {
                 val credentialOffer = credentialOffers.receive()
-                Logger.i(TAG, "Process credential offer from ${credentialOffer.issuerUri}")
-                provisioningModel.startProvisioning(credentialOffer)
+                provisioningModel.launchOpenID4VCIProvisioning(
+                    offerUri = credentialOffer,
+                    clientPreferences = ProvisioningSupport.OPENID4VCI_CLIENT_PREFERENCES,
+                    backend = provisioningSupport
+                )
                 navController.navigate(ProvisioningTestDestination.route)
             }
         }
@@ -988,7 +982,7 @@ class App private constructor (val promptModel: PromptModel) {
                         ProvisioningTestScreen(
                             app = this@App,
                             provisioningModel = provisioningModel,
-                            presentmentModel = presentmentModel
+                            provisioningSupport = provisioningSupport
                         )
                     }
                     composable(route = CredentialPresentmentModalBottomSheetListDestination.route) {

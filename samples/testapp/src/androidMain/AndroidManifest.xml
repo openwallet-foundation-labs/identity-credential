@@ -65,7 +65,7 @@
             
             <!-- 1. HTTPS App Links (default) - Requires .well-known/assetlinks.json -->
             <!-- Examples: https://apps.multipaz.org/landing/ -->
-            <!-- Must match ApplicationSupportLocal.APP_LINK_SERVER -->
+            <!-- Must match ProvisioningSupport.APP_LINK_SERVER -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -73,7 +73,7 @@
 
                 <!--
                 Do not include other schemes, only https. If domain is changed here, it
-                also MUST be changed in ApplicationSupportLocal class.
+                also MUST be changed in ProvisioningSupport class.
                  -->
                 <data
                     android:scheme="https"
@@ -83,7 +83,7 @@
 
             <!-- 2. Custom URI Scheme - App-specific URLs -->
             <!-- Examples: multipaz-test-app://landing -->
-            <!-- Must match ApplicationSupportLocal.APP_LINK_SERVER -->
+            <!-- Must match ProvisioningSupport.APP_LINK_SERVER -->
             <!-- This is an alternative to HTTPS App Links (above) which require .well-known/assetlinks.json -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

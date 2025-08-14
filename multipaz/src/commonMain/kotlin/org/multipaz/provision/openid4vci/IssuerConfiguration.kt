@@ -52,6 +52,9 @@ internal data class IssuerConfiguration(
             val credentials = mutableMapOf<String, CredentialMetadata>()
             val credentialConfigurations = mutableMapOf<String, CredentialConfiguration>()
 
+            val batchIssuance = credentialMetadata.objOrNull("batch_credential_issuance")
+            val maxBatchSize = batchIssuance?.integer("batch_size") ?: 1
+
             for ((id, config) in credentialMetadata.obj("credential_configurations_supported")) {
                 if (config !is JsonObject) {
                     throw IllegalStateException("Invalid credential configuration: '$id'")
@@ -67,17 +70,18 @@ internal data class IssuerConfiguration(
                     scope = config.stringOrNull("scope")
                 )
                 val keyProofType = try {
-                    extractKeyProofType(config, clientPreferences)
+                    extractKeyProofType(config, url, clientPreferences)
                 } catch (err: IllegalArgumentException) {
                     Logger.e(TAG, "Unsupported key proof type", err)
                     continue
                 }
-                val batchIssuance = config.objOrNull("batch_credential_issuance")
-                val maxBatchSize = batchIssuance?.integer("batch_size") ?: 1
                 credentials[id] = CredentialMetadata(
-                    display = extractDisplay(config.objOrNull("credential_metadata"), clientPreferences),
+                    display = extractDisplay(
+                        element = config.objOrNull("credential_metadata") ?: config,
+                        clientPreferences = clientPreferences
+                    ),
                     format = format,
-                    keyProofType = keyProofType,
+                    keyBindingType = keyProofType,
                     maxBatchSize = maxBatchSize
                 )
             }
@@ -152,6 +156,7 @@ internal data class IssuerConfiguration(
 
         private fun extractKeyProofType(
             config: JsonObject,
+            issuerId: String,
             clientPreferences: OpenID4VCIClientPreferences
         ): KeyBindingType {
             val proofTypes = config.objOrNull("proof_types_supported")
@@ -169,7 +174,11 @@ internal data class IssuerConfiguration(
                 return if (attestation != null) {
                     KeyBindingType.Attestation(alg)
                 } else {
-                    KeyBindingType.OpenidProofOfPossession(alg)
+                    KeyBindingType.OpenidProofOfPossession(
+                        algorithm = alg,
+                        clientId = clientPreferences.clientId,
+                        aud = issuerId
+                    )
                 }
             }
             throw IllegalArgumentException("No supported proof types")
