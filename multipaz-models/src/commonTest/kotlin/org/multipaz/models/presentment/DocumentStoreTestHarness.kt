@@ -2,6 +2,9 @@ package org.multipaz.models.presentment
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.serialization.json.buildJsonObject
@@ -11,7 +14,10 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
+import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.Uint
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
@@ -35,6 +41,7 @@ import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
 import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.util.MdocUtil
@@ -45,6 +52,7 @@ import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.util.Logger
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -65,6 +73,8 @@ class DocumentStoreTestHarness {
         const val TAG = "TestDocumentStore"
     }
 
+    lateinit var presentmentSource: PresentmentSource
+
     lateinit var documentTypeRepository: DocumentTypeRepository
 
     lateinit var storage: Storage
@@ -74,9 +84,16 @@ class DocumentStoreTestHarness {
     lateinit var documentStore: DocumentStore
     lateinit var docMdl: Document
     lateinit var docEuPid: Document
+    lateinit var docEuPid2: Document
     lateinit var docPhotoId: Document
+    lateinit var docPhotoId2: Document
+
+    lateinit var signedAt: Instant
+    lateinit var validFrom: Instant
+    lateinit var validUntil: Instant
 
     lateinit var dsKey: EcPrivateKey
+    lateinit var dsCert: X509Cert
 
     lateinit var readerRootKey: EcPrivateKey
     lateinit var readerRootCert: X509Cert
@@ -87,9 +104,9 @@ class DocumentStoreTestHarness {
     /**
      * Initializes the [DocumentStoreTestHarness].
      *
-     * This creates [documentStore] and with three documents [docMdl], [docPhotoId],
-     * and [docEuPid] populated with sample data. Each document will have one [MdocCredential]
-     * in the domain `mdoc` and the EU PID will also have a [KeyBoundSdJwtVcCredential]
+     * This creates [documentStore] and with give documents [docMdl], [docPhotoId], [docPhotoId2],
+     * [docEuPid], [docEuPid2], all populated with sample data. Each document will have one [MdocCredential]
+     * in the domain `mdoc` and the EU PIDs will also have a [KeyBoundSdJwtVcCredential]
      * in the domain `sdjwt`.
      *
      * The [DocumentStore] itself is backed by [EphemeralStorage] and each credential is using
@@ -121,10 +138,24 @@ class DocumentStoreTestHarness {
 
         documentStore = buildDocumentStore(storage = storage, secureAreaRepository = secureAreaRepository) {}
 
+        val readerTrustManager = TrustManagerLocal(storage = EphemeralStorage())
+
+        presentmentSource = SimplePresentmentSource(
+            documentStore = documentStore,
+            documentTypeRepository = documentTypeRepository,
+            readerTrustManager = readerTrustManager,
+            zkSystemRepository = null,
+            preferSignatureToKeyAgreement = true,
+            domainMdocSignature = "mdoc",
+            domainMdocKeyAgreement = "mdoc_key_agreement",
+            domainKeylessSdJwt = "sdjwt_keyless",
+            domainKeyBoundSdJwt = "sdjwt"
+        )
+
         val now = Clock.System.now()
-        val signedAt = now - 1.days
-        val validFrom =  now - 1.days
-        val validUntil = now + 365.days
+        signedAt = now - 1.days
+        validFrom = now - 1.days
+        validUntil = now + 365.days
         val iacaValidFrom = validFrom
         val iacaValidUntil = validUntil
         val dsValidFrom = validFrom
@@ -163,7 +194,7 @@ class DocumentStoreTestHarness {
         )
 
         dsKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val dsCert = MdocUtil.generateDsCertificate(
+        dsCert = MdocUtil.generateDsCertificate(
             iacaCert = iacaCert,
             iacaKey = iacaKey,
             dsKey = dsKey.publicKey,
@@ -184,7 +215,11 @@ class DocumentStoreTestHarness {
             validUntil = readerRootValidUntil,
             crlUrl = "https://verifier.multipaz.org/crl"
         )
+        isInitialized = true
+    }
 
+    suspend fun provisionStandardDocuments() {
+        initialize()
         provisionTestDocuments(
             documentStore = documentStore,
             dsKey = dsKey,
@@ -193,8 +228,64 @@ class DocumentStoreTestHarness {
             validFrom = validFrom,
             validUntil = validUntil,
         )
+    }
 
-        isInitialized = true
+    suspend fun provisionMdoc(
+        displayName: String,
+        docType: String,
+        data: Map<String, List<Pair<String, DataItem>>>
+    ): Document {
+        initialize()
+        val document = documentStore.createDocument(
+            displayName = displayName
+        )
+        val issuerNamespaces = buildIssuerNamespaces {
+            for ((nsName, listOfClaims) in data) {
+                addNamespace(nsName) {
+                    for ((deName, deValue) in listOfClaims) {
+                        addDataElement(deName, deValue)
+                    }
+                }
+            }
+        }
+        addMdocCredentialWithData(
+            document = document,
+            docType = docType,
+            issuerNamespaces = issuerNamespaces,
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+            dsKey = dsKey,
+            dsCert = dsCert
+        )
+        return document
+    }
+
+    suspend fun provisionSdJwtVc(
+        displayName: String,
+        vct: String,
+        data: List<Pair<String, JsonElement>>
+    ): Document {
+        initialize()
+        val document = documentStore.createDocument(
+            displayName = displayName
+        )
+        val identityAttributes = buildJsonObject {
+            for ((claimName, claimValue) in data) {
+                put(claimName, claimValue)
+            }
+        }
+        addSdJwtVcCredentialWithData(
+            document = document,
+            vct = vct,
+            identityAttributes = identityAttributes,
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+            dsKey = dsKey,
+            dsCert = dsCert
+        )
+        return document
     }
 
     private suspend fun provisionTestDocuments(
@@ -211,6 +302,8 @@ class DocumentStoreTestHarness {
             dsKey = dsKey,
             dsCert = dsCert,
             documentType = DrivingLicense.getDocumentType(),
+            overrideMdocClaims = emptyMap(),
+            overrideJsonClaims = emptyMap(),
             signedAt = signedAt,
             validFrom = validFrom,
             validUntil = validUntil,
@@ -221,6 +314,32 @@ class DocumentStoreTestHarness {
             dsKey = dsKey,
             dsCert = dsCert,
             documentType = EUPersonalID.getDocumentType(),
+            overrideMdocClaims = mapOf(
+                Pair(EUPersonalID.EUPID_NAMESPACE, "given_name") to Tstr("Erika"),
+                Pair(EUPersonalID.EUPID_NAMESPACE, "sex") to Uint(2UL),
+            ),
+            overrideJsonClaims = mapOf(
+                "given_name" to JsonPrimitive("Erika"),
+                "sex" to JsonPrimitive(2),
+            ),
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+        )
+        docEuPid2 = provisionDocument(
+            documentStore = documentStore,
+            displayName = "EU PID 2",
+            dsKey = dsKey,
+            dsCert = dsCert,
+            documentType = EUPersonalID.getDocumentType(),
+            overrideMdocClaims = mapOf(
+                Pair(EUPersonalID.EUPID_NAMESPACE, "given_name") to Tstr("Max"),
+                Pair(EUPersonalID.EUPID_NAMESPACE, "sex") to Uint(1UL),
+            ),
+            overrideJsonClaims = mapOf(
+                "given_name" to JsonPrimitive("Max"),
+                "sex" to JsonPrimitive(1),
+            ),
             signedAt = signedAt,
             validFrom = validFrom,
             validUntil = validUntil,
@@ -231,6 +350,28 @@ class DocumentStoreTestHarness {
             dsKey = dsKey,
             dsCert = dsCert,
             documentType = PhotoID.getDocumentType(),
+            overrideMdocClaims = mapOf(
+                Pair(PhotoID.ISO_23220_2_NAMESPACE, "given_name_unicode") to Tstr("Erika"),
+                Pair(PhotoID.ISO_23220_2_NAMESPACE, "sex") to Uint(2UL),
+                Pair(PhotoID.ISO_23220_2_NAMESPACE, "age_over_25") to Simple.FALSE
+            ),
+            overrideJsonClaims = emptyMap(),
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+        )
+        docPhotoId2 = provisionDocument(
+            documentStore = documentStore,
+            displayName = "Photo ID 2",
+            dsKey = dsKey,
+            dsCert = dsCert,
+            documentType = PhotoID.getDocumentType(),
+            overrideMdocClaims = mapOf(
+                Pair(PhotoID.ISO_23220_2_NAMESPACE, "given_name_unicode") to Tstr("Max"),
+                Pair(PhotoID.ISO_23220_2_NAMESPACE, "sex") to Uint(1UL),
+                Pair(PhotoID.ISO_23220_2_NAMESPACE, "age_over_25") to Simple.TRUE
+            ),
+            overrideJsonClaims = emptyMap(),
             signedAt = signedAt,
             validFrom = validFrom,
             validUntil = validUntil,
@@ -243,6 +384,8 @@ class DocumentStoreTestHarness {
         dsKey: EcPrivateKey,
         dsCert: X509Cert,
         documentType: DocumentType,
+        overrideMdocClaims: Map<Pair<String, String>, DataItem>,
+        overrideJsonClaims: Map<String, JsonElement>,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -255,6 +398,7 @@ class DocumentStoreTestHarness {
             addMdocCredential(
                 document = document,
                 documentType = documentType,
+                overrideMdocClaims = overrideMdocClaims,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
@@ -267,6 +411,7 @@ class DocumentStoreTestHarness {
             addSdJwtVcCredential(
                 document = document,
                 documentType = documentType,
+                overrideJsonClaims = overrideJsonClaims,
                 signedAt = signedAt,
                 validFrom = validFrom,
                 validUntil = validUntil,
@@ -281,6 +426,7 @@ class DocumentStoreTestHarness {
     private suspend fun addMdocCredential(
         document: Document,
         documentType: DocumentType,
+        overrideMdocClaims: Map<Pair<String, String>, DataItem>,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -291,31 +437,57 @@ class DocumentStoreTestHarness {
             for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
                 addNamespace(nsName) {
                     for ((deName, de) in ns.dataElements) {
-                        val sampleValue = de.attribute.sampleValueMdoc
-                        if (sampleValue != null) {
-                            addDataElement(deName, sampleValue)
+                        val overrideValue = overrideMdocClaims.get(Pair(nsName, deName))
+                        if (overrideValue != null) {
+                            addDataElement(deName, overrideValue)
                         } else {
-                            Logger.w(TAG, "No sample value for data element $deName")
+                            val sampleValue = de.attribute.sampleValueMdoc
+                            if (sampleValue != null) {
+                                addDataElement(deName, sampleValue)
+                            } else {
+                                Logger.w(TAG, "No sample value for data element $deName")
+                            }
                         }
                     }
                 }
             }
         }
+        addMdocCredentialWithData(
+            document = document,
+            docType = documentType.mdocDocumentType!!.docType,
+            issuerNamespaces = issuerNamespaces,
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+            dsKey = dsKey,
+            dsCert = dsCert
+        )
+    }
 
+    private suspend fun addMdocCredentialWithData(
+        document: Document,
+        docType: String,
+        issuerNamespaces: IssuerNamespaces,
+        signedAt: Instant,
+        validFrom: Instant,
+        validUntil: Instant,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
+    ) {
         // Create authentication keys...
         val mdocCredential = MdocCredential.create(
             document = document,
             asReplacementForIdentifier = null,
             domain = "mdoc",
             secureArea = softwareSecureArea,
-            docType = documentType.mdocDocumentType!!.docType,
+            docType = docType,
             createKeySettings = SoftwareCreateKeySettings.Builder().build()
         )
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(
             Algorithm.SHA256,
-            documentType.mdocDocumentType!!.docType,
+            docType,
             mdocCredential.getAttestation().publicKey
         )
         msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, null)
@@ -365,13 +537,10 @@ class DocumentStoreTestHarness {
         )
     }
 
-    // Technically - according to RFC 7800 at least - SD-JWT could do MACing too but it would
-    // need to be specced out in e.g. SD-JWT VC profile where to get the public key from the
-    // recipient. So for now, we only support signing.
-    //
     private suspend fun addSdJwtVcCredential(
         document: Document,
         documentType: DocumentType,
+        overrideJsonClaims: Map<String, JsonElement>,
         signedAt: Instant,
         validFrom: Instant,
         validUntil: Instant,
@@ -388,21 +557,48 @@ class DocumentStoreTestHarness {
                 if (claimName.contains('.')) {
                     continue
                 }
-                val sampleValue = attribute.sampleValueJson
-                if (sampleValue != null) {
-                    put(claimName, sampleValue)
+                val overrideValue = overrideJsonClaims.get(claimName)
+                if (overrideValue != null) {
+                    put(claimName, overrideValue)
                 } else {
-                    Logger.w(TAG, "No sample value for claim $claimName")
+                    val sampleValue = attribute.sampleValueJson
+                    if (sampleValue != null) {
+                        put(claimName, sampleValue)
+                    } else {
+                        Logger.w(TAG, "No sample value for claim $claimName")
+                    }
                 }
             }
         }
 
+        addSdJwtVcCredentialWithData(
+            document = document,
+            vct = documentType.jsonDocumentType!!.vct,
+            identityAttributes = identityAttributes,
+            signedAt = signedAt,
+            validFrom = validFrom,
+            validUntil = validUntil,
+            dsKey = dsKey,
+            dsCert = dsCert
+        )
+    }
+
+    private suspend fun addSdJwtVcCredentialWithData(
+        document: Document,
+        vct: String,
+        identityAttributes: JsonObject,
+        signedAt: Instant,
+        validFrom: Instant,
+        validUntil: Instant,
+        dsKey: EcPrivateKey,
+        dsCert: X509Cert,
+    ) {
         val credential = KeyBoundSdJwtVcCredential.create(
             document = document,
             asReplacementForIdentifier = null,
             domain = "sdjwt",
             secureArea = softwareSecureArea,
-            vct = documentType.jsonDocumentType!!.vct,
+            vct = vct,
             createKeySettings = SoftwareCreateKeySettings.Builder().build()
         )
 

@@ -21,6 +21,7 @@ import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.request.MdocRequest
 import kotlin.time.Instant
 import org.multipaz.cbor.putCborArray
+import org.multipaz.request.RequestedClaim
 import org.multipaz.util.toHex
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -271,8 +272,11 @@ class LongfellowZkSystem(): ZkSystem {
      * @param mdocRequest the request to fulfill
      * @return the best matching [ZkSystemSpec], or null if none are suitable
      */
-    override fun getMatchingSystemSpec(zkSystemSpecs: List<ZkSystemSpec>, mdocRequest: MdocRequest): ZkSystemSpec? {
-        val numAttributesRequested = mdocRequest.requestedClaims.size.toLong()
+    override fun getMatchingSystemSpec(
+        zkSystemSpecs: List<ZkSystemSpec>,
+        requestedClaims: List<RequestedClaim>
+    ): ZkSystemSpec? {
+        val numAttributesRequested = requestedClaims.size.toLong()
         if (numAttributesRequested == 0L) {
             return null
         }

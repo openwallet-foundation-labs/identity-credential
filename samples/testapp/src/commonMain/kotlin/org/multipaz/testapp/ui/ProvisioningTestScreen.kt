@@ -626,7 +626,7 @@ fun EvidenceRequestOpenid4VpView(
                             data = buildJsonObject {
                                 put("request", evidenceRequest.request)
                             },
-                            document = viableCredentials.first().document
+                            documents = viableCredentials.map { it.document }
                         ) {
                             override fun sendResponse(protocol: String, data: JsonObject) {
                                 coroutineScope.launch {

@@ -505,7 +505,7 @@ open class CloudSecureArea protected constructor(
             createKeySettings
         } else {
             // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
-            CloudCreateKeySettings.Builder(createKeySettings.nonce)
+            val builder = CloudCreateKeySettings.Builder(createKeySettings.nonce)
                 .setUserAuthenticationRequired(
                     required = createKeySettings.userAuthenticationRequired,
                     types = setOf(
@@ -513,7 +513,13 @@ open class CloudSecureArea protected constructor(
                         CloudUserAuthType.BIOMETRIC,
                     )
                 )
-                .build()
+            if (createKeySettings.validFrom != null && createKeySettings.validUntil != null) {
+                builder.setValidityPeriod(
+                    validFrom = createKeySettings.validFrom,
+                    validUntil = createKeySettings.validUntil
+                )
+            }
+            builder.build()
         }
         setupE2EE(false)
         try {

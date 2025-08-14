@@ -30,7 +30,7 @@ class DocumentModel(
             if (document != null) {
                 documentInfos[documentId] = DocumentInfo(
                     document = document,
-                    cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
+                    cardArt = decodeImage(document.metadata.cardArt?.toByteArray() ?: byteArrayOf()),
                     credentialInfos = document.buildCredentialInfos()
                 )
             }
@@ -46,7 +46,7 @@ class DocumentModel(
                             if (document != null) {
                                 documentInfos[event.documentId] = DocumentInfo(
                                     document = document,
-                                    cardArt = decodeImage(document.metadata.cardArt!!.toByteArray()),
+                                    cardArt = decodeImage(document.metadata.cardArt?.toByteArray() ?: byteArrayOf()),
                                     credentialInfos = document.buildCredentialInfos()
                                 )
                             }
@@ -61,7 +61,7 @@ class DocumentModel(
                             if (document != null) {
                                 documentInfos[event.documentId] = DocumentInfo(
                                     document = document,
-                                    cardArt = decodeImage(document.metadata.cardArt?.toByteArray() ?: byteArrayOf(0)),
+                                    cardArt = decodeImage(document.metadata.cardArt?.toByteArray() ?: byteArrayOf()),
                                     credentialInfos = document.buildCredentialInfos()
                                 )
                             }

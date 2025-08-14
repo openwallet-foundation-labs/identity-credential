@@ -229,8 +229,25 @@ class DocumentType private constructor(
             icon: Icon? = null,
             sampleValue: JsonElement? = null
         ) = apply {
-            jsonBuilder?.addClaim(type, identifier, displayName, description, icon, sampleValue)
-                ?: throw Exception("The JSON Document Type was not initialized")
+            val splits = identifier.split(".")
+            when (splits.size ) {
+                1 -> {
+                    jsonBuilder?.addClaim(type, identifier, displayName, description, icon, sampleValue)
+                        ?: throw Exception("The JSON Document Type was not initialized")
+                }
+                2 -> {
+                    jsonBuilder?.addEmbeddedAttribute(
+                        parentIdentifier = splits[0],
+                        type = type,
+                        identifier = splits[1],
+                        displayName = displayName,
+                        description = description,
+                        icon = icon,
+                        sampleValue = sampleValue
+                    ) ?: throw Exception("The JSON Document Type was not initialized")
+                }
+                else -> throw Exception("Invalid identifier $identifier, can have at max one period")
+            }
         }
 
         /**
@@ -275,11 +292,24 @@ class DocumentType private constructor(
                 null
             } else {
                 val claims = if (jsonClaims.isEmpty()) {
-                    jsonBuilder!!.claims.values.toList()
+                    jsonBuilder!!.claims.mapValues { (_, v) -> v.first }.values.toList()
                 } else {
                     val list = mutableListOf<DocumentAttribute>()
                     for (claimName in jsonClaims) {
-                        list.add(jsonBuilder!!.claims[claimName]!!)
+                        val splits = claimName.split(".")
+                        when (splits.size) {
+                            1 -> {
+                                list.add(jsonBuilder!!.claims[claimName]!!.first)
+                            }
+                            2 -> {
+                                val parentAttribute = jsonBuilder!!.claims[splits[0]]!!.first
+                                val embeddedAttribute = parentAttribute.embeddedAttributes.find {
+                                    it.identifier == splits[1]
+                                } ?: throw Exception("No attribute with identifier ${splits[1]} on parent attribute ${splits[0]}")
+                                list.add(embeddedAttribute)
+                            }
+                            else -> throw Exception("Invalid claim name $claimName, can have at max one period")
+                        }
                     }
                     list
                 }

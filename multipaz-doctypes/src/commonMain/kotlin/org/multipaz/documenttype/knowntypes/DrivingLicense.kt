@@ -16,7 +16,6 @@
 
 package org.multipaz.documenttype.knowntypes
 
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.toDataItem
@@ -27,7 +26,6 @@ import org.multipaz.documenttype.Icon
 import org.multipaz.documenttype.IntegerOption
 import org.multipaz.documenttype.StringOption
 import org.multipaz.util.fromBase64Url
-import org.multipaz.util.fromHex
 import kotlinx.datetime.LocalDate
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
@@ -189,7 +187,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.EMERGENCY,
-                SampleData.SEX_ISO218.toDataItem()
+                SampleData.SEX_ISO_5218.toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -703,7 +701,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PLACE,
-                null
+                "037".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.Date,
@@ -723,7 +721,7 @@ object DrivingLicense {
                 true,
                 AAMVA_NAMESPACE,
                 Icon.EMERGENCY,
-                SampleData.SEX_ISO218.toDataItem()
+                SampleData.SEX_ISO_5218.toDataItem()
             )
             /*
              * Then the attributes that exist only in the mDL Credential Type and not in the VC Credential Type

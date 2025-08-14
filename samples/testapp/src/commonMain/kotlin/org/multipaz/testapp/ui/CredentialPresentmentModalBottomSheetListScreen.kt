@@ -33,7 +33,7 @@ enum class VerifierType(
 }
 
 @Composable
-fun ConsentModalBottomSheetListScreen(
+fun CredentialPresentmentModalBottomSheetListScreen(
     onConsentModalBottomSheetClicked: (mdlSampleRequest: String, verifierType: VerifierType) -> Unit,
 ) {
     val mdlRequests = remember {
