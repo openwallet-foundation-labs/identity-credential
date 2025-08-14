@@ -15,7 +15,7 @@ import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.launch
 import org.multipaz.applinks.AppLinksCheck
 import org.multipaz.context.initializeApplication
-import org.multipaz.testapp.provisioning.backend.ApplicationSupportLocal
+import org.multipaz.testapp.provisioning.ProvisioningSupport
 import org.multipaz.util.Logger
 
 class MainActivity : FragmentActivity() {
@@ -62,7 +62,7 @@ class MainActivity : FragmentActivity() {
             handleIntent(intent)
             val appLinksSetupIsValid = AppLinksCheck.checkAppLinksServerSetup(
                 applicationContext,
-                ApplicationSupportLocal.APP_LINK_SERVER,
+                ProvisioningSupport.APP_LINK_SERVER,
                 HttpClient(Android)
             )
             if (!appLinksSetupIsValid) {

@@ -103,7 +103,6 @@ kotlin {
                 implementation(project(":multipaz-longfellow"))
                 implementation(project(":multipaz-models"))
                 implementation(project(":multipaz-doctypes"))
-                implementation(project(":multipaz-provisioning-api"))
                 implementation(project(":multipaz-compose"))
                 implementation(project(":multipaz-vision"))
                 implementation(libs.kotlinx.datetime)
