@@ -33,6 +33,22 @@ class JsonDocumentType private constructor(
 ) {
 
     /**
+     * Looks up a JSON attribute.
+     *
+     * @param identifier the identifier of an attribute for JSON-based credentials using `.` to separate
+     *   path components, e.g. `age_equal_or_over.18`.
+     * @return the document attribute or `null` if not found.
+     */
+    fun getDocumentAttribute(identifier: String): DocumentAttribute? {
+        val splits = identifier.split(".")
+        return when (splits.size ) {
+            1 -> claims[splits[0]]
+            2 -> claims[splits[0]]?.embeddedAttributes?.find { it.identifier == splits[1] }
+            else -> throw Exception("Invalid identifier $identifier, can have at max one period")
+        }
+    }
+
+    /**
      * Builder class for class [JsonDocumentType].
      *
      * @param vct the document type e.g. `urn:eudi:pid:1`.
@@ -41,7 +57,7 @@ class JsonDocumentType private constructor(
     data class Builder(
         val vct: String,
         val keyBound: Boolean = true,
-        internal val claims: MutableMap<String, DocumentAttribute> = mutableMapOf(),
+        internal val claims: MutableMap<String, Pair<DocumentAttribute, MutableList<DocumentAttribute>>> = mutableMapOf(),
     ) {
         /**
          * Add a claim to the metadata of the JSON-based Document Type.
@@ -61,14 +77,50 @@ class JsonDocumentType private constructor(
             icon: Icon? = null,
             sampleValue: JsonElement? = null
         ) = apply {
-            claims[identifier] = DocumentAttribute(
-                type, identifier, displayName, description, icon, null, sampleValue
+            val embeddedAttributes = mutableListOf<DocumentAttribute>()
+            val attribute = DocumentAttribute(
+                type = type,
+                identifier = identifier,
+                displayName = displayName,
+                description = description,
+                icon = icon,
+                sampleValueMdoc = null,
+                sampleValueJson = sampleValue,
+                parentAttribute = null,
+                embeddedAttributes = embeddedAttributes
+            )
+            claims[identifier] = Pair(attribute, embeddedAttributes)
+        }
+
+        internal fun addEmbeddedAttribute(
+            parentIdentifier: String,
+            type: DocumentAttributeType,
+            identifier: String,
+            displayName: String,
+            description: String,
+            icon: Icon? = null,
+            sampleValue: JsonElement? = null
+        ) {
+            val (parentAttribute, embeddedAttributes) = claims[parentIdentifier]
+                ?: throw IllegalStateException("No attribute for $parentIdentifier")
+            embeddedAttributes.add(
+                DocumentAttribute(
+                    type = type,
+                    identifier = identifier,
+                    displayName = displayName,
+                    description = description,
+                    icon = icon,
+                    sampleValueMdoc = null,
+                    sampleValueJson = sampleValue,
+                    parentAttribute = parentAttribute,
+                    embeddedAttributes = emptyList()
+                )
             )
         }
 
         /**
          * Build the [JsonDocumentType].
          */
-        fun build() = JsonDocumentType(vct, claims, keyBound)
+        fun build() = JsonDocumentType(vct, claims.mapValues { (_, v) -> v.first }, keyBound)
     }
 }

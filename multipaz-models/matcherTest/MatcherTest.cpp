@@ -51,7 +51,11 @@ extern "C" void AddStringIdEntry(char *cred_id, char* icon, size_t icon_len, cha
 }
 
 extern "C" void AddFieldForStringIdEntry(char *cred_id, char *field_display_name, char *field_display_value) {
-    output += std::format("  {}: {}\n", field_display_name, field_display_value);
+    if (field_display_value != nullptr) {
+        output += std::format("  {}: {}\n", field_display_name, field_display_value);
+    } else {
+        output += std::format("  {}\n", field_display_name);
+    }
 }
 
 extern "C" void GetRequestBuffer(void* buffer) {
@@ -81,4 +85,26 @@ typedef struct CallingAppInfo {
 
 extern "C" void GetCallingAppInfo(CallingAppInfo* info) {
     // TODO
+}
+
+extern "C" void GetWasmVersion(uint32_t* version) {
+    *version = 2;
+}
+
+extern "C" void AddEntrySet(char *set_id, int set_length) {
+    output += "Set\n";
+    output += std::format("  set_id {}\n", set_id);
+}
+
+extern "C" void AddEntryToSet(char *cred_id, char* icon, size_t icon_len, char *title, char *subtitle, char *disclaimer, char *warning, char *metadata, char *set_id, int set_index) {
+    output += std::format("  SetEntry set_index {}\n", set_index);
+    output += std::format("    cred_id {}\n", cred_id);
+}
+
+extern "C" void AddFieldToEntrySet(char *cred_id, char *field_display_name, char *field_display_value, char *set_id, int set_index) {
+    if (field_display_value != nullptr) {
+        output += std::format("    {}: {}\n", field_display_name, field_display_value);
+    } else {
+        output += std::format("    {}\n", field_display_name);
+    }
 }

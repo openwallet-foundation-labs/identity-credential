@@ -189,7 +189,7 @@ object GermanPersonalID {
                 "Gender",
                 "PID holder’s gender",
                 Icon.EMERGENCY,
-                JsonPrimitive(SampleData.SEX_ISO218)
+                JsonPrimitive(SampleData.SEX_ISO_5218)
             )
             .addJsonAttribute(
                 DocumentAttributeType.ComplexType,

@@ -673,20 +673,11 @@ object MdocUtil {
         documentTypeRepository: DocumentTypeRepository,
         mdocCredential: MdocCredential?,
     ): List<MdocRequestedClaim> {
-        val mdocDocumentType = documentTypeRepository.getDocumentTypeForMdoc(docType)?.mdocDocumentType
         val ret = mutableListOf<MdocRequestedClaim>()
         for ((namespaceName, listOfDe) in requestedData) {
             for ((dataElementName, intentToRetain) in listOfDe) {
-                val attribute =
-                    mdocDocumentType?.namespaces
-                        ?.get(namespaceName)
-                        ?.dataElements
-                        ?.get(dataElementName)
-                        ?.attribute
                 ret.add(
                     MdocRequestedClaim(
-                        displayName = attribute?.displayName ?: dataElementName,
-                        attribute = attribute,
                         namespaceName = namespaceName,
                         dataElementName = dataElementName,
                         intentToRetain = intentToRetain,

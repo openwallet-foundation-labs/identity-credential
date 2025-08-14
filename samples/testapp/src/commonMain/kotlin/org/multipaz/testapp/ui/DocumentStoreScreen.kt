@@ -47,7 +47,6 @@ import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.testapp.DocumentModel
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.testapp.TestAppUtils
-import org.multipaz.testapp.platformCreateKeySettings
 import org.multipaz.testapp.platformSecureAreaHasKeyAgreement
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.launch
@@ -55,21 +54,29 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.testapp.platformHttpClientEngineFactory
 import org.multipaz.util.Platform
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "DocumentStoreScreen"
 
-enum class CsaCreationMode {
+enum class DocumentCreationMode {
     NORMAL,
     EUPID_WITH_10_CREDENTIALS,
     EUPID_WITH_10_CREDENTIALS_BATCH,
+    DCQL_TEST_DOCUMENTS
 }
+
+private val userAuthenticationTimeoutValues = mapOf(
+    "0 sec (Auth every use)" to 0.seconds,
+    "10 sec" to 10.seconds,
+    "60 sec" to 60.seconds
+)
 
 @Composable
 fun DocumentStoreScreen(
@@ -88,6 +95,7 @@ fun DocumentStoreScreen(
     val deviceKeyMacAlgorithm = remember { mutableStateOf<Algorithm>(Algorithm.ECDH_P256) }
     val documentSigningAlgorithm = remember { mutableStateOf<Algorithm>(Algorithm.ESP256) }
     val showProvisioningResult = remember { mutableStateOf<AnnotatedString?>(null) }
+    val userAuthenticationTimeout = remember { mutableStateOf<Duration>(10.seconds) }
 
     val showDocumentCreationDialog = remember { mutableStateOf(false) }
     if (showDocumentCreationDialog.value) {
@@ -134,7 +142,7 @@ fun DocumentStoreScreen(
     }
 
     val showCsaConnectDialog = remember { mutableStateOf(false) }
-    val csaCreationMode = remember { mutableStateOf<CsaCreationMode>(CsaCreationMode.NORMAL) }
+    val documentCreationMode = remember { mutableStateOf<DocumentCreationMode>(DocumentCreationMode.NORMAL) }
     if (showCsaConnectDialog.value) {
         CsaConnectDialog(
             settingsModel.cloudSecureAreaUrl.value,
@@ -159,7 +167,7 @@ fun DocumentStoreScreen(
                         showToast("Registered with CSA")
                         val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                         provisionTestDocuments(
-                            csaCreationMode = csaCreationMode.value,
+                            documentCreationMode = documentCreationMode.value,
                             showProvisioningResult = showProvisioningResult,
                             documentStore = documentStore,
                             secureArea = cloudSecureArea,
@@ -218,11 +226,21 @@ fun DocumentStoreScreen(
                     }
                     val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                     provisionTestDocuments(
-                        csaCreationMode = CsaCreationMode.NORMAL,
+                        documentCreationMode = DocumentCreationMode.NORMAL,
                         showProvisioningResult = showProvisioningResult,
                         documentStore = documentStore,
                         secureArea = Platform.getSecureArea(),
-                        secureAreaCreateKeySettingsFunc = ::platformCreateKeySettings,
+                        secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
+                                                            validFrom, validUntil ->
+                            CreateKeySettings(
+                                algorithm = algorithm,
+                                nonce = challenge,
+                                userAuthenticationRequired = userAuthenticationRequired,
+                                userAuthenticationTimeout = userAuthenticationTimeout.value,
+                                validFrom = validFrom,
+                                validUntil = validUntil
+                            )
+                        },
                         dsKey = dsKey,
                         dsCert = dsCert,
                         showToast = showToast,
@@ -241,7 +259,7 @@ fun DocumentStoreScreen(
                 coroutineScope.launch {
                     val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
                     provisionTestDocuments(
-                        csaCreationMode = CsaCreationMode.NORMAL,
+                        documentCreationMode = DocumentCreationMode.NORMAL,
                         showProvisioningResult = showProvisioningResult,
                         documentStore = documentStore,
                         secureArea = softwareSecureArea,
@@ -267,7 +285,7 @@ fun DocumentStoreScreen(
         }
         item {
             TextButton(onClick = {
-                csaCreationMode.value = CsaCreationMode.NORMAL
+                documentCreationMode.value = DocumentCreationMode.NORMAL
                 showCsaConnectDialog.value = true
             }) {
                 Text(text = "Create Test Documents in Cloud Secure Area")
@@ -275,7 +293,7 @@ fun DocumentStoreScreen(
         }
         item {
             TextButton(onClick = {
-                csaCreationMode.value = CsaCreationMode.EUPID_WITH_10_CREDENTIALS
+                documentCreationMode.value = DocumentCreationMode.EUPID_WITH_10_CREDENTIALS
                 showCsaConnectDialog.value = true
             }) {
                 Text(text = "Create EUPID in CSA w/ 10 creds")
@@ -283,10 +301,43 @@ fun DocumentStoreScreen(
         }
         item {
             TextButton(onClick = {
-                csaCreationMode.value = CsaCreationMode.EUPID_WITH_10_CREDENTIALS_BATCH
+                documentCreationMode.value = DocumentCreationMode.EUPID_WITH_10_CREDENTIALS_BATCH
                 showCsaConnectDialog.value = true
             }) {
                 Text(text = "Create EUPID in CSA w/ 10 creds (batch)")
+            }
+        }
+        item {
+            TextButton(onClick = {
+                coroutineScope.launch {
+                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
+                    provisionTestDocuments(
+                        documentCreationMode = DocumentCreationMode.DCQL_TEST_DOCUMENTS,
+                        showProvisioningResult = showProvisioningResult,
+                        documentStore = documentStore,
+                        secureArea = Platform.getSecureArea(),
+                        secureAreaCreateKeySettingsFunc = { challenge, algorithm, userAuthenticationRequired,
+                                                            validFrom, validUntil ->
+                            CreateKeySettings(
+                                algorithm = algorithm,
+                                nonce = challenge,
+                                userAuthenticationRequired = userAuthenticationRequired,
+                                userAuthenticationTimeout = userAuthenticationTimeout.value,
+                                validFrom = validFrom,
+                                validUntil = validUntil
+                            )
+                        },
+                        dsKey = dsKey,
+                        dsCert = dsCert,
+                        showToast = showToast,
+                        deviceKeyAlgorithm = deviceKeyAlgorithm.value,
+                        deviceKeyMacAlgorithm = deviceKeyMacAlgorithm.value,
+                        numCredentialsPerDomain = numCredentialsPerDomain.value,
+                        showDocumentCreationDialog = showDocumentCreationDialog,
+                    )
+                }
+            }) {
+                Text(text = "Create Test Documents for DCQL testing")
             }
         }
         item {
@@ -327,11 +378,21 @@ fun DocumentStoreScreen(
         }
         item {
             SettingMultipleChoice(
-                title ="Document Signing Algorithm",
+                title = "Document Signing Algorithm",
                 choices = Algorithm.entries.mapNotNull { if (it.fullySpecified && it.isSigning) it.name else null },
                 initialChoice = documentSigningAlgorithm.value.toString(),
                 onChoiceSelected = { choice ->
                     documentSigningAlgorithm.value = Algorithm.entries.find { it.name == choice }!!
+                },
+            )
+        }
+        item {
+            SettingMultipleChoice(
+                title = "User Auth Timeout",
+                choices = userAuthenticationTimeoutValues.keys.toList(),
+                initialChoice = userAuthenticationTimeoutValues.keys.toList()[1],
+                onChoiceSelected = { choice ->
+                    userAuthenticationTimeout.value = userAuthenticationTimeoutValues[choice]!!
                 },
             )
         }
@@ -401,7 +462,7 @@ private fun generateDsKeyAndCert(
 
 @OptIn(ExperimentalSerializationApi::class)
 private suspend fun provisionTestDocuments(
-    csaCreationMode: CsaCreationMode,
+    documentCreationMode: DocumentCreationMode,
     showProvisioningResult: MutableState<AnnotatedString?>,
     documentStore: DocumentStore,
     secureArea: SecureArea,
@@ -423,7 +484,7 @@ private suspend fun provisionTestDocuments(
     // This can be slow... so we show a dialog to help convey this to the user.
     showDocumentCreationDialog.value = true
 
-    if (csaCreationMode == CsaCreationMode.NORMAL && documentStore.listDocuments().size >= 5) {
+    if (documentCreationMode == DocumentCreationMode.NORMAL && documentStore.listDocuments().size >= 5) {
         // TODO: we need a more granular check once we support provisioning of other kinds of documents
         showToast("Test Documents already provisioned. Delete all documents and try again")
         showDocumentCreationDialog.value = false
@@ -444,7 +505,7 @@ private suspend fun provisionTestDocuments(
         val numDocsBegin = documentStore.listDocuments().size
         val timestampBegin = Clock.System.now()
         val openid4vciAttestationCompactSerialization = TestAppUtils.provisionTestDocuments(
-            csaCreationMode,
+            documentCreationMode,
             documentStore,
             secureArea,
             secureAreaCreateKeySettingsFunc,

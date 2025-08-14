@@ -76,9 +76,15 @@ class SoftwareSecureArea private constructor(private val storageTable: StorageTa
             createKeySettings
         } else {
             // If user passed in a generic SecureArea.CreateKeySettings, honor them.
-            SoftwareCreateKeySettings.Builder()
+            val builder = SoftwareCreateKeySettings.Builder()
                 .setAlgorithm(createKeySettings.algorithm)
-                .build()
+            if (createKeySettings.validFrom != null && createKeySettings.validUntil != null) {
+                builder.setValidityPeriod(
+                    validFrom = createKeySettings.validFrom,
+                    validUntil = createKeySettings.validUntil
+                )
+            }
+            builder.build()
         }
         try {
             val privateKey = Crypto.createEcPrivateKey(settings.algorithm.curve!!)

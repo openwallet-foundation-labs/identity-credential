@@ -9,6 +9,15 @@ import org.multipaz.crypto.X509CertChain
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import org.multipaz.util.toBase64
+import org.multipaz.util.toBase64Url
+import org.multipaz.util.toHex
+import kotlin.io.encoding.Base64
 
 /**
  * Abstract base class for CBOR data items.
@@ -363,6 +372,123 @@ sealed class DataItem(
     fun getOrNull(key: Long): DataItem? {
         require(this is CborMap)
         return items.get(key.toDataItem())
+    }
+
+    /**
+     * Converts the [DataItem] to JSON according to Section 6.1 of RFC 8949.
+     *
+     * @return a [JsonElement].
+     */
+    fun toJson(): JsonElement {
+        // See RFC 8949 section 6.1
+        return when (this) {
+            // A byte string (major type 2) that is not embedded in a tag that specifies a proposed
+            // encoding is encoded in base64url without padding and becomes a JSON string.
+            is Bstr -> JsonPrimitive(asBstr.toBase64Url())
+            // A UTF-8 string (major type 3) becomes a JSON string. Note that JSON requires escaping
+            // certain characters ([RFC8259], Section 7): quotation mark (U+0022), reverse
+            // solidus (U+005C), and the "C0 control characters" (U+0000 through U+001F). All other
+            // characters are copied unchanged into the JSON UTF-8 string
+            is Tstr -> JsonPrimitive(asTstr)
+            // An integer (major type 0 or 1) becomes a JSON number.
+            is CborInt -> JsonPrimitive(asNumber)
+            // A floating-point value (major type 7, additional information 25 through 27) becomes
+            // a JSON number if it is finite (that is, it can be represented in a JSON number); if
+            // the value is non-finite (NaN, or positive or negative Infinity), it is represented
+            // by the substitute value.
+            is CborDouble -> {
+                val value = asDouble
+                if (value.isFinite()) {
+                    JsonPrimitive(value)
+                } else {
+                    JsonNull
+                }
+            }
+            is CborFloat -> {
+                val value = asFloat
+                if (value.isFinite()) {
+                    JsonPrimitive(value)
+                } else {
+                    JsonNull
+                }
+            }
+            // An array (major type 4) becomes a JSON array.
+            is CborArray -> buildJsonArray {
+                items.forEach { add(it.toJson()) }
+            }
+            // A map (major type 5) becomes a JSON object. This is possible directly only if all keys
+            // are UTF-8 strings. A converter might also convert other keys into UTF-8 strings
+            // (such as by converting integers into strings containing their decimal representation);
+            // however, doing so introduces a danger of key collision. Note also that, if tags on
+            // UTF-8 strings are ignored as proposed below, this will cause a key collision if the
+            // tags are different but the strings are the same.
+            is CborMap -> buildJsonObject {
+                items.forEach { (key, value) ->
+                    val keyStr = when (key) {
+                        is Tstr -> key.asTstr
+                        else -> Cbor.toDiagnostics(key, emptySet())
+                    }
+                    put(keyStr, value.toJson())
+                }
+            }
+            // Indefinite-length items are made definite before conversion.
+            is IndefLengthBstr -> {
+                val combined = ByteStringBuilder()
+                chunks.forEach { combined.append(it) }
+                JsonPrimitive(combined.toByteString().toByteArray().toBase64())
+            }
+            // Indefinite-length items are made definite before conversion.
+            is IndefLengthTstr -> {
+                val combined = StringBuilder()
+                chunks.forEach { combined.append(it) }
+                JsonPrimitive(combined.toString())
+            }
+            is Simple -> {
+                when (value) {
+                    // False (major type 7, additional information 20) becomes a JSON false.
+                    Simple.FALSE.value -> JsonPrimitive(false)
+                    // True (major type 7, additional information 21) becomes a JSON true.
+                    Simple.TRUE.value -> JsonPrimitive(true)
+                    // Null (major type 7, additional information 22) becomes a JSON null.
+                    Simple.NULL.value -> JsonNull
+                    // Any other simple value (major type 7, any additional information value not
+                    // yet discussed) is represented by the substitute value.
+                    else -> JsonNull
+                }
+            }
+            is Tagged -> {
+                if (taggedItem is Bstr) {
+                    when (tagNumber) {
+                        Tagged.UNSIGNED_BIGNUM,
+                        Tagged.NEGATIVE_BIGNUM -> {
+                            // A bignum (major type 6, tag number 2 or 3) is represented by encoding its byte string
+                            // in base64url without padding and becomes a JSON string. For tag number 3 (negative
+                            // bignum), a "~" (ASCII tilde) is inserted before the base-encoded value. (The
+                            // conversion to a binary blob instead of a number is to prevent a likely numeric
+                            // overflow for the JSON decoder.)
+                            if (tagNumber == Tagged.NEGATIVE_BIGNUM) {
+                                JsonPrimitive("~" + taggedItem.value.toBase64Url())
+                            } else {
+                                JsonPrimitive(taggedItem.value.toBase64Url())
+                            }
+                        }
+                        // A byte string with an encoding hint (major type 6, tag number 21 through 23) is
+                        // encoded as described by the hint and becomes a JSON string.
+                        Tagged.ENCODING_HINT_BASE64URL -> JsonPrimitive(taggedItem.value.toBase64Url())
+                        Tagged.ENCODING_HINT_BASE64_WITH_PADDING -> JsonPrimitive(Base64.encode(taggedItem.value))
+                        Tagged.ENCODING_HINT_HEX -> JsonPrimitive(taggedItem.value.toHex(upperCase = true))
+                        // For all other tags (major type 6, any other tag number), the tag content is represented
+                        // as a JSON value; the tag number is ignored.
+                        else -> taggedItem.toJson()
+                    }
+                } else {
+                    // For all other tags (major type 6, any other tag number), the tag content is represented
+                    // as a JSON value; the tag number is ignored.
+                    taggedItem.toJson()
+                }
+            }
+            is RawCbor -> Cbor.decode(encodedCbor).toJson()
+        }
     }
 
     /**

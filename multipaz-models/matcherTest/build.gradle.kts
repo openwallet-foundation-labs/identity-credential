@@ -4,7 +4,7 @@ plugins {
 
 
 android {
-    namespace = "org.multipaz.models.matchertest"
+    namespace = "org.multipaz.models.presentment"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

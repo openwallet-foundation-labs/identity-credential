@@ -14,7 +14,6 @@ import io.ktor.http.contentType
 import io.ktor.http.formUrlEncode
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -24,7 +23,9 @@ import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.models.openid.OpenID4VP
-import org.multipaz.request.Request
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.toBase64Url
 
@@ -35,14 +36,12 @@ internal suspend fun uriSchemePresentment(
     source: PresentmentSource,
     mechanism: UriSchemePresentmentMechanism,
     dismissable: MutableStateFlow<Boolean>,
-    showDocumentPicker: suspend (
-        documents: List<Document>,
-    ) -> Document?,
     showConsentPrompt: suspend (
-        document: Document,
-        request: Request,
+        credentialPresentmentData: CredentialPresentmentData,
+        preselectedDocuments: List<Document>,
+        requester: Requester,
         trustPoint: TrustPoint?
-    ) -> Boolean
+    ) -> CredentialPresentmentSelection?
 ) {
     val parameters = mechanism.uri.parseUrlEncodedParameters()
     // TODO: maybe also support `request` in addition to `request_uri`, that is, the case
@@ -78,9 +77,8 @@ internal suspend fun uriSchemePresentment(
         ?: throw IllegalArgumentException("response_uri not set in request")
     val response = OpenID4VP.generateResponse(
         version = OpenID4VP.Version.DRAFT_29,
-        document = null,
+        preselectedDocuments = listOf(),
         source = source,
-        showDocumentPicker = showDocumentPicker,
         showConsentPrompt = showConsentPrompt,
         origin = mechanism.origin,
         request = requestObject,

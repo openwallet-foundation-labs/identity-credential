@@ -1,9 +1,7 @@
 package org.multipaz.models.digitalcredentials
 
-import org.multipaz.credential.Credential
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
-import kotlinx.io.bytestring.ByteString
 import kotlin.IllegalStateException
 
 internal actual val defaultAvailable = false

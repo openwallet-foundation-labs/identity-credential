@@ -32,7 +32,7 @@ internal object SampleData {
 
     const val UN_DISTINGUISHING_SIGN = "UTO"
     const val ADMINISTRATIVE_NUMBER = "123456789"
-    const val SEX_ISO218 = 2
+    const val SEX_ISO_5218 = 2
     const val HEIGHT_CM = 175
     const val WEIGHT_KG = 68
     const val BIRTH_PLACE = "Sample City"

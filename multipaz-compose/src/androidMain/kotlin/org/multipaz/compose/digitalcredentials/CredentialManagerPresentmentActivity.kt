@@ -13,12 +13,12 @@ import androidx.credentials.ExperimentalDigitalCredentialApi
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetDigitalCredentialOption
 import androidx.credentials.provider.PendingIntentHandler
+import androidx.credentials.provider.ProviderGetCredentialRequest
 import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -38,6 +38,7 @@ import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
+import java.lang.IllegalStateException
 
 /**
  * Base class for activity used for Android Credential Manager presentments using the W3C Digital Credentials API.
@@ -119,24 +120,25 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
             val option = credentialRequest.credentialOptions[0] as GetDigitalCredentialOption
             val json = Json.parseToJsonElement(option.requestJson).jsonObject
             Logger.iJson(TAG, "Request Json", json)
-            Logger.i(TAG, "selectedEntryId: ${credentialRequest.selectedEntryId!!}")
-            // See Credential::addCredentialToPicker() for how we construct selectedEntryId
-            // to contain the protocol and documentId
-            val selectedEntryIdParts = credentialRequest.selectedEntryId!!.split(" ")
-            require(selectedEntryIdParts.size == 2)
-            val protocol = selectedEntryIdParts[0]
-            val document = settings.presentmentSource.documentStore.lookupForCredmanId(selectedEntryIdParts[1])
-                ?: throw Error("No registered document for ID ${selectedEntryIdParts[1]}")
+            val selectionInfo = getSetSelection(credentialRequest)
+                ?: getSelection(credentialRequest)
+                ?:  throw IllegalStateException("Unable to get credman selection")
+            Logger.i(TAG, "SelectionInfo: $selectionInfo")
+
+            val documents = selectionInfo.documentIds.map {
+                settings.presentmentSource.documentStore.lookupForCredmanId(it)
+                    ?: throw Error("No registered document for document ID $it")
+            }
             // Find request matching the protocol for the selected entry...
             val requestForSelectedEntry = json["requests"]!!.jsonArray.find {
-                (it as JsonObject)["protocol"]!!.jsonPrimitive.content == protocol
+                (it as JsonObject)["protocol"]!!.jsonPrimitive.content == selectionInfo.protocol
             }!!.jsonObject
             val mechanism = object : DigitalCredentialsPresentmentMechanism(
                 appId = callingPackageName,
                 webOrigin = callingOrigin,
                 protocol = requestForSelectedEntry["protocol"]!!.jsonPrimitive.content,
                 data = requestForSelectedEntry["data"]!!.jsonObject,
-                document = document
+                preselectedDocuments = documents
             ) {
                 override fun sendResponse(
                     protocol: String,
@@ -194,4 +196,44 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
     override fun onDestroy() {
         super.onDestroy()
     }
+}
+
+private data class SelectionInfo(
+    val protocol: String,
+    val documentIds: List<String>
+)
+
+private fun getSetSelection(request: ProviderGetCredentialRequest): SelectionInfo? {
+    // TODO: replace sourceBundle peeking when we upgrade to a new Credman Jetpack..
+    val setId = request.sourceBundle!!.getString("androidx.credentials.registry.provider.extra.CREDENTIAL_SET_ID")
+        ?: return null
+    val setElementLength = request.sourceBundle!!.getInt(
+        "androidx.credentials.registry.provider.extra.CREDENTIAL_SET_ELEMENT_LENGTH", 0
+    )
+    val credIds = mutableListOf<String>()
+    for (n in 0 until setElementLength) {
+        val credId = request.sourceBundle!!.getString(
+            "androidx.credentials.registry.provider.extra.CREDENTIAL_SET_ELEMENT_ID_$n"
+        ) ?: return null
+        val splits = credId.split(" ")
+        require(splits.size == 3) { "Expected CredId $n to have three parts, got ${splits.size}" }
+        credIds.add(splits[2])
+    }
+    val splits = setId.split(" ")
+    require(splits.size == 2) { "Expected SetId to have two parts, got ${splits.size}" }
+    return SelectionInfo(
+        protocol = splits[1],
+        documentIds = credIds
+    )
+}
+
+private fun getSelection(request: ProviderGetCredentialRequest): SelectionInfo? {
+    val selectedEntryId = request.selectedEntryId
+        ?: throw IllegalStateException("selectedEntryId is null")
+    val splits = selectedEntryId.split(" ")
+    require(splits.size == 3) { "Expected CredId to have three parts, got ${splits.size}" }
+    return SelectionInfo(
+        protocol = splits[1],
+        documentIds = listOf(splits[2])
+    )
 }

@@ -69,8 +69,8 @@ import org.multipaz.testapp.ui.AboutScreen
 import org.multipaz.testapp.ui.AndroidKeystoreSecureAreaScreen
 import org.multipaz.testapp.ui.CertificateScreen
 import org.multipaz.testapp.ui.CertificateViewerExamplesScreen
-import org.multipaz.testapp.ui.ConsentModalBottomSheetListScreen
-import org.multipaz.testapp.ui.ConsentModalBottomSheetScreen
+import org.multipaz.testapp.ui.CredentialPresentmentModalBottomSheetListScreen
+import org.multipaz.testapp.ui.CredentialPresentmentModalBottomSheetScreen
 import org.multipaz.testapp.ui.CredentialClaimsViewerScreen
 import org.multipaz.testapp.ui.CredentialViewerScreen
 import org.multipaz.testapp.ui.DocumentStoreScreen
@@ -100,7 +100,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -186,6 +185,7 @@ class App private constructor (val promptModel: PromptModel) {
             documentTypeRepository = documentTypeRepository,
             readerTrustManager = readerTrustManager,
             zkSystemRepository = zkSystemRepository,
+            skipConsentPrompt = !settingsModel.presentmentShowConsentPrompt.value,
             preferSignatureToKeyAgreement = settingsModel.presentmentPreferSignatureToKeyAgreement.value,
             domainMdocSignature = if (useAuth) {
                 TestAppUtils.CREDENTIAL_DOMAIN_MDOC_USER_AUTH
@@ -657,11 +657,12 @@ class App private constructor (val promptModel: PromptModel) {
      */
     fun startExportDocumentsToDigitalCredentials() {
         if (DigitalCredentials.Default.available) {
+            val dc = DigitalCredentials.Default
             CoroutineScope(Dispatchers.IO).launch {
-                DigitalCredentials.Default.setSelectedProtocols(
+                dc.setSelectedProtocols(
                     settingsModel.dcApiProtocols.value
                 )
-                DigitalCredentials.Default.startExportingCredentials(
+                dc.startExportingCredentials(
                     documentStore = documentStore,
                     documentTypeRepository = documentTypeRepository,
                 )
@@ -669,7 +670,7 @@ class App private constructor (val promptModel: PromptModel) {
 
             CoroutineScope(Dispatchers.IO).launch {
                 settingsModel.dcApiProtocols.collect {
-                    DigitalCredentials.Default.setSelectedProtocols(it)
+                    dc.setSelectedProtocols(it)
                 }
             }
         }
@@ -810,7 +811,7 @@ class App private constructor (val promptModel: PromptModel) {
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
                             onClickPassphrasePrompt = { navController.navigate(PassphrasePromptDestination.route) },
                             onClickProvisioningTestField = { navController.navigate(ProvisioningTestDestination.route) },
-                            onClickConsentSheetList = { navController.navigate(ConsentModalBottomSheetListDestination.route) },
+                            onClickConsentSheetList = { navController.navigate(CredentialPresentmentModalBottomSheetListDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
                             onClickNfc = { navController.navigate(NfcDestination.route) },
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
@@ -990,28 +991,30 @@ class App private constructor (val promptModel: PromptModel) {
                             presentmentModel = presentmentModel
                         )
                     }
-                    composable(route = ConsentModalBottomSheetListDestination.route) {
-                        ConsentModalBottomSheetListScreen(
+                    composable(route = CredentialPresentmentModalBottomSheetListDestination.route) {
+                        CredentialPresentmentModalBottomSheetListScreen(
                             onConsentModalBottomSheetClicked =
                             { mdlSampleRequest, verifierType ->
                                 navController.navigate(
-                                    ConsentModalBottomSheetDestination.route + "/$mdlSampleRequest/$verifierType")
+                                    CredentialPresentmentBottomSheetDestination.route + "/$mdlSampleRequest/$verifierType")
                             }
                         )
                     }
                     composable(
-                        route = ConsentModalBottomSheetDestination.routeWithArgs,
-                        arguments = ConsentModalBottomSheetDestination.arguments
+                        route = CredentialPresentmentBottomSheetDestination.routeWithArgs,
+                        arguments = CredentialPresentmentBottomSheetDestination.arguments
                     ) { navBackStackEntry ->
                         val mdlSampleRequest = navBackStackEntry.arguments?.getString(
-                            ConsentModalBottomSheetDestination.mdlSampleRequestArg
+                            CredentialPresentmentBottomSheetDestination.mdlSampleRequestArg
                         )!!
                         val verifierType = VerifierType.valueOf(navBackStackEntry.arguments?.getString(
-                            ConsentModalBottomSheetDestination.verifierTypeArg
+                            CredentialPresentmentBottomSheetDestination.verifierTypeArg
                         )!!)
-                        ConsentModalBottomSheetScreen(
+                        CredentialPresentmentModalBottomSheetScreen(
                             mdlSampleRequest = mdlSampleRequest,
                             verifierType = verifierType,
+                            documentTypeRepository = documentTypeRepository,
+                            secureAreaRepository = secureAreaRepository,
                             showToast = { message -> showToast(message) },
                             onSheetConfirmed = { navController.popBackStack() },
                             onSheetDismissed = { navController.popBackStack() },

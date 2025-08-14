@@ -12,6 +12,8 @@ import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.request.JsonRequest
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
+import org.multipaz.request.RequestedClaim
+import org.multipaz.request.Requester
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustManager
@@ -24,12 +26,14 @@ import org.multipaz.util.Logger
  * @property documentStore the [DocumentStore] which holds credentials that can be presented.
  * @property documentTypeRepository a [DocumentTypeRepository] which holds metadata for document types.
  * @property readerTrustManager the [TrustManager] used to determine if a reader is trusted.
+ * @property skipConsentPrompt set to `true` to not show a consent dialog.
  */
 abstract class PresentmentSource(
     open val documentStore: DocumentStore,
     open val documentTypeRepository: DocumentTypeRepository,
     open val readerTrustManager: TrustManager,
-    open val zkSystemRepository: ZkSystemRepository? = null
+    open val zkSystemRepository: ZkSystemRepository? = null,
+    open val skipConsentPrompt: Boolean = false,
 ) {
 
     /**
@@ -46,12 +50,27 @@ abstract class PresentmentSource(
         request: Request,
         keyAgreementPossible: List<EcCurve>,
     ): Credential?
+
+    /**
+     * Chooses a credential from a document.
+     *
+     * @param document the [Document] to pick a credential from.
+     * @param requestedClaims the requested claims.
+     * @param keyAgreementPossible if non-empty, a credential using Key Agreement may be returned provided
+     *   its private key is one of the given curves.
+     * @return a [Credential] belonging to [document] that may be presented or `null`.
+     */
+    abstract suspend fun selectCredential(
+        document: Document,
+        requestedClaims: List<RequestedClaim>,
+        keyAgreementPossible: List<EcCurve>,
+    ): Credential?
 }
 
 private const val TAG = "PresentmentSource"
 
-internal suspend fun PresentmentSource.findTrustPoint(request: Request): TrustPoint? {
-    return request.requester.certChain?.let {
+internal suspend fun PresentmentSource.findTrustPoint(requester: Requester): TrustPoint? {
+    return requester.certChain?.let {
         val trustResult = readerTrustManager.verify(it.certificates)
         if (trustResult.isTrusted) {
             trustResult.trustPoints[0]

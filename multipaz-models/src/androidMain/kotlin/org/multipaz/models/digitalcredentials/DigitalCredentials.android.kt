@@ -126,9 +126,11 @@ internal suspend fun calculateCredentialDatabase(
 ): DataItem {
     val credentialsBuilder = CborArray.builder()
     for ((documentStore, documentTypeRepository) in stores) {
-        for (documentId in documentStore.listDocuments()) {
-            val document = documentStore.lookupDocument(documentId) ?: continue
-
+        // We sort on displayName b/c otherwise it's sorted on Document.identifier which can be unpredictable
+        val documents = documentStore.listDocuments()
+            .mapNotNull { documentStore.lookupDocument(it) }
+            .sortedBy { it.metadata.displayName ?: it.identifier }
+        for (document in documents) {
             val mdocCredential = document.getCertifiedCredentials().find { it is MdocCredential }
             if (mdocCredential != null) {
                 credentialsBuilder.add(
@@ -173,6 +175,7 @@ private suspend fun exportMdocCredential(
     val documentMetadata = document.metadata
     val cardArt = documentMetadata.cardArt?.toByteArray()
     val displayName = documentMetadata.displayName ?: "Unnamed Credential"
+    val displayNameSub = documentMetadata.typeDisplayName ?: "Unknown Credential Type"
 
     val cardArtResized = cardArt?.let {
         val options = BitmapFactory.Options()
@@ -193,7 +196,7 @@ private suspend fun exportMdocCredential(
 
     return buildCborMap {
         put("title", displayName)
-        put("subtitle", appName)
+        put("subtitle", displayNameSub)
         put("bitmap", cardArtResized ?: byteArrayOf())
         putCborMap("mdoc") {
             put("documentId", document.identifier)
@@ -218,6 +221,13 @@ private suspend fun exportMdocCredential(
                             putCborArray(claim.dataElementName) {
                                 add(dataElementDisplayName)
                                 add(valueString)
+                                // Need the raw value (converted to JSON then converted to a string) for matching but
+                                // skip if 128 characters or more since e.g. portrait photos can be quite large...
+                                val asString = when (val asJson = claim.value.toJson()) {
+                                    is JsonPrimitive -> asJson.content
+                                    else -> asJson.toString()
+                                }
+                                add(asString.let { if (it.length < 128) it else "" })
                             }
                         }
                     }
@@ -236,6 +246,7 @@ private suspend fun exportSdJwtVcCredential(
     val documentMetadata = document.metadata
     val cardArt = documentMetadata.cardArt?.toByteArray()
     val displayName = documentMetadata.displayName ?: "Unnamed Credential"
+    val displayNameSub = documentMetadata.typeDisplayName ?: "Unknown Credential Type"
 
     val cardArtResized = cardArt?.let {
         val options = BitmapFactory.Options()
@@ -256,7 +267,7 @@ private suspend fun exportSdJwtVcCredential(
 
     return buildCborMap {
         put("title", displayName)
-        put("subtitle", appName)
+        put("subtitle", displayNameSub)
         put("bitmap", cardArtResized ?: byteArrayOf())
         putCborMap("sdjwt") {
             put("documentId", document.identifier)
@@ -265,29 +276,41 @@ private suspend fun exportSdJwtVcCredential(
                 val claims = credential.getClaimsImpl(documentTypeRepository)
                 for (claim in claims) {
                     val claimName = claim.claimPath[0].jsonPrimitive.content
-                    val claimDisplayName = getAttributeForJsonClaim(
+                    val claimAttr = getAttributeForJsonClaim(
                         documentTypeRepository,
                         credential.vct,
                         claim.claimPath,
-                    )?.displayName ?: claimName
+                    )
+                    val claimDisplayName = claimAttr?.displayName ?: claimName
                     putCborArray(claimName) {
                         add(claimDisplayName)
                         add(claim.render())
+                        // Need the raw value (converted to a string) for matching but skip if 128
+                        // characters or more since e.g. portrait photos can be quite large...
+                        val asString = when (claim.value) {
+                            is JsonPrimitive -> (claim.value as JsonPrimitive).content
+                            else -> claim.value.toString()
+                        }
+                        add(asString.let { if (it.length < 128) it else "" })
                     }
                     // Our matcher currently combines paths to a single string, using `.` as separator. So do
                     // the same here for all subclaims... yes, we only support a single level of subclaims
                     // right now. In the future we'll modify the matcher to be smarter about things.
                     //
                     if (claim.value is JsonObject) {
-                        for ((subClaimName, subClaimValue) in claim.value) {
-                            val subClaimDisplayName = getAttributeForJsonClaim(
-                                documentTypeRepository,
-                                credential.vct,
-                                JsonArray(listOf(JsonPrimitive(claimName), JsonPrimitive(subClaimName))),
-                            )?.displayName ?: subClaimName
-                            putCborArray("$claimName.$subClaimName") {
+                        for ((subClaimIdentifier, subClaimValue) in claim.value) {
+                            val subClaimAttr = claimAttr?.embeddedAttributes?.find { it.identifier == subClaimIdentifier }
+                            val subClaimDisplayName = subClaimAttr?.displayName ?: subClaimIdentifier
+                            putCborArray("$claimName.$subClaimIdentifier") {
                                 add(subClaimDisplayName)
                                 add(subClaimValue.toString())
+                                // Need the raw value (converted to a string) for matching but skip if 128
+                                // characters or more since e.g. portrait photos can be quite large...
+                                val asString = when (subClaimValue) {
+                                    is JsonPrimitive -> subClaimValue.content
+                                    else -> subClaimValue.toString()
+                                }
+                                add(asString.let { if (it.length < 128) it else "" })
                             }
                         }
                     }
@@ -315,8 +338,6 @@ private val supportedProtocols = setOf(
     "openid4vp-v1-unsigned",
     "org-iso-mdoc",
     "openid4vp",
-    "preview",
-    "austroads-request-forwarding-v2",
 )
 
 internal actual val defaultSelectedProtocols: Set<String>
