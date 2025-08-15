@@ -27,6 +27,7 @@ internal object SampleData {
     const val ISSUING_AUTHORITY_MDL = "Utopia Department of Motor Vehicles"
     const val ISSUING_AUTHORITY_EU_PID = "Utopia Central Registry"
     const val ISSUING_AUTHORITY_PHOTO_ID = "Utopia Central Registry"
+    const val ISSUING_AUTHORITY_MEMBERSHIP = "Utopia Wholesale"
     const val DOCUMENT_NUMBER = "987654321"
     const val PERSON_ID = "24601"
 
@@ -76,5 +77,9 @@ internal object SampleData {
     const val THEATRE_NAME = "11"
     const val THEATRE_SEAT = "G2"
     const val CINEMA_PARKING = true
+
+    // Membership specific sample data
+    const val MEMBERSHIP_NUMBER = "801278123645"
+    const val MEMBERSHIP_TIER = "Gold"
 
 }
