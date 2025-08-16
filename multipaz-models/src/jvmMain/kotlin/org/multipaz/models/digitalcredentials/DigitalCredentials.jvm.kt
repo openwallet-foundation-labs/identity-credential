@@ -16,6 +16,14 @@ internal actual val defaultSelectedProtocols: Set<String>
 
 private val supportedProtocols = setOf<String>()
 
+internal actual suspend fun defaultSetAppInformation(
+    appName: String,
+    appIcon: ByteString,
+    continueToAppMessage: String
+) {
+    throw IllegalStateException("Not supported on JVM")
+}
+
 internal actual suspend fun defaultSetSelectedProtocols(
     protocols: Set<String>
 ) {

@@ -1,5 +1,6 @@
 package org.multipaz.models.digitalcredentials
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
 
@@ -26,6 +27,23 @@ interface DigitalCredentials {
      * [setSelectedProtocols] if supported by the platform.
      */
     val selectedProtocols: Set<String>
+
+    /**
+     * Sets information about the application.
+     *
+     * This may be used by the operating system when the user is being chosen to select between
+     * multiple wallet applications that can satisfy the request.
+     *
+     * @param appName the name of the application.
+     * @param appIcon an icon for the application. PNG or WEBP format is expected, transparency is
+     *   supported and square aspect ratio is preferred.
+     * @param continueToAppMessage a message to show for continuing to the application
+     */
+    suspend fun setAppInformation(
+        appName: String,
+        appIcon: ByteString,
+        continueToAppMessage: String
+    )
 
     /**
      * Sets the supported W3C Digital Credentials protocols, in order of preference.
@@ -74,6 +92,12 @@ interface DigitalCredentials {
         override val selectedProtocols: Set<String>
             get() = defaultSelectedProtocols
 
+        override suspend fun setAppInformation(
+            appName: String,
+            appIcon: ByteString,
+            continueToAppMessage: String
+        ) = defaultSetAppInformation(appName, appIcon, continueToAppMessage)
+
         override suspend fun setSelectedProtocols(
             protocols: Set<String>
         ) = defaultSetSelectedProtocols(protocols)
@@ -94,6 +118,12 @@ internal expect val defaultAvailable: Boolean
 internal expect val defaultSupportedProtocols: Set<String>
 
 internal expect val defaultSelectedProtocols: Set<String>
+
+internal expect suspend fun defaultSetAppInformation(
+    appName: String,
+    appIcon: ByteString,
+    continueToAppMessage: String
+)
 
 internal expect suspend fun defaultSetSelectedProtocols(
     protocols: Set<String>

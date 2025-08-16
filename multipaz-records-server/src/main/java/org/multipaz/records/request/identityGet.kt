@@ -13,7 +13,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonObject
 import org.multipaz.records.data.Identity
 import org.multipaz.records.data.TokenType
-import org.multipaz.records.data.toJson
 import org.multipaz.records.data.tokenToId
 
 /**

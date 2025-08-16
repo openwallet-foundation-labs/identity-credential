@@ -16,11 +16,13 @@ class SoftwareCreateKeySettings internal constructor(
     val passphraseConstraints: PassphraseConstraints?,
     algorithm: Algorithm,
     val subject: String?,
-    val validFrom: Instant?,
-    val validUntil: Instant?
+    validFrom: Instant?,
+    validUntil: Instant?
 ) : CreateKeySettings(
-    algorithm,
-    buildByteString {}
+    algorithm = algorithm,
+    nonce = buildByteString {},
+    validFrom = validFrom,
+    validUntil = validUntil
 ) {
     /**
      * A builder for [SoftwareCreateKeySettings].

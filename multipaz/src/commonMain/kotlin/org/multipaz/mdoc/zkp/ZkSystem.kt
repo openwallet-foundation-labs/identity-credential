@@ -4,6 +4,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.request.MdocRequest
+import org.multipaz.request.RequestedClaim
 
 /**
  * Interface representing a Zero-Knowledge Proof system that can generate and verify proofs
@@ -59,8 +60,11 @@ interface ZkSystem {
      * This is used during proof generation to select the correct spec for a document instance.
      *
      * @param zkSystemSpecs the list of specs available from the device request
-     * @param encodedDocument bytes of the document to generate the proof for
+     * @param requestedClaims the requested claims.
      * @return a compatible [ZkSystemSpec], or null if none match
      */
-    fun getMatchingSystemSpec(zkSystemSpecs: List<ZkSystemSpec>, mdocRequest: MdocRequest): ZkSystemSpec?
+    fun getMatchingSystemSpec(
+        zkSystemSpecs: List<ZkSystemSpec>,
+        requestedClaims: List<RequestedClaim>
+    ): ZkSystemSpec?
 }

@@ -67,7 +67,10 @@ import kotlin.time.Clock
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.crypto.Algorithm
 import org.multipaz.util.Platform
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "AndroidKeystoreSecureAreaScreen"
 
@@ -201,7 +204,7 @@ actual fun AndroidKeystoreSecureAreaScreen(
                                 aksTest(
                                     algorithm,
                                     userAuthType != AUTH_NONE,
-                                    if (authTimeout < 0L) 0L else authTimeout,
+                                    if (authTimeout < 0) 0.seconds else authTimeout.milliseconds,
                                     userAuthType,
                                     biometricConfirmationRequired,
                                     strongBox,
@@ -480,7 +483,7 @@ private suspend fun aksAttestation(strongBox: Boolean): KeyAttestation {
         "testKey",
         AndroidKeystoreCreateKeySettings.Builder("Challenge".encodeToByteString())
             .setUserAuthenticationRequired(
-                true, 10*1000,
+                true, 10.seconds,
                 setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
             )
             .setValidityPeriod(now, thirtyDaysFromNow)
@@ -493,17 +496,17 @@ private suspend fun aksAttestation(strongBox: Boolean): KeyAttestation {
 private suspend fun aksTest(
     algorithm: Algorithm,
     authRequired: Boolean,
-    authTimeoutMillis: Long,
+    authTimeout: Duration,
     userAuthType: Set<UserAuthenticationType>,
     biometricConfirmationRequired: Boolean,
     strongBox: Boolean,
     showToast: (message: String) -> Unit) {
     Logger.d(
         TAG,
-        "aksTest algorith:$algorithm authRequired:$authRequired authTimeout:$authTimeoutMillis strongBox:$strongBox"
+        "aksTest algorith:$algorithm authRequired:$authRequired authTimeout:$authTimeout strongBox:$strongBox"
     )
     try {
-        aksTestUnguarded(algorithm, authRequired, authTimeoutMillis, userAuthType,
+        aksTestUnguarded(algorithm, authRequired, authTimeout, userAuthType,
             biometricConfirmationRequired, strongBox, showToast)
     } catch (e: Throwable) {
         e.printStackTrace();
@@ -514,7 +517,7 @@ private suspend fun aksTest(
 private suspend fun aksTestUnguarded(
     algorithm: Algorithm,
     authRequired: Boolean,
-    authTimeoutMillis: Long,
+    authTimeout: Duration,
     userAuthType: Set<UserAuthenticationType>,
     biometricConfirmationRequired: Boolean,
     strongBox: Boolean,
@@ -526,7 +529,7 @@ private suspend fun aksTestUnguarded(
         AndroidKeystoreCreateKeySettings.Builder("Challenge".encodeToByteString())
             .setAlgorithm(algorithm)
             .setUserAuthenticationRequired(
-                authRequired, authTimeoutMillis, userAuthType)
+                authRequired, authTimeout, userAuthType)
             .setUseStrongBox(strongBox)
             .build()
     )

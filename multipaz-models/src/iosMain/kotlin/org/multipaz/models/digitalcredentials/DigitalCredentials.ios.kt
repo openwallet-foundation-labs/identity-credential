@@ -1,5 +1,6 @@
 package org.multipaz.models.digitalcredentials
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
 
@@ -12,6 +13,14 @@ internal actual val defaultSelectedProtocols: Set<String>
     get() = supportedProtocols
 
 private val supportedProtocols = setOf<String>()
+
+internal actual suspend fun defaultSetAppInformation(
+    appName: String,
+    appIcon: ByteString,
+    continueToAppMessage: String
+) {
+    throw IllegalStateException("Not supported on iOS")
+}
 
 internal actual suspend fun defaultSetSelectedProtocols(
     protocols: Set<String>

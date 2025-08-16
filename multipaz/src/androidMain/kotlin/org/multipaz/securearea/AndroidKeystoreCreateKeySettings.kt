@@ -5,6 +5,9 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.securearea.config.SecureAreaConfigurationAndroidKeystore
 import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Class for holding Android Keystore-specific settings related to key creation.
@@ -19,10 +22,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
 
     userAuthenticationRequired: Boolean,
 
-    /**
-     * The user authentication timeout, or 0 if authentication is required on every use.
-     */
-    val userAuthenticationTimeoutMillis: Long,
+    userAuthenticationTimeout: Duration,
 
     /**
      * User authentication types for the key.
@@ -41,17 +41,11 @@ class AndroidKeystoreCreateKeySettings private constructor(
      */
     val attestKeyAlias: String?,
 
-    /**
-     * The point in time before which the key is not valid, if set.
-     */
-    val validFrom: Instant?,
+    validFrom: Instant?,
 
-    /**
-     * The point in time after which the key is not valid, if set.
-     */
-    val validUntil: Instant?
+    validUntil: Instant?
 
-) : CreateKeySettings(algorithm, attestationChallenge, userAuthenticationRequired) {
+) : CreateKeySettings(algorithm, attestationChallenge, userAuthenticationRequired, userAuthenticationTimeout, validFrom, validUntil) {
 
     /**
      * A builder for [CreateKeySettings].
@@ -61,7 +55,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
     class Builder(private val attestationChallenge: ByteString) {
         private var algorithm: Algorithm = Algorithm.ESP256
         private var userAuthenticationRequired = false
-        private var userAuthenticationTimeoutMillis: Long = 0
+        private var userAuthenticationTimeout: Duration = 0.seconds
 
         private var userAuthenticationTypes = emptySet<UserAuthenticationType>()
         private var useStrongBox = false
@@ -80,7 +74,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
             setUseStrongBox(configuration.useStrongBox)
             setUserAuthenticationRequired(
                 configuration.userAuthenticationRequired,
-                configuration.userAuthenticationTimeoutMillis,
+                 configuration.userAuthenticationTimeoutMillis.milliseconds,
                 UserAuthenticationType.decodeSet(configuration.userAuthenticationTypes)
             )
         }
@@ -109,15 +103,14 @@ class AndroidKeystoreCreateKeySettings private constructor(
          * By default, no user authentication is required.
          *
          * @param required True if user authentication is required, false otherwise.
-         * @param timeoutMillis If 0, user authentication is required for every use of
-         * the key, otherwise it's required within the given amount
-         * of milliseconds.
+         * @param timeout If 0, user authentication is required for every use of
+         *   the key, otherwise it's required within the given amount of time.
          * @param userAuthenticationTypes a combination of [UserAuthenticationType] flags.
          * @return the builder.
          */
         fun setUserAuthenticationRequired(
             required: Boolean,
-            timeoutMillis: Long,
+            timeout: Duration,
             userAuthenticationTypes: Set<UserAuthenticationType>
         ): Builder {
             if (required) {
@@ -132,7 +125,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
                 }
             }
             userAuthenticationRequired = required
-            userAuthenticationTimeoutMillis = timeoutMillis
+            userAuthenticationTimeout = timeout
             this.userAuthenticationTypes = userAuthenticationTypes
             return this
         }
@@ -193,7 +186,7 @@ class AndroidKeystoreCreateKeySettings private constructor(
                 algorithm,
                 attestationChallenge,
                 userAuthenticationRequired,
-                userAuthenticationTimeoutMillis,
+                userAuthenticationTimeout,
                 userAuthenticationTypes,
                 useStrongBox,
                 attestKeyAlias,

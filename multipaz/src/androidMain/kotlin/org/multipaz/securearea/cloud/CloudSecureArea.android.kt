@@ -8,6 +8,7 @@ import org.multipaz.securearea.SecureArea
 import org.multipaz.storage.Storage
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
+import kotlin.time.Duration.Companion.seconds
 
 
 internal actual suspend fun cloudSecureAreaGetPlatformSecureArea(
@@ -46,7 +47,7 @@ internal actual fun cloudSecureAreaGetPlatformSecureAreaCreateKeySettings(
         .setAlgorithm(algorithm)
         .setUserAuthenticationRequired(
             required = userAuthenticationRequired,
-            timeoutMillis = 0,
+            timeout = 0.seconds,
             userAuthenticationTypes = androidUserAuthTypes
         )
         .build()

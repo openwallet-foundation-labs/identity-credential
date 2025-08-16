@@ -129,7 +129,17 @@ class TestDocumentTypeRepository {
         assertEquals(
             "1976-02-03T06:30:00",
             MdocDataElement(
-                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
+                DocumentAttribute(
+                    type = DocumentAttributeType.DateTime,
+                    identifier = "",
+                    displayName = "",
+                    description = "",
+                    icon = null,
+                    sampleValueMdoc = null,
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
+                ),
                 false
             ).renderValue(
                 Instant.parse("1976-02-03T05:30:00Z").toDataItemDateTimeString(),
@@ -139,7 +149,17 @@ class TestDocumentTypeRepository {
         assertEquals(
             "1976-02-03T06:30:00",
             MdocDataElement(
-                DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
+                DocumentAttribute(
+                    type = DocumentAttributeType.DateTime,
+                    identifier = "",
+                    displayName = "",
+                    description = "",
+                    icon = null,
+                    sampleValueMdoc = null,
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
+                ),
                 false
             ).renderValue(
                 buildCborMap {
@@ -157,7 +177,17 @@ class TestDocumentTypeRepository {
             assertEquals(
                 "1976-02-03T00:00:00",
                 MdocDataElement(
-                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
+                    DocumentAttribute(
+                        type = DocumentAttributeType.DateTime,
+                        identifier = "",
+                        displayName = "",
+                        description = "",
+                        icon = null,
+                        sampleValueMdoc = null,
+                        sampleValueJson = null,
+                        parentAttribute = null,
+                        embeddedAttributes = emptyList()
+                    ),
                     false
                 ).renderValue(
                     LocalDate.parse("1976-02-03").toDataItemFullDate(),
@@ -167,7 +197,17 @@ class TestDocumentTypeRepository {
             assertEquals(
                 "1976-02-03T00:00:00",
                 MdocDataElement(
-                    DocumentAttribute(DocumentAttributeType.DateTime, "", "", "", null, null, null),
+                    DocumentAttribute(
+                        type = DocumentAttributeType.DateTime,
+                        identifier = "",
+                        displayName = "",
+                        description = "",
+                        icon = null,
+                        sampleValueMdoc = null,
+                        sampleValueJson = null,
+                        parentAttribute = null,
+                        embeddedAttributes = emptyList()
+                    ),
                     false
                 ).renderValue(
                     buildCborMap {
