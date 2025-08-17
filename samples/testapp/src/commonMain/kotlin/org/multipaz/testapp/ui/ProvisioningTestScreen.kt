@@ -43,12 +43,9 @@ import org.multipaz.testapp.provisioning.model.ProvisioningModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.PassphraseEntryField
@@ -626,7 +623,7 @@ fun EvidenceRequestOpenid4VpView(
                             data = buildJsonObject {
                                 put("request", evidenceRequest.request)
                             },
-                            document = viableCredentials.first().document
+                            preselectedDocuments = viableCredentials.map { it.document }
                         ) {
                             override fun sendResponse(protocol: String, data: JsonObject) {
                                 coroutineScope.launch {

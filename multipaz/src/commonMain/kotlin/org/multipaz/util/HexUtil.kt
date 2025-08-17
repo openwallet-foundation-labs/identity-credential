@@ -1,7 +1,7 @@
 package org.multipaz.util
 
 private val HEX_DIGITS_LOWER = "0123456789abcdef".toCharArray()
-private val HEX_DIGITS_UPPER = "0123456789abcdef".toCharArray()
+private val HEX_DIGITS_UPPER = "0123456789ABCDEF".toCharArray()
 
 object HexUtil {
     /**

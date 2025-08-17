@@ -5,30 +5,7 @@
 #include "cppbor_parse.h"
 
 #include "Request.h"
-
-std::unique_ptr<Request> Request::parsePreview(cJSON* dataJson) {
-
-    cJSON* selector = cJSON_GetObjectItem(dataJson, "selector");
-    cJSON* docType = cJSON_GetObjectItem(selector, "doctype");
-    std::string docTypeValue = std::string(cJSON_GetStringValue(docType));
-
-    auto dataElements = std::vector<MdocRequestDataElement>();
-
-    cJSON *fields = cJSON_GetObjectItem(selector, "fields");
-    int numFields = cJSON_GetArraySize(fields);
-    for (int n = 0; n < numFields; n++) {
-        cJSON *field = cJSON_GetArrayItem(fields, n);
-        cJSON *nameSpaceField =  cJSON_GetObjectItem(field, "namespace");
-        std::string namespaceName = std::string(cJSON_GetStringValue(nameSpaceField));
-        cJSON *nameField =  cJSON_GetObjectItem(field, "name");
-        std::string dataElementName = std::string(cJSON_GetStringValue(nameField));
-        cJSON *intentToRetainField =  cJSON_GetObjectItem(field, "intentToRetain");
-        bool intentToRetain = cJSON_IsTrue(intentToRetainField);
-        dataElements.push_back(MdocRequestDataElement(namespaceName, dataElementName, intentToRetain));
-    }
-
-    return std::unique_ptr<Request> { new Request("preview", docTypeValue, dataElements) };
-}
+#include "logger.h"
 
 std::string base64UrlDecode(const std::string& data) {
     // from_base64() doesn't handle strings without padding so we need
@@ -50,7 +27,7 @@ std::string base64UrlDecode(const std::string& data) {
     return from_base64(s);
 }
 
-std::unique_ptr<Request> Request::parseMdocApi(const std::string& protocolName, cJSON* dataJson) {
+std::unique_ptr<MdocRequest> MdocRequest::parseMdocApi(const std::string& protocolName, cJSON* dataJson) {
     cJSON* deviceRequestJson = cJSON_GetObjectItem(dataJson, "deviceRequest");
     std::string deviceRequestBase64 = std::string(cJSON_GetStringValue(deviceRequestJson));
 
@@ -85,14 +62,51 @@ std::unique_ptr<Request> Request::parseMdocApi(const std::string& protocolName, 
         }
     }
 
-    return std::unique_ptr<Request> { new Request(protocolName, docTypeValue, dataElements) };
+    return std::unique_ptr<MdocRequest> { new MdocRequest(protocolName, docTypeValue, dataElements) };
 }
 
-std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson, std::string protocolName) {
+std::vector<Combination> MdocRequest::getCredentialCombinations(const CredentialDatabase* db) {
+    std::vector<Combination> combinations;
+
+    // Since we only support a single docRequest (for now) this is easy...
+    std::vector<CredentialPresentment> matches;
+    if (!docType.empty()) {
+        for (const auto& credential : db->credentials) {
+            std::vector<Claim*> claimValues;
+            if (credential.mdocDocType == docType) {
+                // Semantics is that we match if at least one of the requested data elements
+                // exist in the credential
+                for (const auto &requestedDataElement: dataElements) {
+                    auto combinedName =
+                            requestedDataElement.namespaceName + "." + requestedDataElement.dataElementName;
+                    const auto& claim = credential.claims.find(combinedName);
+                    if (claim != credential.claims.end()) {
+                        claimValues.push_back((Claim*) &(claim->second));
+                    }
+                }
+                if (claimValues.size() > 0) {
+                    matches.push_back(CredentialPresentment(
+                            (Credential *) &credential,
+                            claimValues
+                    ));
+                }
+            }
+        }
+    }
+    std::vector<CombinationElement> elements;
+    elements.push_back(CombinationElement(matches));
+    combinations.push_back(Combination(0, elements));
+    return combinations;
+}
+
+
+std::unique_ptr<OpenID4VPRequest> OpenID4VPRequest::parseOpenID4VP(cJSON* dataJson, std::string protocolName) {
     std::string docTypeValue = "";
     auto dataElements = std::vector<MdocRequestDataElement>();
     std::vector<std::string> vctValues;
     auto vcClaims = std::vector<VcRequestedClaim>();
+    auto dcqlCredentialQueries = std::vector<DcqlCredentialQuery>();
+    auto dcqlCredentialSetQueries = std::vector<DcqlCredentialSetQuery>();
 
     // Handle signed request... the payload of the JWS is between the first and second '.' characters.
     cJSON* request = cJSON_GetObjectItem(dataJson, "request");
@@ -111,59 +125,12 @@ std::unique_ptr<Request> Request::parseOpenID4VP(cJSON* dataJson, std::string pr
         dataJson = cJSON_Parse(payload.c_str());
     }
 
-    // TODO: this is a simple minimal non-conforming implementation of DCQL. Will be adjusted to
-    //   have the same features as our new DCQL library, see
-    //   https://github.com/openwallet-foundation-labs/identity-credential/tree/dcql-library
-    //
+    cJSON* query = cJSON_GetObjectItem(dataJson, "dcql_query");
+    auto dcqlQuery = DcqlQuery::parse(query);
+    dcqlQuery.log();
 
-    cJSON* dcqlQuery = cJSON_GetObjectItem(dataJson, "dcql_query");
-    cJSON* credentials = cJSON_GetObjectItem(dcqlQuery, "credentials");
-
-    // TODO: for now we only consider the first credential request
-    if (cJSON_GetArraySize(credentials) > 0) {
-        cJSON *credential = cJSON_GetArrayItem(credentials, 0);
-        auto format = std::string(cJSON_GetStringValue(cJSON_GetObjectItem(credential, "format")));
-        if (format == "mso_mdoc" || format == "mso_mdoc_zk") {
-            cJSON* meta = cJSON_GetObjectItem(credential, "meta");
-            docTypeValue = std::string(cJSON_GetStringValue(cJSON_GetObjectItem(meta, "doctype_value")));
-            cJSON* claim;
-            cJSON* claims = cJSON_GetObjectItem(credential, "claims");
-            cJSON_ArrayForEach(claim, claims) {
-                cJSON* path = cJSON_GetObjectItem(claim, "path");
-                auto namespaceName = std::string(cJSON_GetStringValue(cJSON_GetArrayItem(path, 0)));
-                auto claimName = std::string(cJSON_GetStringValue(cJSON_GetArrayItem(path, 1)));
-                // TODO: intent_to_retain
-                dataElements.push_back(MdocRequestDataElement(namespaceName, claimName));
-            }
-        } else if (format == "dc+sd-jwt") {
-            cJSON* meta = cJSON_GetObjectItem(credential, "meta");
-            cJSON* vctValuesObj = cJSON_GetObjectItem(meta, "vct_values");
-            cJSON* vctValueObj;
-            cJSON_ArrayForEach(vctValueObj, vctValuesObj) {
-                vctValues.push_back(std::string(cJSON_GetStringValue(vctValueObj)));
-            }
-
-            cJSON* claim;
-            cJSON* claims = cJSON_GetObjectItem(credential, "claims");
-            cJSON_ArrayForEach(claim, claims) {
-                cJSON *path = cJSON_GetObjectItem(claim, "path");
-                std::string claimName = "";
-                for (int n = 0; n < cJSON_GetArraySize(path); n++) {
-                    if (n > 0) {
-                        claimName.append(".");
-                    }
-                    claimName.append(std::string(cJSON_GetStringValue(cJSON_GetArrayItem(path, n))));
-                }
-                vcClaims.push_back(VcRequestedClaim(claimName));
-            }
-        }
-    }
-
-    return std::unique_ptr<Request> { new Request(
+    return std::unique_ptr<OpenID4VPRequest> { new OpenID4VPRequest(
             protocolName,
-            docTypeValue,
-            dataElements,
-            vctValues,
-            vcClaims
-    ) };
+            dcqlQuery
+    )};
 }

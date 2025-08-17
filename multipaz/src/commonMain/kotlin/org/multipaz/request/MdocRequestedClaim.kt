@@ -1,5 +1,6 @@
 package org.multipaz.request
 
+import kotlinx.serialization.json.JsonArray
 import org.multipaz.documenttype.DocumentAttribute
 
 /**
@@ -10,9 +11,9 @@ import org.multipaz.documenttype.DocumentAttribute
  * @property intentToRetain `true` if the requester intends to retain the value.
  */
 data class MdocRequestedClaim(
-    override val displayName: String,
-    override val attribute: DocumentAttribute?,
+    override val id: String? = null,
     val namespaceName: String,
     val dataElementName: String,
-    val intentToRetain: Boolean
-): RequestedClaim(displayName, attribute)
+    val intentToRetain: Boolean,
+    override val values: JsonArray? = null
+): RequestedClaim(id = id, values = values)

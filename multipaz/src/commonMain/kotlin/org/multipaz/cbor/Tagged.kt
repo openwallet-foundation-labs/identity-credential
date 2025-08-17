@@ -82,6 +82,31 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
         const val NEGATIVE_BIGNUM = 3L
 
         /**
+         * Encoding hint for base64url.
+         *
+         * Tag number 21 suggests conversion to base64url encoding (Section 5 of RFC4648) where
+         * padding is not used (see Section 3.2 of RFC4648); that is, all trailing equals
+         * signs ("=") are removed from the encoded string.
+         */
+        const val ENCODING_HINT_BASE64URL = 21L
+
+        /**
+         * Encoding hint for base64 with padding.
+         *
+         * Tag number 22 suggests conversion to classical base64 encoding (Section 4 of RFC4648)
+         * with padding as defined in RFC 4648.
+         */
+        const val ENCODING_HINT_BASE64_WITH_PADDING = 22L
+
+        /**
+         * Encoding hint for hex encoding.
+         *
+         * Tag number 23 suggests conversion to base16 (hex) encoding with uppercase
+         * alphabetics (see Section 8 of [RFC4648]).
+         */
+        const val ENCODING_HINT_HEX = 23L
+
+        /**
          * Encoded CBOR data item.
          *
          * Sometimes it is beneficial to carry an embedded CBOR data item that is not meant to be

@@ -66,28 +66,3 @@ fun JsonElement.toDataItem(recordType: RecordType): DataItem {
         }
     }
 }
-
-/**
- * Converts [DataItem] to [JsonElement].
- */
-fun DataItem.toJson(): JsonElement {
-    return when (this) {
-        Simple.NULL -> JsonNull
-        Simple.TRUE -> JsonPrimitive(true)
-        Simple.FALSE -> JsonPrimitive(false)
-        is Tstr -> JsonPrimitive(asTstr)
-        is Bstr -> JsonPrimitive(asBstr.toBase64())
-        is Tagged -> JsonPrimitive(asDateString.toString())
-        is CborArray -> buildJsonArray {
-            for (item in items) {
-                add(item.toJson())
-            }
-        }
-        is CborMap -> buildJsonObject {
-            for ((key, item) in asMap) {
-                put(key.asTstr, item.toJson())
-            }
-        }
-        else -> throw IllegalArgumentException("Unsupported cbor type")
-    }
-}

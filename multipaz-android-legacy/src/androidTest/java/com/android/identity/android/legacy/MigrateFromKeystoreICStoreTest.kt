@@ -35,6 +35,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
 import java.nio.charset.StandardCharsets
+import kotlin.time.Duration.Companion.seconds
 
 @Suppress("deprecation")
 class MigrateFromKeystoreICStoreTest {
@@ -149,7 +150,7 @@ class MigrateFromKeystoreICStoreTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertEquals(setOf<Any>(), keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)

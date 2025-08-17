@@ -9,9 +9,9 @@ import org.multipaz.documenttype.DocumentAttribute
  * @property claimPath the claims path pointer.
  */
 data class JsonRequestedClaim(
-    override val displayName: String,
-    override val attribute: DocumentAttribute?,
+    override val id: String? = null,
     val claimPath: JsonArray,
-): RequestedClaim(displayName, attribute) {
+    override val values: JsonArray? = null
+): RequestedClaim(id = id, values = values) {
     companion object
 }

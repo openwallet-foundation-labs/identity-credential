@@ -4,31 +4,30 @@
     <string name="passphrase_entry_field_passphrase_is_weak">Passphrase is weak, please choose another</string>
 
     <!-- ConsentModalBottomSheet -->
-    <string name="consent_modal_bottom_sheet_button_cancel">Cancel</string>
-    <string name="consent_modal_bottom_sheet_button_back">Back</string>
-    <string name="consent_modal_bottom_sheet_button_more">More</string>
-    <string name="consent_modal_bottom_sheet_button_share">Share</string>
-    <string name="consent_modal_bottom_sheet_headline_share_with_known_requester">%1$s requests information</string>
-    <string name="consent_modal_bottom_sheet_headline_share_with_unknown_requester">An unknown requester requests information</string>
-    <string name="consent_modal_bottom_sheet_headline_share_with_anonymous_requester">An unknown requester requests information</string>
-    <string name="consent_modal_bottom_sheet_share_with_known_requester">This data will be shared with %1$s:</string>
-    <string name="consent_modal_bottom_sheet_share_with_unknown_requester">This data will be shared:</string>
-    <string name="consent_modal_bottom_sheet_share_and_stored_by_known_requester">This data will be shared with and stored by %1$s:</string>
-    <string name="consent_modal_bottom_sheet_share_and_stored_by_unknown_requester">This data will be shared with and stored:</string>
-    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list">The identity reader requesting this data is unknown so make sure you are comfortable sharing this data with them.</string>
-    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_anonymous">The identity reader requesting this data does not identify itself so make sure you are comfortable sharing this data with them.</string>
-    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_website">The website requesting this data is unknown so make sure you are comfortable sharing this data with them.</string>
-    <string name="consent_modal_bottom_sheet_warning_verifier_not_in_trust_list_app">The application requesting this data is unknown so make sure you are comfortable sharing this data with them.</string>
-    <string name="consent_modal_bottom_sheet_info_verifier_in_trust_list">The identity reader requesting this data has been identified and is trusted.</string>
-    <string name="consent_modal_bottom_sheet_info_verifier_in_trust_list_website">The website requesting this data has been identified and is trusted.</string>
-    <string name="consent_modal_bottom_sheet_info_verifier_in_trust_list_app">The application requesting this data has been identified and is trusted.</string>
-
-    <string name="consent_modal_bottom_sheet_privacy_policy">Review the [%1$s privacy policy](%2$s) to see how your data is being handled.</string>
-
-    <string name="consent_modal_bottom_sheet_card_art_description">Card Art</string>
-    <string name="consent_modal_bottom_sheet_verifier_icon_description">Verifier Icon</string>
-    <string name="consent_modal_bottom_sheet_data_element_icon_description">Data Element Icon</string>
-    <string name="consent_modal_bottom_sheet_warning_icon_description">Warning Icon</string>
+    <string name="credential_presentment_button_cancel">Cancel</string>
+    <string name="credential_presentment_button_back">Back</string>
+    <string name="credential_presentment_button_more">More</string>
+    <string name="credential_presentment_button_share">Share</string>
+    <string name="credential_presentment_headline_share_with_known_requester">%1$s requests information</string>
+    <string name="credential_presentment_headline_share_with_unknown_requester">An unknown requester requests information</string>
+    <string name="credential_presentment_headline_share_with_anonymous_requester">An unknown requester requests information</string>
+    <string name="credential_presentment_share_with_known_requester">This data will be shared with %1$s:</string>
+    <string name="credential_presentment_share_with_unknown_requester">This data will be shared:</string>
+    <string name="credential_presentment_share_and_stored_by_known_requester">This data will be shared with and stored by %1$s:</string>
+    <string name="credential_presentment_share_and_stored_by_unknown_requester">This data will be shared with and stored:</string>
+    <string name="credential_presentment_warning_verifier_not_in_trust_list">The identity reader requesting this data is unknown so make sure you are comfortable sharing this data with them</string>
+    <string name="credential_presentment_warning_verifier_not_in_trust_list_anonymous">The identity reader requesting this data does not identify itself so make sure you are comfortable sharing this data with them</string>
+    <string name="credential_presentment_warning_verifier_not_in_trust_list_website">The website requesting this data is unknown so make sure you are comfortable sharing this data with them</string>
+    <string name="credential_presentment_warning_verifier_not_in_trust_list_app">The application requesting this data is unknown so make sure you are comfortable sharing this data with them</string>
+    <string name="credential_presentment_info_verifier_in_trust_list">The identity reader requesting this data has been identified and is trusted</string>
+    <string name="credential_presentment_info_verifier_in_trust_list_website">The website requesting this data has been identified and is trusted</string>
+    <string name="credential_presentment_info_verifier_in_trust_list_app">The application requesting this data has been identified and is trusted</string>
+    <string name="credential_presentment_privacy_policy">Review the [%1$s privacy policy](%2$s) to see how your data is being handled</string>
+    <string name="credential_presentment_card_art_description">Card Art</string>
+    <string name="credential_presentment_verifier_icon_description">Verifier Icon</string>
+    <string name="credential_presentment_data_element_icon_description">Data Element Icon</string>
+    <string name="credential_presentment_warning_icon_description">Warning Icon</string>
+    <string name="credential_presentment_choose_an_option">Choose an option</string>
 
     <!-- CertificateViewer -->
     <string name="certificate_viewer_sub_basic_info">Basic information</string>

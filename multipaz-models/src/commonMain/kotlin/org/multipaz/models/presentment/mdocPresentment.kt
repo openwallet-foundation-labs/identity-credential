@@ -1,8 +1,12 @@
 package org.multipaz.models.presentment
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.document.Document
 import org.multipaz.document.NameSpacedData
@@ -13,23 +17,21 @@ import org.multipaz.mdoc.mso.MobileSecurityObjectParser
 import org.multipaz.mdoc.request.DeviceRequestParser
 import org.multipaz.mdoc.response.DeviceResponseGenerator
 import org.multipaz.mdoc.response.DocumentGenerator
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportClosedException
 import org.multipaz.mdoc.util.toMdocRequest
+import org.multipaz.mdoc.zkp.ZkSystem
+import org.multipaz.mdoc.zkp.ZkSystemSpec
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.MdocRequestedClaim
-import org.multipaz.request.Request
+import org.multipaz.request.Requester
 import org.multipaz.securearea.KeyUnlockInteractive
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.io.bytestring.ByteString
-import org.multipaz.cbor.buildCborArray
-import org.multipaz.mdoc.role.MdocRole
-import org.multipaz.mdoc.zkp.ZkSystem
-import org.multipaz.mdoc.zkp.ZkSystemSpec
 
 private const val TAG = "mdocPresentment"
 
@@ -39,14 +41,12 @@ internal suspend fun mdocPresentment(
     mechanism: MdocPresentmentMechanism,
     dismissable: MutableStateFlow<Boolean>,
     numRequestsServed: MutableStateFlow<Int>,
-    showDocumentPicker: suspend (
-        documents: List<Document>,
-    ) -> Document?,
     showConsentPrompt: suspend (
-        document: Document,
-        request: Request,
+        credentialPresentmentData: CredentialPresentmentData,
+        preselectedDocuments: List<Document>,
+        requester: Requester,
         trustPoint: TrustPoint?
-    ) -> Boolean,
+    ) -> CredentialPresentmentSelection?,
 ) {
     val transport = mechanism.transport
     // Wait until state changes to CONNECTED, FAILED, or CLOSED
@@ -105,25 +105,36 @@ internal suspend fun mdocPresentment(
             for (docRequest in deviceRequest.docRequests) {
                 val zkRequested = docRequest.zkSystemSpecs.isNotEmpty()
 
-                val requestWithoutFiltering = docRequest.toMdocRequest(
+                val request = docRequest.toMdocRequest(
                     documentTypeRepository = documentTypeRepository,
                     mdocCredential = null
                 )
-                val documents = source.getDocumentsMatchingRequest(
-                    request = requestWithoutFiltering,
+                val trustPoint = source.findTrustPoint(request.requester)
+
+                val presentmentData = docRequest.getPresentmentData(
+                    documentTypeRepository = documentTypeRepository,
+                    source = source,
+                    keyAgreementPossible = listOf(mechanism.eDeviceKey.curve)
                 )
-                if (documents.isEmpty()) {
+                if (presentmentData == null) {
                     Logger.w(TAG, "No document found for docType ${docRequest.docType}")
                     // No document was found
                     continue
                 }
-                val document = if (documents.size == 1) {
-                    documents[0]
+                val selection = if (source.skipConsentPrompt) {
+                    presentmentData.select(listOf())
                 } else {
-                    // Returns null if user opted to not present credential.
-                    showDocumentPicker(documents)
-                        ?: continue
+                    showConsentPrompt(
+                        presentmentData,
+                        listOf(),
+                        request.requester,
+                        trustPoint
+                    )
                 }
+                if (selection == null) {
+                    throw PresentmentCanceled("User canceled at document selection time")
+                }
+                val mdocCredential = selection.matches[0].credential as MdocCredential
 
                 var zkSystemMatch: ZkSystem? = null
                 var zkSystemSpec: ZkSystemSpec? = null
@@ -138,10 +149,9 @@ internal suspend fun mdocPresentment(
                             if (zkSystem == null) {
                                 continue
                             }
-
                             val matchingZkSystemSpec = zkSystem.getMatchingSystemSpec(
-                                requesterSupportedZkSpecs,
-                                requestWithoutFiltering
+                                zkSystemSpecs = requesterSupportedZkSpecs,
+                                requestedClaims = request.requestedClaims
                             )
                             if (matchingZkSystemSpec != null) {
                                 zkSystemMatch = zkSystem
@@ -154,34 +164,6 @@ internal suspend fun mdocPresentment(
 
                 if (zkRequested && zkSystemSpec == null) {
                     Logger.w(TAG, "Reader requested ZK proof but no compatible ZkSpec was found.")
-                }
-
-                val mdocCredential = source.selectCredential(
-                    document = document,
-                    request = requestWithoutFiltering,
-                    // Check is zk is requested and a compatible ZK system spec was found
-                    keyAgreementPossible = if (zkRequested && zkSystemSpec != null) {
-                        listOf()
-                    } else {
-                        listOf(mechanism.eDeviceKey.curve)
-                    }
-                ) as MdocCredential?
-                if (mdocCredential == null) {
-                    Logger.w(TAG, "No credential found")
-                    return
-                }
-
-                val request = docRequest.toMdocRequest(
-                    documentTypeRepository = documentTypeRepository,
-                    mdocCredential = mdocCredential
-                )
-
-                // TODO: deal with request.requestedClaims.size == 0, probably tell the user there is no
-                // credential that can satisfy the request...
-                //
-                val trustPoint = source.findTrustPoint(request)
-                if (!showConsentPrompt(mdocCredential.document, request, trustPoint)) {
-                    continue
                 }
 
                 val documentBytes = calcDocument(

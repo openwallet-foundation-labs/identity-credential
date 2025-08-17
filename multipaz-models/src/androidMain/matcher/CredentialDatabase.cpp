@@ -1,5 +1,6 @@
 
 #include "CredentialDatabase.h"
+#include "Request.h"
 
 extern "C" {
 #include "credentialmanager.h"
@@ -7,6 +8,7 @@ extern "C" {
 
 #include "cppbor.h"
 #include "cppbor_parse.h"
+#include "logger.h"
 
 CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t encodedDatabaseLength) {
     auto [item, pos, message] =
@@ -30,12 +32,9 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
         auto bitmap = cred->get("bitmap")->asBstr()->value();
 
         std::string documentId = "";
-
         std::string mdocDoctype = "";
-        std::map mdocDataElements = std::map<std::string, MdocDataElement>();
-
         std::string vcVct = "";
-        std::map vcClaims = std::map<std::string, VcClaim>();
+        std::map resultingClaims = std::map<std::string, Claim>();
 
         auto& mdocPtr = cred->get("mdoc");
         if (mdocPtr != nullptr) {
@@ -53,9 +52,10 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
                     auto dataElementDetailsArray = k->second->asArray();
                     auto displayName = dataElementDetailsArray->get(0)->asTstr()->value();
                     auto value = dataElementDetailsArray->get(1)->asTstr()->value();
+                    auto matchValue = dataElementDetailsArray->get(2)->asTstr()->value();
 
                     auto combinedName = namespaceName + "." + dataElementName;
-                    mdocDataElements[combinedName] = MdocDataElement(namespaceName, dataElementName, displayName, value);
+                    resultingClaims[combinedName] = Claim(combinedName, displayName, value, matchValue);
                 }
             }
         }
@@ -72,87 +72,115 @@ CredentialDatabase::CredentialDatabase(const uint8_t* encodedDatabase, size_t en
                 auto claimDetailsArray = j->second->asArray();
                 auto displayName = claimDetailsArray->get(0)->asTstr()->value();
                 auto value = claimDetailsArray->get(1)->asTstr()->value();
+                auto matchValue = claimDetailsArray->get(2)->asTstr()->value();
 
-                vcClaims[claimName] = VcClaim(claimName, displayName, value);
+                resultingClaims[claimName] = Claim(claimName, displayName, value, matchValue);
             }
         }
 
         credentials.push_back(
             Credential(
-                title, subtitle, bitmap, documentId,
-                mdocDoctype, mdocDataElements,
-                vcVct, vcClaims
+                title, subtitle, bitmap,
+                documentId,
+                mdocDoctype,
+                vcVct,
+                resultingClaims
             )
         );
     }
 }
 
-bool Credential::matchesRequest(const Request& request) {
-    if (request.docType.size() > 0 && request.docType == mdocDocType) {
-        // Semantics is that we match if at least one of the requested data elements
-        // exist in the credential
-        for (const auto &requestedDataElement: request.dataElements) {
-            auto combinedName =
-                    requestedDataElement.namespaceName + "." + requestedDataElement.dataElementName;
-            if (dataElements.find(combinedName) != dataElements.end()) {
-                return true;
-            }
-        }
-    } else if (request.vctValues.size() > 0 && vcVct.size() > 0) {
-        if (std::find(request.vctValues.begin(), request.vctValues.end(), vcVct) != request.vctValues.end()) {
-            // TODO: For now we use the semantics that at least one of the requested data elements must
-            //   exist in the credential. When we merge the dcql-library branch this will change...
-            for (const auto &requestedClaim : request.vcClaims) {
-                if (vcClaims.find(requestedClaim.claimName) != vcClaims.end()) {
-                    return true;
-                }
-            }
+Claim* Credential::findMatchingClaim(const DcqlRequestedClaim& requestedClaim) {
+    auto joinedPath = requestedClaim.joinPath();
+    auto ret = claims.find(joinedPath);
+    if (ret == claims.end()) {
+        return nullptr;
+    }
+    // Perform value matching, if requested
+    if (!requestedClaim.values.empty()) {
+        const std::vector<std::string>& values = requestedClaim.values;
+        if (std::find(values.begin(), values.end(), ret->second.matchValue) == values.end()) {
+            return nullptr;
         }
     }
-    return false;
+    return &(ret->second);
 }
 
-void Credential::addCredentialToPicker(const Request& request) {
-    std::string selected_entry_id_str = request.protocol + " " + documentId;
-    char* selected_entry_id = (char*) strdup(selected_entry_id_str.c_str());
-    void* icon = nullptr;
-    if (bitmap.size() > 0) {
-        icon = malloc(bitmap.size());
-        memcpy(icon, bitmap.data(), bitmap.size());
-    }
-    ::AddStringIdEntry(
-            selected_entry_id,
-            (char*) icon,
-            bitmap.size(),
-            (char*) strdup(title.c_str()),
-            (char*) strdup(subtitle.c_str()),
-            nullptr,
-            nullptr
-    );
+void Combination::addToCredmanPicker(const Request& request) const {
+    uint32_t credmanRuntimeVersion = 0;
+    GetWasmVersion(&credmanRuntimeVersion);
 
-    if (request.docType.size() > 0) {
-        for (const auto &requestedDataElement: request.dataElements) {
-            auto combinedName =
-                    requestedDataElement.namespaceName + "." + requestedDataElement.dataElementName;
-            auto it = dataElements.find(combinedName);
-            if (it != dataElements.end()) {
-                const auto &dataElement = it->second;
-                ::AddFieldForStringIdEntry(selected_entry_id,
-                                           strdup(dataElement.displayName.c_str()),
-                                           strdup(dataElement.value.c_str())
+    std::string setIdStr = std::to_string(combinationNumber) + " " + request.protocol;
+    char* setId = strdup(setIdStr.c_str());
+    int setLength = elements.size();
+
+    if (credmanRuntimeVersion >= 2) {
+        AddEntrySet(setId, setLength);
+    }
+
+    int setIndex = 0;
+    for (const auto& element : elements) {
+        for (const auto& match: element.matches) {
+            Credential *credential = match.credential;
+            std::string entryIdStr =
+                    std::to_string(combinationNumber) + " " + request.protocol + " " +
+                    credential->documentId;
+            char *entryId = (char *) strdup(entryIdStr.c_str());
+
+            void *icon = nullptr;
+            if (credential->bitmap.size() > 0) {
+                icon = malloc(credential->bitmap.size());
+                memcpy(icon, credential->bitmap.data(), credential->bitmap.size());
+            }
+            if (credmanRuntimeVersion >= 2) {
+                ::AddEntryToSet(
+                        entryId,
+                        (char *) icon,
+                        credential->bitmap.size(),
+                        (char *) strdup(credential->title.c_str()),
+                        (char *) strdup(credential->subtitle.c_str()),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        setId,
+                        setIndex
                 );
+            } else {
+                ::AddStringIdEntry(
+                        entryId,
+                        (char *) icon,
+                        credential->bitmap.size(),
+                        (char *) strdup(credential->title.c_str()),
+                        (char *) strdup(credential->subtitle.c_str()),
+                        nullptr,
+                        nullptr
+                );
+            }
+
+            for (const auto &claim: match.claims) {
+                if (credmanRuntimeVersion >= 2) {
+                    ::AddFieldToEntrySet(entryId,
+                                         strdup(claim->displayName.c_str()),
+                                         strdup(claim->value.c_str()),
+                                         setId,
+                                         setIndex
+                    );
+                } else {
+                    ::AddFieldForStringIdEntry(entryId,
+                                               strdup(claim->displayName.c_str()),
+                                               strdup(claim->value.c_str())
+                    );
+                }
+            }
+
+            if (credmanRuntimeVersion < 2) {
+                break;
             }
         }
-    } else if (request.vctValues.size() > 0){
-        for (const auto &requestedClaim: request.vcClaims) {
-            auto it = vcClaims.find(requestedClaim.claimName);
-            if (it != vcClaims.end()) {
-                const auto &claim = it->second;
-                ::AddFieldForStringIdEntry(selected_entry_id,
-                                           strdup(claim.displayName.c_str()),
-                                           strdup(claim.value.c_str())
-                );
-            }
+
+        setIndex++;
+        if (credmanRuntimeVersion < 2) {
+            break;
         }
     }
 }

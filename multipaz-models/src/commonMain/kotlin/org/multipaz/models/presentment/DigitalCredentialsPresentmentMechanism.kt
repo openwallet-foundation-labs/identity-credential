@@ -13,14 +13,16 @@ import org.multipaz.document.Document
  * @property webOrigin the origin of the website if the application is a web browser, or `null` if it's not.
  * @property protocol the `protocol` field in the `DigitalCredentialGetRequest` dictionary in to the W3C DC API.
  * @property data the `data` field in the `DigitalCredentialGetRequest` dictionary in the W3C DC API.
- * @property document the [Document] the request is for or `null` if a document wasn't selected by the user.
+ * @property preselectedDocuments the list of documents the user may have preselected earlier (for
+ *   example an OS-provided credential picker like Android's Credential Manager) or the empty list
+ *   if the user didn't preselect.
  */
 abstract class DigitalCredentialsPresentmentMechanism(
     val appId: String,
     val webOrigin: String?,
     val protocol: String,
     val data: JsonObject,
-    val document: Document?
+    val preselectedDocuments: List<Document>
 ): PresentmentMechanism {
 
     /**

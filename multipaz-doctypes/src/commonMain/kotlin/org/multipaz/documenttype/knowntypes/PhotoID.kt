@@ -1,12 +1,10 @@
 package org.multipaz.documenttype.knowntypes
 
-import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.Icon
-import org.multipaz.documenttype.knowntypes.EUPersonalID.EUPID_VCT
 import org.multipaz.util.fromBase64Url
 import kotlinx.datetime.LocalDate
 import org.multipaz.cbor.buildCborMap
@@ -322,7 +320,7 @@ object PhotoID {
                 false,
                 ISO_23220_2_NAMESPACE,
                 Icon.EMERGENCY,
-                SampleData.SEX_ISO218.toDataItem()
+                SampleData.SEX_ISO_5218.toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),

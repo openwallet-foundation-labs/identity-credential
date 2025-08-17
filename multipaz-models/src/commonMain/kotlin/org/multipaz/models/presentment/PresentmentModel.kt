@@ -1,9 +1,7 @@
 package org.multipaz.models.presentment
 
-import org.multipaz.document.Document
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.prompt.PromptModel
-import org.multipaz.request.Request
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
@@ -17,7 +15,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.document.Document
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.request.Requester
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
@@ -62,18 +63,10 @@ class PresentmentModel {
         PROCESSING,
 
         /**
-         * A request has been received and multiple documents can be presented and the user needs to pick one.
+         * A request has been received and the user needs to provide consent.
          *
-         * The UI layer should show a document selection dialog with the documents in [availableDocuments]
-         * and call [documentSelected] with the user's choice, if any.
-         */
-        WAITING_FOR_DOCUMENT_SELECTION,
-
-        /**
-         * A request has been received, waiting for the user to provide consent.
-         *
-         * The UI layer should show a consent prompt with the data in [consentData] and call
-         * [consentReviewed] with whether the user consented to the request.
+         * The UI layer should show a document selection dialog with the credentials in [consentData]
+         * and call [consentObtained] with the user's choice, if any.
          */
         WAITING_FOR_CONSENT,
 
@@ -199,31 +192,6 @@ class PresentmentModel {
     }
 
     /**
-     * Data to include in the consent prompt.
-     *
-     * @property document the document being presented
-     * @property request the request, including who made the request.
-     * @property trustPoint a [TrustPoint] if the requester is trusted, null otherwise
-     */
-    data class ConsentData(
-        val document: Document,
-        val request: Request,
-        val trustPoint: TrustPoint?
-    )
-
-    private var _consentData: ConsentData? = null
-    /**
-     * The data to show in the consent dialog.
-     *
-     * This can only be read when in state [State.WAITING_FOR_CONSENT].
-     */
-    val consentData: ConsentData
-        get() {
-            check(_state.value == State.WAITING_FOR_CONSENT)
-            return _consentData!!
-        }
-
-    /**
      * Sets the model to [State.COMPLETED]
      *
      * @param error pass a [Throwable] if the presentation failed, `null` if successful.
@@ -327,11 +295,8 @@ class PresentmentModel {
                         mechanism = mechanism as MdocPresentmentMechanism,
                         dismissable = _dismissable,
                         numRequestsServed = _numRequestsServed,
-                        showDocumentPicker = { documents ->
-                            showDocumentPicker(documents)
-                        },
-                        showConsentPrompt = { document, request, trustPoint ->
-                            showConsentPrompt(document, request, trustPoint)
+                        showConsentPrompt = { presentmentData, preselectedDocuments, requester, trustPoint ->
+                            showConsentPrompt(presentmentData, preselectedDocuments, requester, trustPoint)
                         },
                     )
                 }
@@ -341,9 +306,9 @@ class PresentmentModel {
                         source = source!!,
                         mechanism = mechanism as DigitalCredentialsPresentmentMechanism,
                         dismissable = _dismissable,
-                        showConsentPrompt = { document, request, trustPoint ->
-                            showConsentPrompt(document, request, trustPoint)
-                        }
+                        showConsentPrompt = { presentmentData, preselectedDocuments, requester, trustPoint ->
+                            showConsentPrompt(presentmentData, preselectedDocuments, requester, trustPoint)
+                        },
                     )
                 }
                 is UriSchemePresentmentMechanism -> {
@@ -352,12 +317,9 @@ class PresentmentModel {
                         source = source!!,
                         mechanism = mechanism as UriSchemePresentmentMechanism,
                         dismissable = _dismissable,
-                        showDocumentPicker = { documents ->
-                            showDocumentPicker(documents)
+                        showConsentPrompt = { presentmentData, preselectedDocuments, requester, trustPoint ->
+                            showConsentPrompt(presentmentData, preselectedDocuments, requester, trustPoint)
                         },
-                        showConsentPrompt = { document, request, trustPoint ->
-                            showConsentPrompt(document, request, trustPoint)
-                        }
                     )
                 }
                 else -> throw IllegalStateException("Unsupported mechanism $mechanism")
@@ -369,57 +331,24 @@ class PresentmentModel {
         setCompleted()
     }
 
-    private var documentPickerContinuation: CancellableContinuation<Document?>? = null
-
-    private suspend fun showDocumentPicker(documents: List<Document>): Document? {
-        check(_state.value == State.PROCESSING)
-        _availableDocuments = documents
-        _state.value = State.WAITING_FOR_DOCUMENT_SELECTION
-        val ret = suspendCancellableCoroutine<Document?> { continuation ->
-            documentPickerContinuation = continuation
-        }
-        _availableDocuments = null
-        _state.value = State.PROCESSING
-        return ret
-    }
-
-    private var _availableDocuments: List<Document>? = null
-    /**
-     * The list of available documents to pick from.
-     *
-     * This can only be read when in state [State.WAITING_FOR_DOCUMENT_SELECTION].
-     */
-    val availableDocuments: List<Document>
-        get() {
-            check(_state.value == State.WAITING_FOR_DOCUMENT_SELECTION)
-            return _availableDocuments!!
-        }
-
-    /**
-     * The UI layer should call this when a user has selected a document.
-     *
-     * This can only be called in state [State.WAITING_FOR_DOCUMENT_SELECTION]
-     *
-     * @param document the selected documented, must be `null` to convey the user did not want to continue
-     *   otherwise must be from the [availableDocuments] list.
-     */
-    fun documentSelected(document: Document?) {
-        check(_state.value == State.WAITING_FOR_DOCUMENT_SELECTION)
-        documentPickerContinuation!!.resume(document)
-    }
-
-    private var consentDataContinuation: CancellableContinuation<Boolean>? = null
+    private var consentContinuation: CancellableContinuation<CredentialPresentmentSelection?>? = null
 
     private suspend fun showConsentPrompt(
-       document: Document,
-       request: Request,
-       trustPoint: TrustPoint?
-    ): Boolean {
+        credentialPresentmentData: CredentialPresentmentData,
+        preselectedDocuments: List<Document>,
+        requester: Requester,
+        trustPoint: TrustPoint?
+    ): CredentialPresentmentSelection? {
         check(_state.value == State.PROCESSING)
-        _consentData = ConsentData(document, request, trustPoint)
+        _consentData = ConsentData(
+            credentialPresentmentData = credentialPresentmentData,
+            preselectedDocuments = preselectedDocuments,
+            requester = requester,
+            trustPoint = trustPoint
+        )
         _state.value = State.WAITING_FOR_CONSENT
-        val ret = suspendCancellableCoroutine<Boolean> { continuation ->
-            consentDataContinuation = continuation
+        val ret = suspendCancellableCoroutine { continuation ->
+            consentContinuation = continuation
         }
         _consentData = null
         _state.value = State.PROCESSING
@@ -427,14 +356,41 @@ class PresentmentModel {
     }
 
     /**
-     * The UI layer should call this when a user has reviewed the consent data.
+     * Data to include in the consent prompt.
+     *
+     * @property credentialPresentmentData an object containing the credential sets that the user can choose from.
+     * @property preselectedDocuments a list of pre-selected documents or empty if the user didn't preselect.
+     * @property requester who made the request.
+     * @property trustPoint a [TrustPoint] if the requester is trusted, null otherwise.
+     */
+    data class ConsentData(
+        val credentialPresentmentData: CredentialPresentmentData,
+        val preselectedDocuments: List<Document>,
+        val requester: Requester,
+        val trustPoint: TrustPoint?
+    )
+
+    private var _consentData: ConsentData? = null
+    /**
+     * Data which should be displayed in a consent prompt.
+     *
+     * This can only be read when in state [State.WAITING_FOR_CONSENT].
+     */
+    val consentData: ConsentData
+        get() {
+            check(_state.value == State.WAITING_FOR_CONSENT)
+            return _consentData!!
+        }
+
+    /**
+     * The UI layer should call this when a user has selected a document.
      *
      * This can only be called in state [State.WAITING_FOR_CONSENT]
      *
-     * @param consentObtained true if consent was obtained, false otherwise.
+     * @param selection The selection the user made and consented to or `null` if the user canceled.
      */
-    fun consentReviewed(consentObtained: Boolean) {
+    fun consentObtained(selection: CredentialPresentmentSelection?) {
         check(_state.value == State.WAITING_FOR_CONSENT)
-        consentDataContinuation!!.resume(consentObtained)
+        consentContinuation!!.resume(selection)
     }
 }

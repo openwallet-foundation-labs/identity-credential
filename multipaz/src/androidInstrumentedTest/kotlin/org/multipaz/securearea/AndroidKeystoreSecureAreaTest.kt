@@ -49,6 +49,8 @@ import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import kotlin.time.Instant.Companion.fromEpochMilliseconds
 import kotlinx.io.bytestring.ByteString
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class AndroidKeystoreSecureAreaTest {
 
@@ -115,7 +117,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)
@@ -155,7 +157,7 @@ class AndroidKeystoreSecureAreaTest {
             .setUseStrongBox(useStrongBox)
             .setUserAuthenticationRequired(
                 true,
-                42,
+                42.milliseconds,
                 setOf(
                     UserAuthenticationType.LSKF,
                     UserAuthenticationType.BIOMETRIC
@@ -168,7 +170,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(42, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(42.milliseconds, keyInfo.userAuthenticationTimeout)
         Assert.assertEquals(
             setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC),
             keyInfo.userAuthenticationTypes
@@ -196,7 +198,7 @@ class AndroidKeystoreSecureAreaTest {
         val type = setOf(UserAuthenticationType.LSKF)
         val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
-            .setUserAuthenticationRequired(true, 42, type)
+            .setUserAuthenticationRequired(true, 42.milliseconds, type)
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
@@ -204,7 +206,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(42, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(42.milliseconds, keyInfo.userAuthenticationTimeout)
         Assert.assertEquals(type, keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)
@@ -229,7 +231,7 @@ class AndroidKeystoreSecureAreaTest {
         val type = setOf(UserAuthenticationType.BIOMETRIC)
         val challenge = ByteString(1, 2, 3)
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge)
-            .setUserAuthenticationRequired(true, 42, type)
+            .setUserAuthenticationRequired(true, 42.milliseconds, type)
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
@@ -237,7 +239,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(42, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(42.milliseconds, keyInfo.userAuthenticationTimeout)
         Assert.assertEquals(type, keyInfo.userAuthenticationTypes)
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)
@@ -260,7 +262,7 @@ class AndroidKeystoreSecureAreaTest {
         val challenge = ByteString(1, 2, 3)
         try {
             AndroidKeystoreCreateKeySettings.Builder(challenge)
-                .setUserAuthenticationRequired(true, 42, type)
+                .setUserAuthenticationRequired(true, 42.milliseconds, type)
                 .build()
             Assert.fail("Should not be reached")
         } catch (e: IllegalArgumentException) {
@@ -289,7 +291,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.ED25519, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)
@@ -380,7 +382,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)
@@ -426,7 +428,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.X25519, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)
@@ -547,7 +549,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
         Assert.assertNull(keyInfo.attestKeyAlias)
         Assert.assertEquals(validFrom, keyInfo.validFrom)
@@ -647,7 +649,7 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired)
-        Assert.assertEquals(0, keyInfo.userAuthenticationTimeoutMillis)
+        Assert.assertEquals(0.seconds, keyInfo.userAuthenticationTimeout)
         Assert.assertTrue(keyInfo.userAuthenticationTypes.isEmpty())
         Assert.assertEquals(attestKeyAlias, keyInfo.attestKeyAlias)
         Assert.assertNull(keyInfo.validFrom)

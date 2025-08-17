@@ -173,7 +173,7 @@ object EUCertificateOfResidence {
                 false,
                 NAMESPACE,
                 Icon.EMERGENCY,
-                SampleData.SEX_ISO218.toDataItem()
+                SampleData.SEX_ISO_5218.toDataItem()
             )
             .addAttribute(
                 DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),

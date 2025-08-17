@@ -19,8 +19,10 @@ val recordTypes = listOf(
             displayName = "Core personal information",
             description = "",
             icon = null,
+            sampleValueMdoc = null,
             sampleValueJson = null,
-            sampleValueMdoc = null
+            parentAttribute = null,
+            embeddedAttributes = emptyList()
         ),
         subAttributes = listOf(
             RecordType(
@@ -31,7 +33,9 @@ val recordTypes = listOf(
                     description = "Last name, surname, or primary identifier, of the person.",
                     icon = Icon.PERSON,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -42,7 +46,9 @@ val recordTypes = listOf(
                     description = "First name(s), other name(s), or secondary identifier, of the person",
                     icon = Icon.PERSON,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -53,7 +59,9 @@ val recordTypes = listOf(
                     description = "Day, month and year on which the person was born. If unknown, approximate date of birth",
                     icon = Icon.TODAY,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -64,7 +72,9 @@ val recordTypes = listOf(
                     description = "A reproduction of the person’s portrait.",
                     icon = Icon.ACCOUNT_BOX,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             )
         ).associateBy { it.attribute.identifier }
@@ -76,8 +86,10 @@ val recordTypes = listOf(
             displayName = "Driver's License",
             description = "",
             icon = null,
+            sampleValueMdoc = null,
             sampleValueJson = null,
-            sampleValueMdoc = null
+            parentAttribute = null,
+            embeddedAttributes = emptyList()
         ),
         subAttributes = listOf(
             RecordType(
@@ -88,7 +100,9 @@ val recordTypes = listOf(
                     description = "Date when mDL was issued",
                     icon = Icon.TODAY,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -99,7 +113,9 @@ val recordTypes = listOf(
                     description = "Date when mDL expires",
                     icon = Icon.TODAY,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -110,7 +126,9 @@ val recordTypes = listOf(
                     description = "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s country or territory",
                     icon = Icon.ACCOUNT_BALANCE,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -121,7 +139,9 @@ val recordTypes = listOf(
                     description = "Issuing authority name.",
                     icon = Icon.ACCOUNT_BALANCE,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             ),
             RecordType(
@@ -132,7 +152,9 @@ val recordTypes = listOf(
                     description = "The number assigned or calculated by the issuing authority.",
                     icon = Icon.NUMBERS,
                     sampleValueMdoc = null,
-                    sampleValueJson = null
+                    sampleValueJson = null,
+                    parentAttribute = null,
+                    embeddedAttributes = emptyList()
                 )
             )
         ).associateBy { it.attribute.identifier }

@@ -135,29 +135,3 @@ private fun openDatabase(): SQLiteConnection {
 actual fun platformHttpClientEngineFactory(): HttpClientEngineFactory<*> = Darwin
 
 actual val platformSecureAreaHasKeyAgreement = true
-
-actual fun platformCreateKeySettings(
-    challenge: ByteString,
-    algorithm: Algorithm,
-    userAuthenticationRequired: Boolean,
-    validFrom: Instant,
-    validUntil: Instant
-): CreateKeySettings {
-    // Note: Since iOS Secure Enclave doesn't generate key attestations [validFrom] and [validUntil]
-    // is not used. Neither is [challenge].
-    if (platformIsEmulator) {
-        return SoftwareCreateKeySettings.Builder()
-            .setAlgorithm(algorithm)
-            .setPassphraseRequired(userAuthenticationRequired, "1111", PassphraseConstraints.PIN_FOUR_DIGITS)
-            .build()
-    } else {
-        require(algorithm.curve!! == EcCurve.P256)
-        return SecureEnclaveCreateKeySettings.Builder()
-            .setAlgorithm(algorithm)
-            .setUserAuthenticationRequired(
-                required = userAuthenticationRequired,
-                userAuthenticationTypes = setOf(SecureEnclaveUserAuthType.USER_PRESENCE)
-            )
-            .build()
-    }
-}

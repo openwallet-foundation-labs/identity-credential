@@ -63,6 +63,8 @@ import java.security.spec.ECGenParameterSpec
 import java.security.spec.InvalidKeySpecException
 import java.sql.Date
 import javax.crypto.KeyAgreement
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * An implementation of [SecureArea] using Android Keystore.
@@ -160,17 +162,23 @@ class AndroidKeystoreSecureArea private constructor(
             createKeySettings
         } else {
             // If user passed in a generic SecureArea.CreateKeySettings, honor them.
-            AndroidKeystoreCreateKeySettings.Builder(createKeySettings.nonce)
+            val builder = AndroidKeystoreCreateKeySettings.Builder(createKeySettings.nonce)
                 .setAlgorithm(createKeySettings.algorithm)
                 .setUserAuthenticationRequired(
                     required = createKeySettings.userAuthenticationRequired,
-                    timeoutMillis = 0,
+                    timeout = createKeySettings.userAuthenticationTimeout,
                     userAuthenticationTypes = setOf(
                         UserAuthenticationType.LSKF,
                         UserAuthenticationType.BIOMETRIC
                     )
                 )
-                .build()
+            if (createKeySettings.validFrom != null && createKeySettings.validUntil != null) {
+                builder.setValidityPeriod(
+                    validFrom = createKeySettings.validFrom,
+                    validUntil = createKeySettings.validUntil
+                )
+            }
+            builder.build()
         }
 
         try {
@@ -223,7 +231,7 @@ class AndroidKeystoreSecureArea private constructor(
                     )
                 }
                 builder.setUserAuthenticationRequired(true)
-                val timeoutMillis = aSettings.userAuthenticationTimeoutMillis
+                val timeoutMillis = aSettings.userAuthenticationTimeout.inWholeMilliseconds
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     val userAuthenticationTypes = aSettings.userAuthenticationTypes
                     var type = 0
@@ -395,7 +403,7 @@ class AndroidKeystoreSecureArea private constructor(
         }
         settingsBuilder.setUserAuthenticationRequired(
             keyInfo.isUserAuthenticationRequired,
-            keyInfo.userAuthenticationValidityDurationSeconds * 1000L,
+            keyInfo.userAuthenticationValidityDurationSeconds.seconds,
             userAuthenticationTypes
         )
         saveKeyMetadata(existingAlias, settingsBuilder.build(), X509CertChain(attestationCerts))
@@ -650,7 +658,7 @@ class AndroidKeystoreSecureArea private constructor(
                 KeyAttestation(publicKey, attestationCertChain),
                 keyMetadata.attestKeyAlias,
                 keyMetadata.userAuthenticationRequired,
-                keyMetadata.userAuthenticationTimeoutMillis,
+                keyMetadata.userAuthenticationTimeoutMillis.milliseconds,
                 userAuthenticationTypes,
                 keyMetadata.useStrongBox,
                 validFrom,
@@ -670,7 +678,7 @@ class AndroidKeystoreSecureArea private constructor(
             algorithm = settings.algorithm,
             attestKeyAlias = settings.attestKeyAlias,
             userAuthenticationRequired = settings.userAuthenticationRequired,
-            userAuthenticationTimeoutMillis = settings.userAuthenticationTimeoutMillis,
+            userAuthenticationTimeoutMillis = settings.userAuthenticationTimeout.inWholeMilliseconds,
             useStrongBox = settings.useStrongBox,
             attestation = attestation
         )
