@@ -41,7 +41,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonArrayBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
@@ -51,6 +50,9 @@ import org.multipaz.cbor.buildCborArray
 import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.securearea.cloud.CloudSecureAreaProtocol.BatchCreateKeyResponse1
 import org.multipaz.util.toBase64Url
+import org.multipaz.certext.CloudKeyAttestation
+import org.multipaz.certext.MultipazExtension
+import org.multipaz.certext.toCbor
 import java.nio.ByteBuffer
 import java.util.Locale
 import kotlin.random.Random
@@ -234,13 +236,15 @@ class CloudSecureAreaServer(
                     .setAuthorityKeyIdentifierToCertificate(cloudRootAttestationKeyCertification.certificates[0])
                     .setKeyUsage(setOf(X509KeyUsage.DIGITAL_SIGNATURE))
                     .addExtension(
-                        oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
+                        oid = OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid,
                         critical = false,
-                        value = CloudAttestationExtension(
-                            challenge = ByteString(request1.deviceChallenge),
-                            passphrase = false,
-                            userAuthentication = setOf()
-                        ).encode().toByteArray()
+                        value = MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = ByteString(request1.deviceChallenge),
+                                passphrase = false,
+                                userAuthentication = setOf()
+                            )
+                        ).toCbor()
                     )
                     .build()
             ) + cloudRootAttestationKeyCertification.certificates
@@ -505,13 +509,15 @@ class CloudSecureAreaServer(
                 }
             ))
             .addExtension(
-                oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
+                oid = OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid,
                 critical = false,
-                value = CloudAttestationExtension(
-                    challenge = ByteString(state.challenge!!),
-                    passphrase = state.passphraseRequired,
-                    userAuthentication = CloudUserAuthType.decodeSet(state.userAuthenticationTypes)
-                ).encode().toByteArray()
+                value = MultipazExtension(
+                    cloudKeyAttestation = CloudKeyAttestation(
+                        challenge = ByteString(state.challenge!!),
+                        passphrase = state.passphraseRequired,
+                        userAuthentication = CloudUserAuthType.decodeSet(state.userAuthenticationTypes)
+                    )
+                ).toCbor()
             )
             .build()
 
@@ -629,13 +635,15 @@ class CloudSecureAreaServer(
                     )
                 )
                 .addExtension(
-                    oid = OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid,
+                    oid = OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid,
                     critical = false,
-                    value = CloudAttestationExtension(
-                        challenge = ByteString(state.challenge!!),
-                        passphrase = state.passphraseRequired,
-                        userAuthentication = CloudUserAuthType.decodeSet(state.userAuthenticationTypes)
-                    ).encode().toByteArray()
+                    value = MultipazExtension(
+                        cloudKeyAttestation = CloudKeyAttestation(
+                            challenge = ByteString(state.challenge!!),
+                            passphrase = state.passphraseRequired,
+                            userAuthentication = CloudUserAuthType.decodeSet(state.userAuthenticationTypes)
+                        )
+                    ).toCbor()
                 )
                 .build()
             remoteKeyAttestationLeafs.add(attestationCert)

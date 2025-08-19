@@ -37,9 +37,12 @@ import org.junit.Assert
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
+import org.multipaz.certext.CloudKeyAttestation
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.util.fromBase64Url
+import org.multipaz.certext.MultipazExtension
+import org.multipaz.certext.fromCbor
 import java.io.IOException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
@@ -219,15 +222,17 @@ class CloudSecureAreaTest {
                 setOf(X509KeyUsage.KEY_AGREEMENT)
             }
             val challenge = ByteString(1, 2, 3)
-            val tests = mapOf<CloudCreateKeySettings, CloudAttestationExtension>(
+            val tests = mapOf<CloudCreateKeySettings, MultipazExtension>(
                 CloudCreateKeySettings.Builder(challenge)
                     .setAlgorithm(algorithm)
                     .setValidityPeriod(validFrom, validUntil)
                     .build() to
-                        CloudAttestationExtension(
-                            challenge = challenge,
-                            passphrase = false,
-                            userAuthentication = setOf()
+                        MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = challenge,
+                                passphrase = false,
+                                userAuthentication = setOf()
+                            )
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
@@ -235,10 +240,12 @@ class CloudSecureAreaTest {
                     .setValidityPeriod(validFrom, validUntil)
                     .setPassphraseRequired(true)
                     .build() to
-                        CloudAttestationExtension(
-                            challenge = challenge,
-                            passphrase = true,
-                            userAuthentication = setOf()
+                        MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = challenge,
+                                passphrase = true,
+                                userAuthentication = setOf()
+                            )
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
@@ -246,10 +253,12 @@ class CloudSecureAreaTest {
                     .setValidityPeriod(validFrom, validUntil)
                     .setUserAuthenticationRequired(true, setOf(CloudUserAuthType.PASSCODE))
                     .build() to
-                        CloudAttestationExtension(
-                            challenge = challenge,
-                            passphrase = false,
-                            userAuthentication = setOf(CloudUserAuthType.PASSCODE)
+                        MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = challenge,
+                                passphrase = false,
+                                userAuthentication = setOf(CloudUserAuthType.PASSCODE)
+                            )
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
@@ -257,10 +266,12 @@ class CloudSecureAreaTest {
                     .setValidityPeriod(validFrom, validUntil)
                     .setUserAuthenticationRequired(true, setOf(CloudUserAuthType.BIOMETRIC))
                     .build() to
-                        CloudAttestationExtension(
-                            challenge = challenge,
-                            passphrase = false,
-                            userAuthentication = setOf(CloudUserAuthType.BIOMETRIC)
+                        MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = challenge,
+                                passphrase = false,
+                                userAuthentication = setOf(CloudUserAuthType.BIOMETRIC)
+                            )
                         ),
 
                 CloudCreateKeySettings.Builder(challenge)
@@ -272,11 +283,13 @@ class CloudSecureAreaTest {
                         )
                     )
                     .build() to
-                        CloudAttestationExtension(
-                            challenge = challenge,
-                            passphrase = false,
-                            userAuthentication = setOf(
-                                CloudUserAuthType.BIOMETRIC, CloudUserAuthType.PASSCODE
+                        MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = challenge,
+                                passphrase = false,
+                                userAuthentication = setOf(
+                                    CloudUserAuthType.BIOMETRIC, CloudUserAuthType.PASSCODE
+                                )
                             )
                         ),
 
@@ -290,11 +303,13 @@ class CloudSecureAreaTest {
                         )
                     )
                     .build() to
-                        CloudAttestationExtension(
-                            challenge = challenge,
-                            passphrase = true,
-                            userAuthentication = setOf(
-                                CloudUserAuthType.BIOMETRIC, CloudUserAuthType.PASSCODE
+                        MultipazExtension(
+                            cloudKeyAttestation = CloudKeyAttestation(
+                                challenge = challenge,
+                                passphrase = true,
+                                userAuthentication = setOf(
+                                    CloudUserAuthType.BIOMETRIC, CloudUserAuthType.PASSCODE
+                                )
                             )
                         ),
             )
@@ -307,12 +322,10 @@ class CloudSecureAreaTest {
 
                 // Then check for the extensions in the leaf certificate
                 val attestationCertificate = attestationCertificateChain.certificates[0]
-                val attestationExtension = CloudAttestationExtension.decode(
-                    ByteString(attestationCertificate
-                        .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
-                    )
+                val extension = MultipazExtension.fromCbor(
+                    attestationCertificate.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)!!
                 )
-                Assert.assertEquals(expectedAttestation, attestationExtension)
+                Assert.assertEquals(expectedAttestation, extension)
                 Assert.assertEquals(expectedKeyUsage, attestationCertificate.keyUsage)
                 Assert.assertEquals(validFrom, attestationCertificate.validityNotBefore)
                 Assert.assertEquals(validUntil, attestationCertificate.validityNotAfter)
@@ -337,11 +350,11 @@ class CloudSecureAreaTest {
         val settings = CloudCreateKeySettings.Builder(challenge).build()
         csa.createKey("test", settings)
 
-        val attestation = CloudAttestationExtension.decode(ByteString(
+        val extension = MultipazExtension.fromCbor(
             csa.getKeyInfo("test").attestation.certChain!!.certificates[0]
-                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
-        ))
-        Assert.assertEquals(challenge, attestation.challenge)
+                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)!!
+        )
+        Assert.assertEquals(challenge, extension.cloudKeyAttestation!!.challenge)
     }
 
     @Test fun testBatchKeyCreationWithPassphrase() = testBatchKeyCreation(true)
@@ -366,13 +379,11 @@ class CloudSecureAreaTest {
         val result = csa.batchCreateKey(10, settings)
         Assert.assertEquals(10, result.keyInfos.size)
         for (keyInfo in result.keyInfos) {
-            val attestation = CloudAttestationExtension.decode(
-                ByteString(
+            val extension = MultipazExtension.fromCbor(
                     keyInfo.attestation.certChain!!.certificates[0]
-                        .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
-                )
+                        .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)!!
             )
-            Assert.assertEquals(challenge, attestation.challenge)
+            Assert.assertEquals(challenge, extension.cloudKeyAttestation!!.challenge)
 
             // Also check we can use the key
             val dataToSign = byteArrayOf(4, 5, 6)
@@ -586,11 +597,11 @@ class CloudSecureAreaTest {
         Assert.assertEquals(Algorithm.ESP256, keyInfo.algorithm)
 
         // Check that the challenge is empty.
-        val attestation = CloudAttestationExtension.decode(ByteString(
+        val extension = MultipazExtension.fromCbor(
             csa.getKeyInfo("testKey").attestation.certChain!!.certificates[0]
-                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
-        ))
-        Assert.assertEquals(challenge, attestation.challenge)
+                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)!!
+        )
+        Assert.assertEquals(challenge, extension.cloudKeyAttestation!!.challenge)
 
         // Now delete it...
         csa.deleteKey("testKey")
