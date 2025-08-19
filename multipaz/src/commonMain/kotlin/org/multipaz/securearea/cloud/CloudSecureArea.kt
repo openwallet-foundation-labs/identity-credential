@@ -76,6 +76,8 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.appendUInt32
+import org.multipaz.certext.MultipazExtension
+import org.multipaz.certext.fromCbor
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -340,11 +342,12 @@ open class CloudSecureArea protected constructor(
             throw CloudException("Root X509Cert not authorized by app")
         }
 
-        val decodedAttestation = CloudAttestationExtension.decode(ByteString(
+        val decodedAttestation = MultipazExtension.fromCbor(
             attestation.certificates[0]
-                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)!!
-        ))
-        check(decodedAttestation.challenge == ByteString(expectedDeviceChallenge)) {
+                .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)!!
+        )
+        check(decodedAttestation.cloudKeyAttestation != null &&
+                decodedAttestation.cloudKeyAttestation.challenge == ByteString(expectedDeviceChallenge)) {
             "Challenge in attestation does match what's expected"
         }
     }

@@ -9,10 +9,11 @@ import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DiagnosticOption
 import org.multipaz.crypto.X509Cert
-import org.multipaz.securearea.cloud.CloudAttestationExtension
+import org.multipaz.certext.MultipazExtension
 import org.multipaz.util.AndroidAttestationExtensionParser
 import org.multipaz.util.toHex
 import org.multipaz.util.unsignedBigIntToString
+import org.multipaz.certext.fromCbor
 
 /**
  * View Model immutable data.
@@ -126,8 +127,8 @@ internal data class CertificateViewData(
                                 setOf(DiagnosticOption.PRETTY_PRINT),
                             )
 
-                        OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid ->
-                            CloudAttestationExtension.Companion.decode(ext.data).prettyPrint()
+                        OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid ->
+                            MultipazExtension.fromCbor(ext.data.toByteArray()).prettyPrint()
 
                         else -> {
                             try {

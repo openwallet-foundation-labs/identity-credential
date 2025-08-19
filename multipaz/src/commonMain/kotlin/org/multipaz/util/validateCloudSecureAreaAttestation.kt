@@ -3,14 +3,15 @@ package org.multipaz.util
 import org.multipaz.asn1.OID
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.securearea.cloud.CloudAttestationExtension
+import org.multipaz.certext.MultipazExtension
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.certext.fromCbor
 
 private const val TAG = "validateCloudSecureAreaAttestation"
 
 fun isCloudKeyAttestation(chain: X509CertChain): Boolean {
     return chain.certificates.first()
-        .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid) != null
+        .getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid) != null
 }
 
 fun validateCloudKeyAttestation(
@@ -23,12 +24,12 @@ fun validateCloudKeyAttestation(
     }
     val certificates = chain.certificates
     val leafX509Cert = certificates.first()
-    val extensionDerEncodedString = leafX509Cert.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid)
+    val extensionDerEncodedString = leafX509Cert.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)
         ?: throw IllegalStateException(
-            "No attestation extension at OID ${OID.X509_EXTENSION_MULTIPAZ_KEY_ATTESTATION.oid}")
+            "No attestation extension at OID ${OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid}")
 
-    val attestation = CloudAttestationExtension.decode(ByteString(extensionDerEncodedString))
-    if (attestation.challenge != nonce) {
+    val extension = MultipazExtension.fromCbor(extensionDerEncodedString)
+    if (extension.cloudKeyAttestation == null || extension.cloudKeyAttestation.challenge != nonce) {
         throw IllegalStateException("Challenge in attestation does match expected nonce")
     }
 
