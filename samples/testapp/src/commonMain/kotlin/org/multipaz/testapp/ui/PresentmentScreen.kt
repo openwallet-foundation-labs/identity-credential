@@ -2,6 +2,7 @@ package org.multipaz.testapp.ui
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import coil3.ImageLoader
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.testapp.App
 import org.jetbrains.compose.resources.painterResource
@@ -16,6 +17,7 @@ private const val TAG = "PresentmentScreen"
 fun PresentmentScreen(
     app: App,
     presentmentModel: PresentmentModel,
+    imageLoader: ImageLoader,
     onPresentationComplete: () -> Unit,
 ) {
     Presentment(
@@ -24,6 +26,7 @@ fun PresentmentScreen(
         presentmentModel = presentmentModel,
         presentmentSource = app.getPresentmentSource(),
         documentTypeRepository = app.documentTypeRepository,
+        imageLoader = imageLoader,
         onPresentmentComplete = onPresentationComplete,
     )
 }

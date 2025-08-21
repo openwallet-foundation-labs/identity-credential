@@ -426,6 +426,17 @@ class X509Cert(
         }
 
         /**
+         * Adds an X.509 extension to the certificate.
+         *
+         * @param extension a [X509Extension] to add.
+         * @return the builder
+         */
+        fun addExtension(extension: X509Extension): Builder {
+            extensions.put(extension.oid, Extension(extension.isCritical, extension.data.toByteArray()))
+            return this
+        }
+
+        /**
          * Generate and include the Subject Key Identifier extension .
          *
          * The extension will be marked as non-critical.

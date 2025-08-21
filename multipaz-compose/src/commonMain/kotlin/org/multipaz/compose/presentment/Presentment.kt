@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.ImageLoader
 import org.multipaz.models.presentment.PresentmentCanceled
 import org.multipaz.models.presentment.PresentmentModel
 import org.multipaz.models.presentment.PresentmentSource
@@ -69,6 +70,7 @@ private const val TAG = "Presentment"
  * @param presentmentSource an object for application to provide data and policy.
  * @param documentTypeRepository a [DocumentTypeRepository] used to find metadata about documents being requested.
  * @param onPresentmentComplete called when the presentment is complete.
+ * @param imageLoader an [ImageLoader] for loading images from the network.
  * @param onlyShowConsentPrompt if `true` only the consent prompt will be shown, never any other graphics. This is
  *   useful if using a translucent activity.
  * @param showCancelAsBack if `true` the cancel button will say "Back" instead of "Cancel".
@@ -82,6 +84,7 @@ fun Presentment(
     presentmentModel: PresentmentModel,
     presentmentSource: PresentmentSource,
     documentTypeRepository: DocumentTypeRepository,
+    imageLoader: ImageLoader,
     onPresentmentComplete: () -> Unit,
     onlyShowConsentPrompt: Boolean = false,
     showCancelAsBack: Boolean = false,
@@ -108,7 +111,14 @@ fun Presentment(
         }
         PresentmentModel.State.PROCESSING -> {}
         PresentmentModel.State.WAITING_FOR_CONSENT -> {
-            ConsentPrompt(coroutineScope, presentmentModel, appName, appIconPainter, showCancelAsBack)
+            ConsentPrompt(
+                coroutineScope = coroutineScope,
+                presentmentModel = presentmentModel,
+                appName = appName,
+                appIconPainter = appIconPainter,
+                imageLoader = imageLoader,
+                showCancelAsBack = showCancelAsBack
+            )
         }
         PresentmentModel.State.COMPLETED -> {
             if (onlyShowConsentPrompt) {
@@ -245,6 +255,7 @@ private fun ConsentPrompt(
     presentmentModel: PresentmentModel,
     appName: String?,
     appIconPainter: Painter?,
+    imageLoader: ImageLoader,
     showCancelAsBack: Boolean
 ) {
     // TODO: use sheetGesturesEnabled=false when available - see
@@ -258,6 +269,8 @@ private fun ConsentPrompt(
         trustPoint = presentmentModel.consentData.trustPoint,
         credentialPresentmentData = presentmentModel.consentData.credentialPresentmentData,
         preselectedDocuments = presentmentModel.consentData.preselectedDocuments,
+        imageLoader = imageLoader,
+        dynamicMetadataResolver = presentmentModel.consentData.dynamicMetadataResolver,
         appName = appName,
         appIconPainter = appIconPainter,
         onConfirm = { selection ->

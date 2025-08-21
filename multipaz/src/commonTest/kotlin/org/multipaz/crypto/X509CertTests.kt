@@ -1,5 +1,6 @@
 package org.multipaz.crypto
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.asn1.ASN1
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.OID
@@ -10,9 +11,11 @@ import kotlin.time.Instant
 import org.multipaz.testUtilSetupCryptoProvider
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 
 class X509CertTests {
@@ -230,6 +233,39 @@ class X509CertTests {
             )),
             ASN1.decode("03020106".fromHex())
         )
+    }
+
+    @Test
+    fun testExtensions() {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val now = Clock.System.now()
+
+        val extData = byteArrayOf(1, 2, 3)
+
+        val cert = buildX509Cert(
+            publicKey = key.publicKey,
+            signingKey = key,
+            signatureAlgorithm = key.curve.defaultSigningAlgorithmFullySpecified,
+            serialNumber = ASN1Integer(1L),
+            subject = X500Name.fromName("CN=Foo"),
+            issuer = X500Name.fromName("CN=Foo"),
+            validFrom = now - 1.days,
+            validUntil = now + 1.days,
+        ) {
+            addExtension("1.2.3", false, extData)
+            addExtension(X509Extension("1.2.4", true, ByteString(extData)))
+        }
+        assertEquals(2, cert.extensions.size)
+
+        assertEquals("1.2.3", cert.extensions[0].oid)
+        assertEquals(false, cert.extensions[0].isCritical)
+        assertEquals(ByteString(extData), cert.extensions[0].data)
+        assertContentEquals(extData, cert.getExtensionValue("1.2.3"))
+
+        assertEquals("1.2.4", cert.extensions[1].oid)
+        assertEquals(true, cert.extensions[1].isCritical)
+        assertEquals(ByteString(extData), cert.extensions[1].data)
+        assertContentEquals(extData, cert.getExtensionValue("1.2.4"))
     }
 
 }

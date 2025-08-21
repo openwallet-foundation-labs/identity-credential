@@ -2,7 +2,7 @@ package org.multipaz.certext
 
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.DataItem
-import org.multipaz.cbor.annotation.CborSerializable
+import org.multipaz.cbor.annotation.CborSerializationImplemented
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.securearea.cloud.CloudUserAuthType
 
@@ -10,8 +10,9 @@ import org.multipaz.securearea.cloud.CloudUserAuthType
  * A key attestation for a key that exists in [org.multipaz.securearea.cloud.CloudSecureArea]
  * which can be included in [MultipazExtension] in the certificate for the key being attested to.
  *
+ * The CDDL is defined as:
  * ```
- * MultipazKeyAttestation = {
+ * CloudKeyAttestation = {
  *   "challenge" : bstr,
  *   "passphrase": bool,
  *   "userAuthentication: CloudUserAuthentication
@@ -33,7 +34,7 @@ import org.multipaz.securearea.cloud.CloudUserAuthType
  * @property passphrase whether a passphrase is required to use the key.
  * @property userAuthentication the allowed ways to authenticate.
  */
-@CborSerializable(schemaHash = "jdsToUmJqDZ_sgJi0U5IDD1-PQlDUWfA1VEPyFYO3PE")
+@CborSerializationImplemented(schemaId = "jdsToUmJqDZ_sgJi0U5IDD1-PQlDUWfA1VEPyFYO3PE")
 data class CloudKeyAttestation(
     val challenge: ByteString,
     val passphrase: Boolean,

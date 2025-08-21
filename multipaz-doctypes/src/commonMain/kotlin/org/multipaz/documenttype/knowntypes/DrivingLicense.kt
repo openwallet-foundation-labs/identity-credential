@@ -27,6 +27,7 @@ import org.multipaz.documenttype.IntegerOption
 import org.multipaz.documenttype.StringOption
 import org.multipaz.util.fromBase64Url
 import kotlinx.datetime.LocalDate
+import org.multipaz.cbor.Simple
 import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 
@@ -495,7 +496,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.DIRECTIONS_CAR,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.AAMVA_NAME_SUFFIX),
@@ -505,7 +506,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -535,7 +536,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.MILITARY_TECH,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(
@@ -552,7 +553,7 @@ object DrivingLicense {
                 true,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(
@@ -569,7 +570,7 @@ object DrivingLicense {
                 true,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -579,7 +580,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -589,7 +590,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.AAMVA_NAME_SUFFIX),
@@ -599,7 +600,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -675,7 +676,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.STARS,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -711,7 +712,7 @@ object DrivingLicense {
                 true,
                 AAMVA_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -734,7 +735,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.FACE,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -744,7 +745,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.FINGERPRINT,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -754,7 +755,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.SIGNATURE,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -764,7 +765,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.EYE_TRACKING,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -774,7 +775,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.STARS,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,
@@ -784,7 +785,7 @@ object DrivingLicense {
                 true,
                 AAMVA_NAMESPACE,
                 Icon.NUMBERS,
-                null
+                Simple.NULL
             )
             .addSampleRequest(
                 id = "us-transportation",

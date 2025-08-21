@@ -19,6 +19,7 @@ import org.multipaz.document.Document
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.Requester
+import org.multipaz.trustmanagement.TrustMetadata
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.seconds
 
@@ -344,7 +345,8 @@ class PresentmentModel {
             credentialPresentmentData = credentialPresentmentData,
             preselectedDocuments = preselectedDocuments,
             requester = requester,
-            trustPoint = trustPoint
+            trustPoint = trustPoint,
+            dynamicMetadataResolver = _source!!.dynamicMetadataResolver
         )
         _state.value = State.WAITING_FOR_CONSENT
         val ret = suspendCancellableCoroutine { continuation ->
@@ -367,7 +369,8 @@ class PresentmentModel {
         val credentialPresentmentData: CredentialPresentmentData,
         val preselectedDocuments: List<Document>,
         val requester: Requester,
-        val trustPoint: TrustPoint?
+        val trustPoint: TrustPoint?,
+        val dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { chain -> null },
     )
 
     private var _consentData: ConsentData? = null

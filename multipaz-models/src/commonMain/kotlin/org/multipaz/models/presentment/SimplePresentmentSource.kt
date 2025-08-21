@@ -4,6 +4,7 @@ import kotlin.time.Clock
 import org.multipaz.credential.Credential
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X509Cert
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -14,8 +15,10 @@ import org.multipaz.request.MdocRequest
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Request
 import org.multipaz.request.RequestedClaim
+import org.multipaz.request.Requester
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.trustmanagement.TrustMetadata
 
 
 private data class CredentialForPresentment(
@@ -31,6 +34,8 @@ private data class CredentialForPresentment(
  * @property readerTrustManager the [TrustManager] used to determine if a reader is trusted.
  * @property zkSystemRepository the [ZkSystemRepository] to use or `null`.
  * @property skipConsentPrompt set to `true` to not show a consent dialog.
+ * @property dynamicMetadataResolver a function which can be used to calculate [TrustMetadata] on a
+ *   per-request basis, which may used in credential prompts.
  * @property preferSignatureToKeyAgreement whether to use Key Agreement when possible (ISO mdoc only).
  * @property domainMdocSignature the domain to use for [MdocCredential] instances using mdoc ECDSA authentication or `null`.
  * @property domainMdocKeyAgreement the domain to use for [MdocCredential] instances using mdoc MAC authentication or `null`.
@@ -43,6 +48,7 @@ class SimplePresentmentSource(
     override val readerTrustManager: TrustManager,
     override val zkSystemRepository: ZkSystemRepository? = null,
     override val skipConsentPrompt: Boolean = false,
+    override val dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { requester -> null },
     val preferSignatureToKeyAgreement: Boolean = true,
     val domainMdocSignature: String? = null,
     val domainMdocKeyAgreement: String? = null,
