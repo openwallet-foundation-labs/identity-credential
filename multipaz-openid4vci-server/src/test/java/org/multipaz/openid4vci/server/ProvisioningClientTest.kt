@@ -13,6 +13,7 @@ import io.ktor.http.takeFrom
 import io.ktor.server.testing.testApplication
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
@@ -21,6 +22,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 import org.multipaz.asn1.OID
 import org.multipaz.crypto.Algorithm
@@ -55,6 +57,16 @@ import kotlin.time.Duration.Companion.seconds
  * Openid4Vci client-server integration test.
  */
 class ProvisioningClientTest {
+    lateinit var secureAreaProvider:SecureAreaProvider<SecureArea>
+
+    @Before
+    fun setup() {
+        val storage = EphemeralStorage()
+        secureAreaProvider = SecureAreaProvider<SecureArea>(Dispatchers.Default) {
+            SoftwareSecureArea.create(storage)
+        }
+    }
+
     @Test
     fun basic() = testApplication {
         val serverArgs = arrayOf(
@@ -69,7 +81,10 @@ class ProvisioningClientTest {
         }
         val env = TestBackendEnvironment(httpClient)
         withContext(env) {
-            val provisioningClient = OpenID4VCI.createClientFromOffer(OFFER, testClientPreferences)
+            val provisioningClient = OpenID4VCI.createClientFromOffer(
+                offerUri = OFFER,
+                clientPreferences = testClientPreferences
+            )
             val challenges = provisioningClient.getAuthorizationChallenges()
             val oauthChallenge = (challenges.first() as AuthorizationChallenge.OAuth)
             val authorizationUrl = Url(oauthChallenge.url)
@@ -252,10 +267,9 @@ class ProvisioningClientTest {
                 ?: throw IllegalStateException("No common name (CN) in certificate's subject")
     }
 
-    class TestBackendEnvironment(val httpClient: HttpClient): BackendEnvironment {
+    inner class TestBackendEnvironment(val httpClient: HttpClient): BackendEnvironment {
         override fun <T : Any> getInterface(clazz: KClass<T>): T {
             return clazz.cast(when (clazz) {
-                Storage::class -> storage
                 HttpClient::class -> httpClient
                 OpenID4VCIBackend::class -> TestBackend
                 SecureAreaProvider::class -> secureAreaProvider
@@ -266,12 +280,6 @@ class ProvisioningClientTest {
 
     companion object {
         const val OFFER = "openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Flocalhost%22%2C%22credential_configuration_ids%22%3A%5B%22mDL%22%5D%2C%22grants%22%3A%7B%22authorization_code%22%3A%7B%7D%7D%7D"
-
-        val storage = EphemeralStorage()
-
-        val secureAreaProvider = SecureAreaProvider<SecureArea>(Dispatchers.Default) {
-            SoftwareSecureArea.create(storage)
-        }
 
         val testClientPreferences = OpenID4VCIClientPreferences(
             clientId = "urn:uuid:418745b8-78a3-4810-88df-7898aff3ffb4",

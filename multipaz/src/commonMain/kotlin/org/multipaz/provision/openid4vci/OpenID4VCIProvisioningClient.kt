@@ -13,8 +13,10 @@ import io.ktor.http.Url
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.parameters
-import io.ktor.http.protocolWithAuthority
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.buildByteString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -35,11 +37,14 @@ import org.multipaz.provision.KeyBindingType
 import org.multipaz.provision.ProvisioningClient
 import org.multipaz.provision.ProvisioningMetadata
 import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.storage.Storage
+import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -47,7 +52,7 @@ internal class OpenID4VCIProvisioningClient(
     val clientPreferences: OpenID4VCIClientPreferences,
     val credentialOffer: CredentialOffer,
     val issuerConfiguration: IssuerConfiguration,
-    val authorizationConfiguration: AuthorizationConfiguration,
+    val authorizationConfiguration: AuthorizationConfiguration
 ): ProvisioningClient {
     var pkceCodeVerifier: String? = null
     var token: String? = null
@@ -56,6 +61,7 @@ internal class OpenID4VCIProvisioningClient(
     var authorizationDPoPNonce: String? = null
     var issuerDPoPNonce: String? = null
     var keyChallenge: String? = null
+    var redirectState: String? = null
 
     override suspend fun getMetadata(): ProvisioningMetadata {
         val fullMetadata = issuerConfiguration.provisioningMetadata
@@ -79,7 +85,8 @@ internal class OpenID4VCIProvisioningClient(
                 append(clientPreferences.clientId.encodeURLParameter())
                 append("&request_uri=")
                 append(requestUri.encodeURLParameter())
-            }
+            },
+            state = redirectState!!
         ))
     }
 
@@ -92,7 +99,7 @@ internal class OpenID4VCIProvisioningClient(
     override suspend fun getKeyBindingChallenge(): String {
         val credentialConfiguration =
             issuerConfiguration.provisioningMetadata.credentials[credentialOffer.configurationId]!!
-        if (credentialConfiguration.keyProofType == KeyBindingType.Keyless) {
+        if (credentialConfiguration.keyBindingType == KeyBindingType.Keyless) {
             throw IllegalStateException("getKeyBindingChallenge must not be called for keyless credentials")
         }
         // obtain c_nonce (serves as challenge for the device-bound key)
@@ -213,7 +220,6 @@ internal class OpenID4VCIProvisioningClient(
 
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
 
-        val redirectUrl = Url(clientPreferences.redirectUrl)
         var dpopNonce: String? = null
         var response: HttpResponse
 
@@ -238,6 +244,8 @@ internal class OpenID4VCIProvisioningClient(
             } else {
                 null
             }
+            val redirectState = createUniqueStateValue()
+            this.redirectState = redirectState
             response = httpClient.submitForm(
                 url = authorizationConfiguration.pushedAuthorizationRequestEndpoint,
                 formParameters = parameters {
@@ -245,6 +253,11 @@ internal class OpenID4VCIProvisioningClient(
                         .credentialConfigurations[credentialOffer.configurationId]!!.scope
                     if (scope != null) {
                         append("scope", scope)
+                    } else {
+                        // TODO: this does not seem right, the spec says that authorization_details
+                        //  should be used instead, but this seems to be needed for the current
+                        //  conformance test suite.
+                        append("scope", "default")
                     }
                     if (credentialOffer is CredentialOffer.AuthorizationCode) {
                         val issuerState = credentialOffer.issuerState
@@ -261,13 +274,10 @@ internal class OpenID4VCIProvisioningClient(
                     }
                     append("response_type", "code")
                     append("code_challenge_method", "S256")
-                    val baseRedirectUrl = redirectUrl.protocolWithAuthority + redirectUrl.encodedPath
-                    append("redirect_uri", baseRedirectUrl)
+                    append("redirect_uri", clientPreferences.redirectUrl)
                     append("code_challenge", codeChallenge)
                     append("client_id", clientPreferences.clientId)
-                    for (parameter in redirectUrl.parameters.names()) {
-                        append(parameter, redirectUrl.parameters[parameter]!!)
-                    }
+                    append("state", redirectState)
                 }
             ) {
                 headers {
@@ -298,7 +308,13 @@ internal class OpenID4VCIProvisioningClient(
     }
 
     private suspend fun processOauthResponse(parameterizedRedirectUrl: String) {
-        val code = Url(parameterizedRedirectUrl).parameters["code"]
+        val navigatedUrl = Url(parameterizedRedirectUrl)
+        if (navigatedUrl.parameters["state"] != redirectState) {
+            throw IllegalStateException("Openid4Vci: state parameter value mismatch")
+        }
+        releaseStateValue(redirectState!!)
+        redirectState = null
+        val code = navigatedUrl.parameters["code"]
             ?: throw IllegalStateException("Openid4Vci: no code in authorization response")
         obtainToken(authorizationCode = code, codeVerifier = pkceCodeVerifier!!)
         pkceCodeVerifier = null
@@ -367,6 +383,7 @@ internal class OpenID4VCIProvisioningClient(
                         )
                     }
                     append("client_id", clientPreferences.clientId)
+                    append("redirect_uri", clientPreferences.redirectUrl)
                 }
             ) {
                 headers {
@@ -425,11 +442,31 @@ internal class OpenID4VCIProvisioningClient(
     }
 
     companion object Companion : JsonParsing("Openid4Vci") {
-        const val TAG = "Openid4VciProvisioningClient"
+        private const val TAG = "Openid4VciProvisioningClient"
+
+        private val stateLock = Mutex()
+        private val states = mutableSetOf<String>()
+
+        private suspend fun createUniqueStateValue(): String {
+            while (true) {
+                val state = Random.Default.nextBytes(15).toBase64Url()
+                stateLock.withLock {
+                    if (states.add(state)) {
+                        return state
+                    }
+                }
+            }
+        }
+
+        private suspend fun releaseStateValue(state: String) {
+            stateLock.withLock {
+                states.remove(state)
+            }
+        }
 
         suspend fun createFromOffer(
             offerUri: String,
-            clientPreferences: OpenID4VCIClientPreferences
+            clientPreferences: OpenID4VCIClientPreferences,
         ): OpenID4VCIProvisioningClient {
             val credentialOffer = CredentialOffer.parseCredentialOffer(offerUri)
             val issuerConfig = IssuerConfiguration.get(
@@ -446,7 +483,7 @@ internal class OpenID4VCIProvisioningClient(
                 clientPreferences = clientPreferences,
                 credentialOffer = credentialOffer,
                 issuerConfiguration = issuerConfig,
-                authorizationConfiguration = authorizationConfiguration
+                authorizationConfiguration = authorizationConfiguration,
             )
         }
     }

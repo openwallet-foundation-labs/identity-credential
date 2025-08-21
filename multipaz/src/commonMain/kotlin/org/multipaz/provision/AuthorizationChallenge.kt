@@ -21,6 +21,8 @@ sealed class AuthorizationChallenge {
     data class OAuth(
         override val id: String,
         /** Authorization page url. */
-        val url: String
+        val url: String,
+        /** State url parameter that will be used in redirect url. */
+        val state: String
     ): AuthorizationChallenge()
 }

@@ -49,7 +49,7 @@ interface ProvisioningClient {
      * For the key-bound credentials, the issuing server typically requires freshly-minted
      * keys to be used. Freshness is typically guaranteed by signing some type of issuer-supplied
      * challenge by either the key itself, or by some higher-level (attestation) keys. Exact details
-     * are determined by [CredentialMetadata.keyProofType].
+     * are determined by [CredentialMetadata.keyBindingType].
      *
      * This method must not be called for keyless credentials.
      */
@@ -59,7 +59,7 @@ interface ProvisioningClient {
      * Obtains credentials using key binding information.
      *
      * [keyInfo] key binding information, required type is determined by
-     * [CredentialMetadata.keyProofType].
+     * [CredentialMetadata.keyBindingType].
      */
     suspend fun obtainCredentials(keyInfo: KeyBindingInfo): List<ByteString>
 }

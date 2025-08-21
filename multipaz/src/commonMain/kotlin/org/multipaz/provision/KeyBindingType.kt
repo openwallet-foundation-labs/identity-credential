@@ -18,7 +18,9 @@ sealed class KeyBindingType {
      * [KeyBindingInfo.OpenidProofOfPossession].
      */
     data class OpenidProofOfPossession(
-        val algorithm: Algorithm
+        val algorithm: Algorithm,
+        val clientId: String,
+        val aud: String
     ): KeyBindingType()
 
     /**

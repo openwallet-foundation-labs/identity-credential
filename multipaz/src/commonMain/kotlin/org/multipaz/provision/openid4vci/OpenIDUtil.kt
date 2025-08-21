@@ -1,10 +1,10 @@
 package org.multipaz.provision.openid4vci
 
 import io.ktor.http.Url
+import io.ktor.http.authority
 import io.ktor.http.protocolWithAuthority
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -12,11 +12,9 @@ import kotlinx.serialization.json.put
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.backend.getTable
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInfo
 import org.multipaz.securearea.SecureAreaProvider
-import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
@@ -94,28 +92,23 @@ internal object OpenIDUtil {
         nonce: String? = null
     ): WalletAttestation {
         val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        val targetServer = Url(endpoint).protocolWithAuthority
-        val table = BackendEnvironment.getTable(walletAttestationKeysTableSpec)
-        val existingKeyInfo = table.get(targetServer)?.let {
-            try {
-                secureArea.getKeyInfo(it.decodeToString())
-            } catch (err: IllegalArgumentException) {
-                table.delete(targetServer)
-                Logger.e(TAG, "Client attestation key not found, creating a new one", err)
-                null
-            }
-        }
-        val keyInfo = if (existingKeyInfo != null) {
-            existingKeyInfo
-        } else {
-            val newKey = secureArea.createKey(
-                alias = null,
+        // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-01
+        // Section 6.1. "Client Instance Tracking Across Authorization Servers" recommends using
+        // different keys for different servers. Keys are stored in the secure area using alias in
+        // the following format: server address prefixed by "openid-wallet-attestation:".
+        val endpointUrl = Url(endpoint)
+        val targetServerAddress = endpointUrl.authority
+        val keyAlias = "openid-wallet-attestation:$targetServerAddress"
+        val keyInfo = try {
+            secureArea.getKeyInfo(keyAlias)
+        } catch (err: IllegalArgumentException) {
+            Logger.e(TAG, "Client attestation key not found, creating a new one", err)
+            secureArea.createKey(
+                alias = keyAlias,
                 createKeySettings = CreateKeySettings(
-                    nonce = targetServer.encodeToByteString()
+                    nonce = targetServerAddress.encodeToByteString()
                 )
             )
-            table.insert(targetServer, newKey.alias.encodeToByteString())
-            newKey
         }
         val backend = BackendEnvironment.getInterface(OpenID4VCIBackend::class)!!
         val clientAttestation = backend.createJwtWalletAttestation(keyInfo.attestation)
@@ -127,7 +120,7 @@ internal object OpenIDUtil {
         }.toString().encodeToByteArray().toBase64Url()
         val body = buildJsonObject {
             put("iss", clientId)
-            put("aud", targetServer)
+            put("aud", endpointUrl.protocolWithAuthority)
             put("iat", Clock.System.now().epochSeconds)
             put("jti", Random.Default.nextBytes(15).toBase64Url())
             if (nonce != null) {
@@ -142,10 +135,4 @@ internal object OpenIDUtil {
     }
 
     class WalletAttestation(val attestationJwt: String, val attestationPopJwt: String)
-
-    private val walletAttestationKeysTableSpec = StorageTableSpec(
-        name = "WalletAttestationKeys",
-        supportPartitions = false,
-        supportExpiration = false
-    )
 }

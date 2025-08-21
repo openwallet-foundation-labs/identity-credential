@@ -9,7 +9,7 @@ data class CredentialMetadata(
     /** Format of this credential */
     val format: CredentialFormat,
     /** Determines how the key to which the credential is bound should be provided to the issuer */
-    val keyProofType: KeyBindingType,
+    val keyBindingType: KeyBindingType,
     /** Maximum number of credentials that can be requested in a single request */
     val maxBatchSize: Int
 )
