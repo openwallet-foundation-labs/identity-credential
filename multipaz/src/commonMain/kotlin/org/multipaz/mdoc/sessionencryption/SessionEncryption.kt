@@ -217,13 +217,15 @@ class SessionEncryption(
         /**
          * Gets the ephemeral reader key in a `SessionEstablishment` message.
          *
-         * @param the bytes of a `SessionEstablishment` message.
-         * @return the reader key, as a [EcPublicKey].
+         * @param sessionEstablishmentMessage the bytes of a `SessionEstablishment` message.
+         * @return the reader key, as an [EReaderKey], which contains both the decoded
+         * public key and original encoded bytes.
          */
-        fun getEReaderKey(sessionEstablishmentMessage: ByteArray): EcPublicKey {
+        fun getEReaderKey(sessionEstablishmentMessage: ByteArray): EReaderKey {
             val map = Cbor.decode(sessionEstablishmentMessage)
-            val encodedEReaderKey = map["eReaderKey"].asTagged.asBstr
-            return Cbor.decode(encodedEReaderKey).asCoseKey.ecPublicKey
+            val encodedCoseKey = map["eReaderKey"].asTagged.asBstr
+            val publicKey = Cbor.decode(encodedCoseKey).asCoseKey.ecPublicKey
+            return EReaderKey(publicKey, encodedCoseKey)
         }
     }
 }
