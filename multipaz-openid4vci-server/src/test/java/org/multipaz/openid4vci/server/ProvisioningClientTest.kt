@@ -13,7 +13,6 @@ import io.ktor.http.takeFrom
 import io.ktor.server.testing.testApplication
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
@@ -29,12 +28,12 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X509Cert
-import org.multipaz.provision.AuthorizationChallenge
-import org.multipaz.provision.AuthorizationResponse
-import org.multipaz.provision.KeyBindingInfo
-import org.multipaz.provision.openid4vci.OpenID4VCI
-import org.multipaz.provision.openid4vci.OpenID4VCIBackend
-import org.multipaz.provision.openid4vci.OpenID4VCIClientPreferences
+import org.multipaz.provisioning.AuthorizationChallenge
+import org.multipaz.provisioning.AuthorizationResponse
+import org.multipaz.provisioning.KeyBindingInfo
+import org.multipaz.provisioning.openid4vci.OpenID4VCI
+import org.multipaz.provisioning.openid4vci.OpenID4VCIBackend
+import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyAttestation
@@ -42,7 +41,6 @@ import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.server.ServerConfiguration
-import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.toBase64Url
 import kotlin.IllegalStateException
