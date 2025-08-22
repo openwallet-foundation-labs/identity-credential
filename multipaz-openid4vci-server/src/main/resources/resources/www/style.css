@@ -1,0 +1,60 @@
+html {
+    background-color: #CFF;
+    height: 100%;
+}
+
+body {
+    max-width: 720px;
+    min-height: 100%;
+    margin: 0px auto;
+    background-color: white;
+}
+
+div#main {
+    padding: 12px;
+}
+
+.qr {
+    display: block;
+    margin-top: 1em;
+    width:200px;
+}
+
+.header {
+    border-bottom: 2px solid black
+}
+
+.issuer_logo {
+    max-height:3em;
+    float: right
+}
+
+.issuer_name {
+}
+
+.credential_list_item {
+    margin-top: 1em;
+}
+
+.credential_list_logo_container {
+    width: 4em;
+    display: inline-block;
+    text-align: end;
+    vertical-align: middle;
+}
+
+.credential_list_logo {
+    height: 1.5em;
+}
+
+.credential_list_name {
+}
+
+.credential_container {
+}
+
+.credential_logo {
+    display: block;
+    max-height: 120px;
+    max-width:200px;
+}

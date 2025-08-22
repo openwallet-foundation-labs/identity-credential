@@ -27,6 +27,7 @@ suspend fun wellKnownOpenidCredentialIssuer(call: ApplicationCall) {
     val baseUrl = configuration.baseUrl
     val name = configuration.getValue("issuer_name") ?: "Multipaz Sample Issuer"
     val locale = configuration.getValue("issuer_locale") ?: "en-US"
+    val byOfferId = CredentialFactory.getRegisteredFactories().byOfferId
     call.respondText(
         text = buildJsonObject {
             put("credential_issuer", baseUrl)
@@ -50,7 +51,7 @@ suspend fun wellKnownOpenidCredentialIssuer(call: ApplicationCall) {
                 put("batch_size", JsonPrimitive(batchSize))
             }
             putJsonObject("credential_configurations_supported") {
-                for (credentialFactory in CredentialFactory.byOfferId.values) {
+                for (credentialFactory in byOfferId.values) {
                     putJsonObject(credentialFactory.offerId) {
                         put("scope", credentialFactory.scope)
                         val format = credentialFactory.format
@@ -87,17 +88,18 @@ suspend fun wellKnownOpenidCredentialIssuer(call: ApplicationCall) {
                             }
                         }
                         putJsonArray("credential_signing_alg_values_supported") {
-                            credentialFactory.credentialSigningAlgorithms.forEach {
-                                add(it)
-                            }
+                            val cert = credentialFactory.signingCertificateChain.certificates.first()
+                            add(cert.signatureAlgorithm.joseAlgorithmIdentifier)
                         }
-                        putJsonArray("display") {
-                            addJsonObject {
-                                put("name", credentialFactory.name)
-                                put("locale", "en-US")
-                                if (credentialFactory.logo != null) {
-                                    putJsonObject("logo") {
-                                        put("uri", "$baseUrl/${credentialFactory.logo}")
+                        putJsonObject("credential_metadata") {
+                            putJsonArray("display") {
+                                addJsonObject {
+                                    put("name", credentialFactory.name)
+                                    put("locale", "en-US")
+                                    if (credentialFactory.logo != null) {
+                                        putJsonObject("logo") {
+                                            put("uri", "$baseUrl/${credentialFactory.logo}")
+                                        }
                                     }
                                 }
                             }

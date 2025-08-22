@@ -78,10 +78,12 @@ suspend fun credential(call: ApplicationCall) {
     }
     state.dpopNonce = null
     IssuanceState.updateIssuanceState(id, state)
+    val byOfferId = CredentialFactory.getRegisteredFactories().byOfferId
+
     val requestString = call.receiveText()
     val json = Json.parseToJsonElement(requestString) as JsonObject
     val format = Openid4VciFormat.fromJson(json)
-    val factory = CredentialFactory.byOfferId.values.find { factory ->
+    val factory = byOfferId.values.find { factory ->
         (format == null || factory.format == format) && factory.scope == state.scope
     }
     if (factory == null) {

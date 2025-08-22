@@ -200,7 +200,8 @@ suspend fun createSession(request: ApplicationRequest, parameters: Parameters): 
         validateClientAttestationPoP(request, clientId, attestationKey)
     }
     val scope = parameters["scope"] ?: ""
-    if (!CredentialFactory.supportedScopes.contains(scope)) {
+    val supportedScopes = CredentialFactory.getRegisteredFactories().supportedScopes
+    if (!supportedScopes.contains(scope)) {
         throw InvalidRequestException("invalid parameter 'scope'")
     }
     if (parameters["response_type"] != "code") {
