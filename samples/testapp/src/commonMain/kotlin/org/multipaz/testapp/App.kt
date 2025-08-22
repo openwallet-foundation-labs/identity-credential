@@ -119,7 +119,7 @@ import org.multipaz.models.presentment.PresentmentSource
 import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.models.provisioning.ProvisioningModel
 import org.multipaz.prompt.PromptModel
-import org.multipaz.provision.Display
+import org.multipaz.provisioning.Display
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.testapp.provisioning.ProvisioningSupport

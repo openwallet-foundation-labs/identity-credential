@@ -19,8 +19,8 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X509Cert
-import org.multipaz.provision.openid4vci.OpenID4VCIBackend
-import org.multipaz.provision.openid4vci.OpenID4VCIClientPreferences
+import org.multipaz.provisioning.openid4vci.OpenID4VCIBackend
+import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
