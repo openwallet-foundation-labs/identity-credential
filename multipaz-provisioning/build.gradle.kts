@@ -35,3 +35,7 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}

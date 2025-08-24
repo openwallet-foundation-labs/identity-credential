@@ -48,3 +48,7 @@ dependencies {
 
 ktor {
 }
+
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}

@@ -66,3 +66,9 @@ tasks["iosX64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["iosArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["iosSimulatorArm64SourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["jvmSourcesJar"].dependsOn("kspCommonMainKotlinMetadata")
+
+tasks["dokkaHtmlPartial"].dependsOn("kspCommonMainKotlinMetadata")
+
+subprojects {
+    apply(plugin = "org.jetbrains.dokka")
+}

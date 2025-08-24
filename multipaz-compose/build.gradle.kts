@@ -167,3 +167,7 @@ publishing {
 }
 
 tasks.named("generateResourceAccessorsForAndroidMain").configure { dependsOn("sourceReleaseJar") }
+
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}

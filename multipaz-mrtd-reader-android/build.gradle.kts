@@ -50,3 +50,7 @@ dependencies {
     implementation(libs.com.google.mlkit.text.recognition)
     implementation(libs.kotlinx.coroutines.guava)
 }
+
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}
