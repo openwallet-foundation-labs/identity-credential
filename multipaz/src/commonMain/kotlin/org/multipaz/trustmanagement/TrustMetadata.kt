@@ -11,9 +11,13 @@ import org.multipaz.cbor.annotation.CborSerializable
  *   example consent or verification dialogs.
  * @param displayIcon an icon suitable to display to the end user in a consent or verification dialog.
  *   PNG format is expected, transparency is supported and square aspect ratio is preferred.
+ * @param displayIconUrl like [displayIcon] but instead an URL to where the icon can be
+ *   retrieved or `null`
  * @param privacyPolicyUrl an URL to the trusted entity's privacy policy or `null`.
- * @param testOnly `true` if this trusted entity is used for testing, `false` if not. Applications may
- *   use this if they support importing test certificates / VICALs and wish to convey in
+ * @param disclaimer a disclaimer about e.g. the trustworthiness of the data that should be shown
+ *   to the user whenever this data is shown, or `null`.
+ * @param testOnly `true` if this trusted entity is used for testing, `false` if not. Applications
+ *   may use this if they support importing test certificates / VICALs and wish to convey in
  *   the user interface that the particular reader or issuer being authenticated is used
  *   only for testing.
  * @param extensions additional metadata which can be used by the application.
@@ -22,7 +26,9 @@ import org.multipaz.cbor.annotation.CborSerializable
 data class TrustMetadata(
     val displayName: String? = null,
     val displayIcon: ByteString? = null,
+    val displayIconUrl: String? = null,
     val privacyPolicyUrl: String? = null,
+    val disclaimer: String? = null,
     val testOnly: Boolean = false,
     val extensions: Map<String, String> = emptyMap()
 ) {

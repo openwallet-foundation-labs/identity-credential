@@ -1,5 +1,7 @@
 package org.multipaz.compose.presentment
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -26,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowDropDownCircle
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
@@ -63,6 +67,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil3.ImageLoader
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.claim.Claim
@@ -101,6 +107,7 @@ import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Requester
+import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Logger
 import org.multipaz.util.generateAllPaths
@@ -206,6 +213,9 @@ private fun setMatch(
  * @param preselectedDocuments the list of documents the user may have preselected earlier (for
  *   example an OS-provided credential picker like Android's Credential Manager) or the empty list
  *   if the user didn't preselect.
+ * @param imageLoader a [ImageLoader].
+ * @param dynamicMetadataResolver a function which can be used to calculate [TrustMetadata] on a
+ *   per-request basis.
  * @param appName the name of the application or `null` to not show the name.
  * @param appIconPainter the icon for the application or `null to not show the icon.
  * @param onConfirm called when the user presses the "Share" button, returns the user's selection.
@@ -220,6 +230,8 @@ fun CredentialPresentmentModalBottomSheet(
     trustPoint: TrustPoint?,
     credentialPresentmentData: CredentialPresentmentData,
     preselectedDocuments: List<Document>,
+    imageLoader: ImageLoader,
+    dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { chain -> null },
     appName: String? = null,
     appIconPainter: Painter? = null,
     onConfirm: (selection: CredentialPresentmentSelection) -> Unit,
@@ -276,12 +288,21 @@ fun CredentialPresentmentModalBottomSheet(
                 }
             }
 
-            NavHost(navController = navController, startDestination = "main") {
+            NavHost(
+                navController = navController,
+                startDestination = "main",
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { ExitTransition.None }
+            ) {
                 composable("main") {
                     ConsentPage(
                         requester = requester,
                         trustPoint = trustPoint,
+                        dynamicMetadataResolver = dynamicMetadataResolver,
                         appInfo = appInfo,
+                        imageLoader = imageLoader,
                         combinations = combinations,
                         matchSelectionLists = matchSelectionLists,
                         onChooseMatch = { combinationNum, elementNum ->
@@ -379,12 +400,21 @@ private fun ChooseMatchPage(
     }
 }
 
+private data class RequesterDisplayData(
+    val name: String? = null,
+    val icon: ImageBitmap? = null,
+    val iconUrl: String? = null,
+    val disclaimer: String? = null
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ConsentPage(
     requester: Requester,
     trustPoint: TrustPoint?,
+    dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { chain -> null },
     appInfo: ApplicationInfo?,
+    imageLoader: ImageLoader,
     combinations: List<Combination>,
     matchSelectionLists: MutableState<List<List<Int>>>,
     onChooseMatch: (combinationNum: Int, elementNum: Int) -> Unit,
@@ -396,11 +426,33 @@ private fun ConsentPage(
 ) {
     val scrollState = rememberScrollState()
 
+    val requesterDisplayData = if (trustPoint != null) {
+        val metadata = dynamicMetadataResolver(requester) ?: trustPoint.metadata
+        RequesterDisplayData(
+            name = metadata.displayName,
+            icon = metadata.displayIcon?.let { remember { it.toByteArray().decodeToImageBitmap() } },
+            iconUrl = metadata.displayIconUrl,
+            disclaimer = metadata.disclaimer,
+        )
+    } else if (requester.websiteOrigin != null) {
+        RequesterDisplayData(
+            name = requester.websiteOrigin,
+        )
+    } else if (appInfo != null) {
+        RequesterDisplayData(
+            name = appInfo.name,
+            icon = appInfo.icon
+        )
+    } else {
+        RequesterDisplayData()
+    }
+
     Column {
         RelyingPartySection(
             requester = requester,
+            requesterDisplayData = requesterDisplayData,
             trustPoint = trustPoint,
-            appInfo = appInfo,
+            imageLoader = imageLoader,
             onShowCertChain = {}
         )
 
@@ -424,8 +476,9 @@ private fun ConsentPage(
                             combinationNum = page,
                             matchSelectionLists = matchSelectionLists,
                             requester = requester,
-                            appInfo = appInfo,
+                            requesterDisplayData = requesterDisplayData,
                             trustPoint = trustPoint,
+                            appInfo = appInfo,
                             onChooseMatch = onChooseMatch
                         )
                     }
@@ -485,8 +538,9 @@ private fun CredentialSetViewer(
     combinationNum: Int,
     matchSelectionLists: MutableState<List<List<Int>>>,
     requester: Requester,
-    appInfo: ApplicationInfo?,
+    requesterDisplayData: RequesterDisplayData,
     trustPoint: TrustPoint?,
+    appInfo: ApplicationInfo?,
     onChooseMatch: (combinationNum: Int, elementNum: Int) -> Unit
 ) {
 
@@ -501,18 +555,28 @@ private fun CredentialSetViewer(
                 onOptionsButtonClicked = { onChooseMatch(combinationNum, elementNum) }
             )
         }
-        val notStoredClaims = combinationElement.matches[0].claims.mapNotNull { (requestedClaim, claim) ->
-            if (requestedClaim is MdocRequestedClaim && requestedClaim.intentToRetain) { null } else { claim }
-        }
-        val storedClaims = combinationElement.matches[0].claims.mapNotNull { (requestedClaim, claim) ->
-            if (requestedClaim is MdocRequestedClaim && requestedClaim.intentToRetain) { claim } else { null }
-        }
+        val notStoredClaims =
+            combinationElement.matches[0].claims.mapNotNull { (requestedClaim, claim) ->
+                if (requestedClaim is MdocRequestedClaim && requestedClaim.intentToRetain) {
+                    null
+                } else {
+                    claim
+                }
+            }
+        val storedClaims =
+            combinationElement.matches[0].claims.mapNotNull { (requestedClaim, claim) ->
+                if (requestedClaim is MdocRequestedClaim && requestedClaim.intentToRetain) {
+                    claim
+                } else {
+                    null
+                }
+            }
 
         val sharedWithText =
-            if (trustPoint?.metadata?.displayName != null) {
+            if (requesterDisplayData.name != null) {
                 stringResource(
                     Res.string.credential_presentment_share_with_known_requester,
-                    trustPoint.metadata.displayName!!
+                    requesterDisplayData.name
                 )
             } else if (requester.websiteOrigin != null) {
                 stringResource(
@@ -528,10 +592,10 @@ private fun CredentialSetViewer(
                 stringResource(Res.string.credential_presentment_share_with_unknown_requester)
             }
         val sharedWithAndStoredByText =
-            if (trustPoint?.metadata?.displayName != null) {
+            if (requesterDisplayData.name != null) {
                 stringResource(
                     Res.string.credential_presentment_share_and_stored_by_known_requester,
-                    trustPoint.metadata.displayName!!
+                    requesterDisplayData.name
                 )
             } else if (requester.websiteOrigin != null) {
                 stringResource(
@@ -568,6 +632,24 @@ private fun CredentialSetViewer(
             requester = requester,
             trustPoint = trustPoint
         )
+    }
+
+    if (requesterDisplayData.disclaimer != null) {
+        entries.add {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    modifier = Modifier.padding(end = 12.dp),
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                )
+                Text(
+                    text = requesterDisplayData.disclaimer,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 
     EntryList(
@@ -661,10 +743,19 @@ private fun RelyingPartyTrailer(
             )
             text = "$text. $privacyPolicyText"
         }
-        Text(
-            text = AnnotatedString.Companion.fromMarkdown(markdownString = text),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                modifier = Modifier.padding(end = 12.dp),
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+            )
+            Text(
+                text = AnnotatedString.Companion.fromMarkdown(markdownString = text),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     } else {
         val text = if (requester.websiteOrigin != null) {
             stringResource(Res.string.credential_presentment_warning_verifier_not_in_trust_list_website)
@@ -681,7 +772,7 @@ private fun RelyingPartyTrailer(
             Icon(
                 modifier = Modifier.padding(end = 12.dp),
                 imageVector = Icons.Outlined.Warning,
-                contentDescription = "An error icon",
+                contentDescription = null,
             )
             Text(
                 text = text,
@@ -899,37 +990,19 @@ private fun AnnotatedString.Companion.fromMarkdown(
 @Composable
 private fun RelyingPartySection(
     requester: Requester,
+    requesterDisplayData: RequesterDisplayData,
     trustPoint: TrustPoint?,
-    appInfo: ApplicationInfo?,
+    imageLoader: ImageLoader,
     onShowCertChain: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val (requesterName, requesterBitmap) = if (trustPoint != null) {
-            Pair(
-                trustPoint.metadata.displayName,
-                trustPoint.metadata.displayIcon?.let { remember { it.toByteArray().decodeToImageBitmap() } }
-            )
-        } else if (requester.websiteOrigin != null) {
-            Pair(
-                requester.websiteOrigin!!,
-                null
-            )
-        } else if (appInfo != null) {
-            Pair(
-                appInfo.name,
-                appInfo.icon
-            )
-        } else {
-            Pair(null, null)
-        }
-
-        val headlineText = if (requesterName != null) {
+        val headlineText = if (requesterDisplayData.name != null) {
             stringResource(
                 Res.string.credential_presentment_headline_share_with_known_requester,
-                requesterName
+                requesterDisplayData.name
             )
         } else {
             if (trustPoint != null && requester.certChain != null) {
@@ -947,14 +1020,27 @@ private fun RelyingPartySection(
             }
         }
 
-        if (requesterBitmap != null) {
+        if (requesterDisplayData.icon != null) {
             Icon(
-                modifier = Modifier.size(80.dp).padding(bottom = 16.dp)
+                modifier = Modifier.size(80.dp)
                     .clickable(enabled = requester.certChain != null) { onShowCertChain() },
-                bitmap = requesterBitmap,
+                bitmap = requesterDisplayData.icon,
                 contentDescription = stringResource(Res.string.credential_presentment_verifier_icon_description),
                 tint = Color.Unspecified,
             )
+            Spacer(modifier = Modifier.height(16.dp))
+        } else if (requesterDisplayData.iconUrl != null) {
+            AsyncImage(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = requester.certChain != null) { onShowCertChain() },
+                model = requesterDisplayData.iconUrl,
+                imageLoader = imageLoader,
+                contentScale = ContentScale.Crop,
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
         Text(
             modifier = Modifier

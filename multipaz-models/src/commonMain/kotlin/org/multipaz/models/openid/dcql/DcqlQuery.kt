@@ -133,7 +133,7 @@ data class DcqlQuery(
                             keyAgreementPossible = keyAgreementPossible
                         )
                         if (credential == null) {
-                            throw DcqlCredentialQueryException("Error selecting credential")
+                            throw DcqlCredentialQueryException("Error selecting credential with id ${credentialQuery.id}")
                         }
                         // All claims matched, we have a candidate
                         matches.add(
@@ -298,15 +298,15 @@ data class DcqlQuery(
          *
          * Reference: OpenID4VP 1.0 Section 6.
          *
-         * @param json a [JsonObject] with the DCQL.
+         * @param dcql a [JsonObject] with the DCQL.
          * @return a [DcqlQuery] object
          * @throws IllegalArgumentException if the given DCQL isn't well-formed.
          */
-        fun fromJson(json: JsonObject): DcqlQuery {
+        fun fromJson(dcql: JsonObject): DcqlQuery {
             val dcqlCredentialQueries = mutableListOf<DcqlCredentialQuery>()
             val dcqlCredentialSetQueries = mutableListOf<DcqlCredentialSetQuery>()
 
-            val credentials = json["credentials"]!!.jsonArray
+            val credentials = dcql["credentials"]!!.jsonArray
             for (credential in credentials) {
                 val c = credential.jsonObject
                 val id = c["id"]!!.jsonPrimitive.content
@@ -390,7 +390,7 @@ data class DcqlQuery(
                 )
             }
 
-            val credentialSets = json["credential_sets"]?.jsonArray
+            val credentialSets = dcql["credential_sets"]?.jsonArray
             if (credentialSets != null) {
                 for (credentialSet in credentialSets) {
                     val s = credentialSet.jsonObject

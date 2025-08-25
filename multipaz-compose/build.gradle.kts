@@ -79,6 +79,8 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.io.core)
+                implementation(libs.coil.core)
+                implementation(libs.coil.compose.core)
             }
         }
         val commonTest by getting {

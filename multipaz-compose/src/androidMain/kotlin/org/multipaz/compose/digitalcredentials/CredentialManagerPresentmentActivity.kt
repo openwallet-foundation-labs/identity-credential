@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.core.graphics.drawable.toDrawable
 import androidx.credentials.DigitalCredential
 import androidx.credentials.ExperimentalDigitalCredentialApi
@@ -16,6 +17,9 @@ import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.provider.ProviderGetCredentialRequest
 import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,21 +57,15 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
     }
 
     /**
-     * Must be implemented by the application to specify the application theme to use.
-     *
-     * @return the theme to use.
-     */
-    @Composable
-    abstract fun ApplicationTheme(content: @Composable () -> Unit)
-
-    /**
      * Settings provided by the application for specifying what to present.
      *
      * @property appName the application name.
      * @property appIcon the application icon.
      * @property promptModel the [PromptModel] to use.
+     * @property applicationTheme the theme to use.
      * @property documentTypeRepository a [DocumentTypeRepository]
      * @property presentmentSource the [PresentmentSource] to use as the source of truth for what to present.
+     * @property imageLoader the [ImageLoader] to use.
      * @property privilegedAllowList a string containing JSON with an allow-list of privileged browsers/apps
      *   that the applications trusts to provide the correct origin. For the format of the JSON see
      *   [CallingAppInfo.getOrigin()](https://developer.android.com/reference/androidx/credentials/provider/CallingAppInfo#getOrigin(kotlin.String))
@@ -78,8 +76,10 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
         val appName: String,
         val appIcon: DrawableResource,
         val promptModel: PromptModel,
+        val applicationTheme: @Composable (content: @Composable () -> Unit) -> Unit,
         val documentTypeRepository: DocumentTypeRepository,
         val presentmentSource: PresentmentSource,
+        val imageLoader: ImageLoader,
         val privilegedAllowList: String
     )
 
@@ -177,7 +177,7 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
         }
 
         setContent {
-            ApplicationTheme {
+            settings.applicationTheme {
                 PromptDialogs(settings.promptModel)
                 Presentment(
                     appName = settings.appName,
@@ -185,6 +185,7 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
                     presentmentModel = presentmentModel,
                     presentmentSource = settings.presentmentSource,
                     documentTypeRepository = settings.documentTypeRepository,
+                    imageLoader = settings.imageLoader,
                     onPresentmentComplete = { finish() },
                     onlyShowConsentPrompt = true,
                     showCancelAsBack = true

@@ -1,7 +1,6 @@
 package org.multipaz.compose.presentment
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -26,6 +25,7 @@ import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
 import java.net.URL
 import androidx.core.net.toUri
+import coil3.ImageLoader
 
 /**
  * Base class for activity used for credential presentments using URI schemes.
@@ -40,30 +40,26 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
     }
 
     /**
-     * Must be implemented by the application to specify the application theme to use.
-     *
-     * @return the theme to use.
-     */
-    @Composable
-    abstract fun ApplicationTheme(content: @Composable () -> Unit)
-
-    /**
      * Settings provided by the application for specifying what to present.
      *
      * @property appName the application name.
      * @property appIcon the application icon.
      * @property promptModel the [PromptModel] to use.
+     * @property applicationTheme the theme to use.
      * @property documentTypeRepository a [DocumentTypeRepository]
      * @property presentmentSource the [PresentmentSource] to use as the source of truth for what to present.
      * @property httpClientEngineFactory the factory for creating the Ktor HTTP client engine (e.g. CIO).
+     * @property imageLoader the [ImageLoader] to use.
      */
     data class Settings(
         val appName: String,
         val appIcon: DrawableResource,
         val promptModel: PromptModel,
+        val applicationTheme: @Composable (content: @Composable () -> Unit) -> Unit,
         val documentTypeRepository: DocumentTypeRepository,
         val presentmentSource: PresentmentSource,
-        val httpClientEngineFactory: HttpClientEngineFactory<*>
+        val httpClientEngineFactory: HttpClientEngineFactory<*>,
+        val imageLoader: ImageLoader
     )
 
     /**
@@ -148,7 +144,7 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
         }
 
         setContent {
-            ApplicationTheme {
+            settings.applicationTheme {
                 PromptDialogs(settings.promptModel)
                 Presentment(
                     appName = settings.appName,
@@ -156,6 +152,7 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
                     presentmentModel = presentmentModel,
                     presentmentSource = settings.presentmentSource,
                     documentTypeRepository = settings.documentTypeRepository,
+                    imageLoader = settings.imageLoader,
                     onPresentmentComplete = { finish() },
                     onlyShowConsentPrompt = true,
                     showCancelAsBack = true

@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import coil3.ImageLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,15 +38,19 @@ abstract class MdocNfcPresentmentActivity : FragmentActivity() {
      * @property appName the application name.
      * @property appIcon the application icon.
      * @property promptModel the [PromptModel] to use.
+     * @property applicationTheme the theme to use.
      * @property documentTypeRepository a [DocumentTypeRepository]
      * @property presentmentSource the [PresentmentSource] to use as the source of truth for what to present.
+     * @property imageLoader the [ImageLoader] to use.
      */
     data class Settings(
         val appName: String,
         val appIcon: DrawableResource,
         val promptModel: PromptModel,
+        val applicationTheme: @Composable (content: @Composable () -> Unit) -> Unit,
         val documentTypeRepository: DocumentTypeRepository,
-        val presentmentSource: PresentmentSource
+        val presentmentSource: PresentmentSource,
+        val imageLoader: ImageLoader
     )
 
     /**
@@ -54,14 +59,6 @@ abstract class MdocNfcPresentmentActivity : FragmentActivity() {
      * @return a [Settings] object.
      */
     abstract suspend fun getSettings(): Settings
-
-    /**
-     * Must be implemented by the application to specify the application theme to use.
-     *
-     * @return the theme to use.
-     */
-    @Composable
-    abstract fun ApplicationTheme(content: @Composable () -> Unit)
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,7 +73,7 @@ abstract class MdocNfcPresentmentActivity : FragmentActivity() {
     private fun startPresentment(settings: Settings) {
         presentmentModel.setPromptModel(settings.promptModel)
         setContent {
-            ApplicationTheme {
+            settings.applicationTheme {
                 Scaffold { innerPadding ->
                     PromptDialogs(settings.promptModel)
                     Presentment(
@@ -86,6 +83,7 @@ abstract class MdocNfcPresentmentActivity : FragmentActivity() {
                         presentmentModel = presentmentModel,
                         presentmentSource = settings.presentmentSource,
                         documentTypeRepository = settings.documentTypeRepository,
+                        imageLoader = settings.imageLoader,
                         onPresentmentComplete = { finish() },
                     )
                 }

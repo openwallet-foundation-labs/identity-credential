@@ -4,6 +4,7 @@ import kotlin.time.Clock
 import org.multipaz.credential.Credential
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X509Cert
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -17,7 +18,9 @@ import org.multipaz.request.Requester
 import org.multipaz.sdjwt.credential.KeylessSdJwtVcCredential
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.trustmanagement.TrustManager
+import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.trustmanagement.TrustResult
 import org.multipaz.util.Logger
 
 /**
@@ -27,6 +30,8 @@ import org.multipaz.util.Logger
  * @property documentTypeRepository a [DocumentTypeRepository] which holds metadata for document types.
  * @property readerTrustManager the [TrustManager] used to determine if a reader is trusted.
  * @property skipConsentPrompt set to `true` to not show a consent dialog.
+ * @property dynamicMetadataResolver a function which can be used to calculate [TrustMetadata] on a
+ *   per-request basis, which may used in credential prompts.
  */
 abstract class PresentmentSource(
     open val documentStore: DocumentStore,
@@ -34,7 +39,8 @@ abstract class PresentmentSource(
     open val readerTrustManager: TrustManager,
     open val zkSystemRepository: ZkSystemRepository? = null,
     open val skipConsentPrompt: Boolean = false,
-) {
+    open val dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { requester -> null },
+    ) {
 
     /**
      * Chooses a credential from a document.

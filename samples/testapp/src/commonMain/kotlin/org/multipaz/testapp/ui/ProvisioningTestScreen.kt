@@ -18,23 +18,20 @@ import androidx.compose.ui.unit.dp
 import org.multipaz.models.provisioning.ProvisioningModel
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
-import org.multipaz.testapp.App
 import org.multipaz.testapp.provisioning.ProvisioningSupport
 
 @Composable
 fun ProvisioningTestScreen(
-    app: App,
     provisioningModel: ProvisioningModel,
-    provisioningSupport: ProvisioningSupport
+    provisioningSupport: ProvisioningSupport,
 ) {
     val provisioningState = provisioningModel.state.collectAsState(ProvisioningModel.Idle).value
     Column {
         if (provisioningState is ProvisioningModel.Authorizing) {
             Authorize(
-                app,
                 provisioningModel,
                 provisioningState.authorizationChallenges,
-                provisioningSupport
+                provisioningSupport,
             )
         } else if (provisioningState is ProvisioningModel.Error) {
             Text(
@@ -74,7 +71,6 @@ fun ProvisioningTestScreen(
 
 @Composable
 private fun Authorize(
-    app: App,
     provisioningModel: ProvisioningModel,
     challenges: List<AuthorizationChallenge>,
     provisioningSupport: ProvisioningSupport
@@ -124,4 +120,3 @@ fun EvidenceRequestWebView(
         }
     }
 }
-

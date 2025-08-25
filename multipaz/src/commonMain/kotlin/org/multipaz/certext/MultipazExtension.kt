@@ -12,6 +12,7 @@ import org.multipaz.util.toHex
  * ```
  * MultipazExtension = {
  *   ? "cloudKeyAttestation" : CloudKeyAttestation,
+ *   ? "googleAccount" : GoogleAccount
  * }
  * ```
  *
@@ -25,11 +26,16 @@ import org.multipaz.util.toHex
  * the `cloudKeyAttestation` field must be set and the extension must appear on the
  * X.509 certificate for the created key. See [CloudKeyAttestation] for more details.
  *
+ * If used in a reader certificate for reader authentication the `googleAccount` field
+ * may be set. See [GoogleAccount] for more details.
+ *
  * @property cloudKeyAttestation a [CloudKeyAttestation] or `null`.
+ * @property googleAccount a [GoogleAccount] or `null`.
  */
 @CborSerializable
 data class MultipazExtension(
-    val cloudKeyAttestation: CloudKeyAttestation? = null
+    val cloudKeyAttestation: CloudKeyAttestation? = null,
+    val googleAccount: GoogleAccount? = null
 ) {
     private fun renderByteArray(data: ByteArray): String {
         return if (data.isEmpty()) {
@@ -58,6 +64,17 @@ data class MultipazExtension(
                         Challenge: ${renderByteArray(it.challenge.toByteArray())}
                         Passphrase Required: ${it.passphrase}
                         User Authentication Required: $userAuthRequired
+                """.trimIndent()
+            )
+        }
+        googleAccount?.let {
+            sb.append(
+                """
+                    Google Account:
+                        id: ${it.id}
+                        emailAddress: ${it.emailAddress}
+                        displayName: ${it.displayName}
+                        profilePictureUri: ${it.profilePictureUri}
                 """.trimIndent()
             )
         }
