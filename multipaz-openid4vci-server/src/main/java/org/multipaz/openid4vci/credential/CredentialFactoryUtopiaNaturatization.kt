@@ -15,7 +15,7 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.sdjwt.SdJwt
 
-internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
+internal class CredentialFactoryUtopiaNaturatization : CredentialFactoryBase() {
     override val offerId: String
         get() = "utopia_naturalization"
 
@@ -34,9 +34,6 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
 
     override val cryptographicBindingMethods: List<String>
         get() = listOf("jwk")
-
-    override val credentialSigningAlgorithms: List<String>
-        get() = CredentialFactory.DEFAULT_CREDENTIAL_SIGNING_ALGORITHMS
 
     override val name: String
         get() = "Utopia Naturalization Certificate"
@@ -63,17 +60,10 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactory {
         val validFrom = Instant.parse("2024-04-01T12:00:00Z")
         val validUntil = Instant.parse("2034-04-01T12:00:00Z")
 
-        val resources = BackendEnvironment.getInterface(Resources::class)!!
-        val documentSigningKeyCert =
-            X509Cert.fromPem(resources.getStringResource("ds_certificate.pem")!!)
-        val documentSigningKey = EcPrivateKey.fromPem(
-            resources.getStringResource("ds_private_key.pem")!!,
-            documentSigningKeyCert.ecPublicKey)
-
         val sdJwt = SdJwt.create(
-            issuerKey = documentSigningKey,
-            issuerAlgorithm = documentSigningKey.curve.defaultSigningAlgorithmFullySpecified,
-            issuerCertChain = X509CertChain(listOf(documentSigningKeyCert)),
+            issuerKey = signingKey,
+            issuerAlgorithm = signingKey.curve.defaultSigningAlgorithmFullySpecified,
+            issuerCertChain = signingCertificateChain,
             kbKey = authenticationKey,
             claims = identityAttributes,
             nonSdClaims = buildJsonObject {

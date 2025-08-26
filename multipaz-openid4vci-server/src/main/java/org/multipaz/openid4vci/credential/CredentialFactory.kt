@@ -1,13 +1,16 @@
 package org.multipaz.openid4vci.credential
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.rpc.handler.InvalidRequestException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.DataItem
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
-import org.multipaz.openid4vci.util.IssuanceState
 
 /**
  * Factory for credentials of a particular type.
@@ -25,9 +28,14 @@ internal interface CredentialFactory {
     val requireKeyAttestation: Boolean get() = true
     val proofSigningAlgorithms: List<String>  // must be empty for keyless credentials
     val cryptographicBindingMethods: List<String>  // must be empty for keyless credentials
-    val credentialSigningAlgorithms: List<String>
     val name: String  // human-readable name
     val logo: String?  // relative URL for the image
+    val signingCertificateChain: X509CertChain  // for the key that is used to sign the credential
+
+    /**
+     * Ensures that resources are loaded
+     */
+    suspend fun initialize()
 
     /**
      * Creates the credential. [authenticationKey] must be non-null for key-bound
@@ -35,22 +43,33 @@ internal interface CredentialFactory {
      */
     suspend fun makeCredential(data: DataItem, authenticationKey: EcPublicKey?): String
 
-    companion object {
-        val byOfferId: Map<String, CredentialFactory>
+    class RegisteredFactories(
+        val byOfferId: Map<String, CredentialFactory>,
         val supportedScopes: Set<String>
+    )
 
-        init {
-            val makers = mutableListOf(
-                CredentialFactoryMdl(),
-                CredentialFactoryUtopiaNaturatization(),
-                CredentialFactoryUtopiaMovieTicket(),
-            )
-            byOfferId = makers.associateBy { it.offerId }
-            supportedScopes = makers.map { it.scope }.toSet()
+    companion object {
+        private val initializationLock = Mutex()
+        private var registeredFactories: RegisteredFactories? = null
+
+        suspend fun getRegisteredFactories(): RegisteredFactories  = initializationLock.withLock {
+            if (registeredFactories == null) {
+                val factories = mutableListOf(
+                    CredentialFactoryMdl(),
+                    CredentialFactoryMdocPid(),
+                    CredentialFactoryUtopiaNaturatization(),
+                    CredentialFactoryUtopiaMovieTicket(),
+                )
+                factories.forEach { it.initialize() }
+                registeredFactories = RegisteredFactories(
+                    byOfferId = factories.associateBy { it.offerId },
+                    supportedScopes = factories.map { it.scope }.toSet()
+                )
+            }
+            registeredFactories!!
         }
 
         val DEFAULT_PROOF_SIGNING_ALGORITHMS = listOf("ES256")
-        val DEFAULT_CREDENTIAL_SIGNING_ALGORITHMS = listOf("ES256")
     }
 }
 
@@ -74,6 +93,7 @@ internal data class Openid4VciFormatMdoc(val docType: String) : Openid4VciFormat
 }
 
 internal val openId4VciFormatMdl = Openid4VciFormatMdoc(DrivingLicense.MDL_DOCTYPE)
+internal val openId4VciFormatPid = Openid4VciFormatMdoc(EUPersonalID.EUPID_DOCTYPE)
 
 internal data class Openid4VciFormatSdJwt(val vct: String) : Openid4VciFormat() {
     override val id: String get() = "dc+sd-jwt"

@@ -37,6 +37,7 @@ import org.multipaz.openid4vci.request.nonce
 import org.multipaz.openid4vci.request.openid4VpResponse
 import org.multipaz.openid4vci.request.pushedAuthorizationRequest
 import org.multipaz.openid4vci.request.qrCode
+import org.multipaz.openid4vci.request.signingCertificate
 import org.multipaz.openid4vci.request.token
 import org.multipaz.openid4vci.request.wellKnownOauthAuthorization
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
@@ -117,6 +118,9 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
         }
         get("/.well-known/oauth-authorization-server") {
             runRequest { wellKnownOauthAuthorization(call) }
+        }
+        get("/signing_certificate") {
+            runRequest { signingCertificate(call) }
         }
     }
 }
