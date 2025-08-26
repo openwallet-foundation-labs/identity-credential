@@ -22,7 +22,7 @@ import multipazproject.samples.testapp.generated.resources.android_keystore_secu
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_examples_title
 import multipazproject.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import multipazproject.samples.testapp.generated.resources.cloud_secure_area_screen_title
-import multipazproject.samples.testapp.generated.resources.credential_presentment_modal_bottom_sheet_list_screen_title
+import multipazproject.samples.testapp.generated.resources.consent_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.document_store_screen_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_multi_device_testing_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
@@ -199,7 +199,7 @@ fun StartScreen(
 
                 item {
                     TextButton(onClick = onClickConsentSheetList) {
-                        Text(stringResource(Res.string.credential_presentment_modal_bottom_sheet_list_screen_title))
+                        Text(stringResource(Res.string.consent_prompt_screen_title))
                     }
                 }
                 item {

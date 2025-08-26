@@ -32,6 +32,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.ktor.client.HttpClient
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
+import coil3.network.ktor2.KtorNetworkFetcherFactory
 import org.multipaz.testapp.ui.AppTheme
 import org.multipaz.testapp.ui.BarcodeScanningScreen
 import org.multipaz.testapp.ui.CameraScreen
@@ -65,8 +68,7 @@ import org.multipaz.testapp.ui.AboutScreen
 import org.multipaz.testapp.ui.AndroidKeystoreSecureAreaScreen
 import org.multipaz.testapp.ui.CertificateScreen
 import org.multipaz.testapp.ui.CertificateViewerExamplesScreen
-import org.multipaz.testapp.ui.CredentialPresentmentModalBottomSheetListScreen
-import org.multipaz.testapp.ui.CredentialPresentmentModalBottomSheetScreen
+import org.multipaz.testapp.ui.ConsentPromptScreen
 import org.multipaz.testapp.ui.CredentialClaimsViewerScreen
 import org.multipaz.testapp.ui.CredentialViewerScreen
 import org.multipaz.testapp.ui.DocumentStoreScreen
@@ -87,7 +89,6 @@ import org.multipaz.testapp.ui.SecureEnclaveSecureAreaScreen
 import org.multipaz.testapp.ui.SettingsScreen
 import org.multipaz.testapp.ui.SoftwareSecureAreaScreen
 import org.multipaz.testapp.ui.StartScreen
-import org.multipaz.testapp.ui.VerifierType
 import org.multipaz.util.Logger
 import multipazproject.samples.testapp.generated.resources.back_button
 import io.ktor.http.decodeURLPart
@@ -107,6 +108,9 @@ import multipazproject.samples.testapp.generated.resources.Res
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.multipaz.asn1.OID
+import org.multipaz.certext.MultipazExtension
+import org.multipaz.certext.fromCbor
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.document.AbstractDocumentMetadata
 import org.multipaz.document.DocumentMetadata
@@ -120,6 +124,7 @@ import org.multipaz.models.presentment.SimplePresentmentSource
 import org.multipaz.models.provisioning.ProvisioningModel
 import org.multipaz.prompt.PromptModel
 import org.multipaz.provisioning.Display
+import org.multipaz.request.Requester
 import org.multipaz.storage.base.BaseStorageTable
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.testapp.provisioning.ProvisioningSupport
@@ -140,6 +145,22 @@ import org.multipaz.util.toHex
  * Application singleton.
  */
 class App private constructor (val promptModel: PromptModel) {
+
+    private val MULTIPAZ_IDENTITY_READER_CERT_UNTRUSTED_DEVICES = X509Cert(
+        "308202893082020FA003020102021041DFFB3D7133B2623E535E09D9C3B56E300A06082A8648CE3D0403033047310B300906035504060C0255533138303606035504030C2F4D756C746970617A204964656E74697479205265616465722043412028556E74727573746564204465766963657329301E170D3235303731393233303831345A170D3330303731393233303831345A3047310B300906035504060C0255533138303606035504030C2F4D756C746970617A204964656E74697479205265616465722043412028556E747275737465642044657669636573293076301006072A8648CE3D020106052B8104002203620004EA8A139ED395B79C877255FEF2138987262CFBB6CA1F72688D4E89F062C3CA05B2704531DAEC0304F93A007CD84F31A119F3794151306082C4D4352855A752F9C733D2FA32B4B462644769F2F7E53280F1AD519C443AE9462B923C64877EDF91A381BF3081BC300E0603551D0F0101FF04040302010630120603551D130101FF040830060101FF02010030560603551D1F044F304D304BA049A047864568747470733A2F2F6769746875622E636F6D2F6F70656E77616C6C65742D666F756E646174696F6E2D6C6162732F6964656E746974792D63726564656E7469616C2F63726C301D0603551D0E041604149BCFDAFD2059978E21869C7DD28AAF7481EBABC5301F0603551D230418301680149BCFDAFD2059978E21869C7DD28AAF7481EBABC5300A06082A8648CE3D0403030368003065023100A26AA37C97B6935EB64B959ACB7B04053723EFE0CFBDA2C972C96812C8FF1DA4E122C296A909502B180DBB5AC4FD7AF202307F1AAE9412B8162A5B29A7E2A9CEE00059A2A4F9B32370CE1A28E28E5378AD981FBD8D74D0DBDD0373C327595C1006CE".fromHex()
+    )
+
+    private val MULTIPAZ_IDENTITY_READER_CERT_UNTRUSTED_DEVICES_PUBLIC_KEY by lazy {
+        MULTIPAZ_IDENTITY_READER_CERT_UNTRUSTED_DEVICES.ecPublicKey
+    }
+
+    private val MULTIPAZ_IDENTITY_READER_CERT = X509Cert(
+        encodedCertificate = "30820261308201E7A00302010202103925792727AC38B28778373ED2A9ADB9300A06082A8648CE3D0403033033310B300906035504060C0255533124302206035504030C1B4D756C746970617A204964656E7469747920526561646572204341301E170D3235303730353132323032315A170D3330303730353132323032315A3033310B300906035504060C0255533124302206035504030C1B4D756C746970617A204964656E74697479205265616465722043413076301006072A8648CE3D020106052B81040022036200043E145F98DA6C32EE4688C4A7DAEC6640046CFF0872E8F7A8DE3005462AE9488E92850B30E2D46FEEFC620A279BEB09470AB20C9F66C584E396A9625BC3E90DFBA54197A3668D901AAA41F493C89E4AC20689794FED1352CD2086413965006C54A381BF3081BC300E0603551D0F0101FF04040302010630120603551D130101FF040830060101FF02010030560603551D1F044F304D304BA049A047864568747470733A2F2F6769746875622E636F6D2F6F70656E77616C6C65742D666F756E646174696F6E2D6C6162732F6964656E746974792D63726564656E7469616C2F63726C301D0603551D0E04160414CFA4AF87907312962E4D7A17646ACC1C45719B21301F0603551D23041830168014CFA4AF87907312962E4D7A17646ACC1C45719B21300A06082A8648CE3D040303036800306502310090FB8F814BCC87DB42957D22B54D20BF45F44CE0CF5734167ED27F5E3E0F5FB57505B797B894175D2BD98BF16CE726EA02305BA4F1ECB894A9DBE27B9BBF988F233C2E0BB0B4BADAA3EC5B3EA9D99C58DAD26128A4B363849E32626A9D5C3CE3E4DA".fromHex()
+    )
+
+    private val MULTIPAZ_IDENTITY_READER_CERT_PUBLIC_KEY by lazy {
+        MULTIPAZ_IDENTITY_READER_CERT.ecPublicKey
+    }
 
     lateinit var settingsModel: TestAppSettingsModel
 
@@ -184,6 +205,7 @@ class App private constructor (val promptModel: PromptModel) {
             readerTrustManager = readerTrustManager,
             zkSystemRepository = zkSystemRepository,
             skipConsentPrompt = !settingsModel.presentmentShowConsentPrompt.value,
+            dynamicMetadataResolver = ::dynamicMetadataResolver,
             preferSignatureToKeyAgreement = settingsModel.presentmentPreferSignatureToKeyAgreement.value,
             domainMdocSignature = if (useAuth) {
                 TestAppUtils.CREDENTIAL_DOMAIN_MDOC_USER_AUTH
@@ -202,6 +224,25 @@ class App private constructor (val promptModel: PromptModel) {
                 TestAppUtils.CREDENTIAL_DOMAIN_SDJWT_NO_USER_AUTH
             },
         )
+    }
+
+    fun dynamicMetadataResolver(requester: Requester): TrustMetadata? {
+        if (requester.certChain != null &&
+            requester.certChain!!.certificates.last().ecPublicKey == MULTIPAZ_IDENTITY_READER_CERT_PUBLIC_KEY
+        ) {
+            val readerCert = requester.certChain!!.certificates.first()
+            readerCert.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)?.let {
+                MultipazExtension.fromCbor(it).googleAccount?.let {
+                    return TrustMetadata(
+                        displayName = it.emailAddress,
+                        displayIconUrl = it.profilePictureUri,
+                        disclaimer = "The email and picture shown are from the requester's Google Account. " +
+                                "This information has been verified but may not be their real identity"
+                    )
+                }
+            }
+        }
+        return null
     }
 
     suspend fun init() {
@@ -571,9 +612,7 @@ class App private constructor (val promptModel: PromptModel) {
             // the GREEN boot state.
             try {
                 builtInReaderTrustManager.addX509Cert(
-                    certificate = X509Cert(
-                        "30820261308201E7A00302010202103925792727AC38B28778373ED2A9ADB9300A06082A8648CE3D0403033033310B300906035504060C0255533124302206035504030C1B4D756C746970617A204964656E7469747920526561646572204341301E170D3235303730353132323032315A170D3330303730353132323032315A3033310B300906035504060C0255533124302206035504030C1B4D756C746970617A204964656E74697479205265616465722043413076301006072A8648CE3D020106052B81040022036200043E145F98DA6C32EE4688C4A7DAEC6640046CFF0872E8F7A8DE3005462AE9488E92850B30E2D46FEEFC620A279BEB09470AB20C9F66C584E396A9625BC3E90DFBA54197A3668D901AAA41F493C89E4AC20689794FED1352CD2086413965006C54A381BF3081BC300E0603551D0F0101FF04040302010630120603551D130101FF040830060101FF02010030560603551D1F044F304D304BA049A047864568747470733A2F2F6769746875622E636F6D2F6F70656E77616C6C65742D666F756E646174696F6E2D6C6162732F6964656E746974792D63726564656E7469616C2F63726C301D0603551D0E04160414CFA4AF87907312962E4D7A17646ACC1C45719B21301F0603551D23041830168014CFA4AF87907312962E4D7A17646ACC1C45719B21300A06082A8648CE3D040303036800306502310090FB8F814BCC87DB42957D22B54D20BF45F44CE0CF5734167ED27F5E3E0F5FB57505B797B894175D2BD98BF16CE726EA02305BA4F1ECB894A9DBE27B9BBF988F233C2E0BB0B4BADAA3EC5B3EA9D99C58DAD26128A4B363849E32626A9D5C3CE3E4DA".fromHex()
-                    ),
+                    certificate = MULTIPAZ_IDENTITY_READER_CERT,
                     metadata = TrustMetadata(
                         displayName = "Multipaz Identity Reader",
                         displayIcon = ByteString(Res.readBytes("drawable/app_icon.webp")),
@@ -587,9 +626,7 @@ class App private constructor (val promptModel: PromptModel) {
             // but running on a device that isn't in the GREEN boot state.
             try {
                 builtInReaderTrustManager.addX509Cert(
-                    certificate = X509Cert(
-                        "308202893082020FA003020102021041DFFB3D7133B2623E535E09D9C3B56E300A06082A8648CE3D0403033047310B300906035504060C0255533138303606035504030C2F4D756C746970617A204964656E74697479205265616465722043412028556E74727573746564204465766963657329301E170D3235303731393233303831345A170D3330303731393233303831345A3047310B300906035504060C0255533138303606035504030C2F4D756C746970617A204964656E74697479205265616465722043412028556E747275737465642044657669636573293076301006072A8648CE3D020106052B8104002203620004EA8A139ED395B79C877255FEF2138987262CFBB6CA1F72688D4E89F062C3CA05B2704531DAEC0304F93A007CD84F31A119F3794151306082C4D4352855A752F9C733D2FA32B4B462644769F2F7E53280F1AD519C443AE9462B923C64877EDF91A381BF3081BC300E0603551D0F0101FF04040302010630120603551D130101FF040830060101FF02010030560603551D1F044F304D304BA049A047864568747470733A2F2F6769746875622E636F6D2F6F70656E77616C6C65742D666F756E646174696F6E2D6C6162732F6964656E746974792D63726564656E7469616C2F63726C301D0603551D0E041604149BCFDAFD2059978E21869C7DD28AAF7481EBABC5301F0603551D230418301680149BCFDAFD2059978E21869C7DD28AAF7481EBABC5300A06082A8648CE3D0403030368003065023100A26AA37C97B6935EB64B959ACB7B04053723EFE0CFBDA2C972C96812C8FF1DA4E122C296A909502B180DBB5AC4FD7AF202307F1AAE9412B8162A5B29A7E2A9CEE00059A2A4F9B32370CE1A28E28E5378AD981FBD8D74D0DBDD0373C327595C1006CE".fromHex()
-                    ),
+                    certificate = MULTIPAZ_IDENTITY_READER_CERT_UNTRUSTED_DEVICES,
                     metadata = TrustMetadata(
                         displayName = "Multipaz Identity Reader (Untrusted Devices)",
                         displayIcon = ByteString(Res.readBytes("drawable/app_icon.webp")),
@@ -746,6 +783,18 @@ class App private constructor (val promptModel: PromptModel) {
             return
         }
 
+        val context = LocalPlatformContext.current
+        val imageLoader = remember {
+            val engineFactory = platformHttpClientEngineFactory()
+            val httpClient = HttpClient(engineFactory.create()) {
+            }
+            ImageLoader.Builder(context)
+                .components {
+                    add(KtorNetworkFetcherFactory(httpClient))
+                }
+                .build()
+        }
+
         val backStackEntry by navController.currentBackStackEntryAsState()
         val routeWithoutArgs = backStackEntry?.destination?.route?.substringBefore('/')
 
@@ -805,7 +854,7 @@ class App private constructor (val promptModel: PromptModel) {
                             onClickPassphraseEntryField = { navController.navigate(PassphraseEntryFieldDestination.route) },
                             onClickPassphrasePrompt = { navController.navigate(PassphrasePromptDestination.route) },
                             onClickProvisioningTestField = { navController.navigate(ProvisioningTestDestination.route) },
-                            onClickConsentSheetList = { navController.navigate(CredentialPresentmentModalBottomSheetListDestination.route) },
+                            onClickConsentSheetList = { navController.navigate(ConsentPromptDestination.route) },
                             onClickQrCodes = { navController.navigate(QrCodesDestination.route) },
                             onClickNfc = { navController.navigate(NfcDestination.route) },
                             onClickIsoMdocProximitySharing = { navController.navigate(IsoMdocProximitySharingDestination.route) },
@@ -980,38 +1029,16 @@ class App private constructor (val promptModel: PromptModel) {
                     }
                     composable(route = ProvisioningTestDestination.route) {
                         ProvisioningTestScreen(
-                            app = this@App,
                             provisioningModel = provisioningModel,
                             provisioningSupport = provisioningSupport
                         )
                     }
-                    composable(route = CredentialPresentmentModalBottomSheetListDestination.route) {
-                        CredentialPresentmentModalBottomSheetListScreen(
-                            onConsentModalBottomSheetClicked =
-                            { mdlSampleRequest, verifierType ->
-                                navController.navigate(
-                                    CredentialPresentmentBottomSheetDestination.route + "/$mdlSampleRequest/$verifierType")
-                            }
-                        )
-                    }
-                    composable(
-                        route = CredentialPresentmentBottomSheetDestination.routeWithArgs,
-                        arguments = CredentialPresentmentBottomSheetDestination.arguments
-                    ) { navBackStackEntry ->
-                        val mdlSampleRequest = navBackStackEntry.arguments?.getString(
-                            CredentialPresentmentBottomSheetDestination.mdlSampleRequestArg
-                        )!!
-                        val verifierType = VerifierType.valueOf(navBackStackEntry.arguments?.getString(
-                            CredentialPresentmentBottomSheetDestination.verifierTypeArg
-                        )!!)
-                        CredentialPresentmentModalBottomSheetScreen(
-                            mdlSampleRequest = mdlSampleRequest,
-                            verifierType = verifierType,
+                    composable(route = ConsentPromptDestination.route) {
+                        ConsentPromptScreen(
+                            imageLoader = imageLoader,
                             documentTypeRepository = documentTypeRepository,
                             secureAreaRepository = secureAreaRepository,
                             showToast = { message -> showToast(message) },
-                            onSheetConfirmed = { navController.popBackStack() },
-                            onSheetDismissed = { navController.popBackStack() },
                         )
                     }
                     composable(route = QrCodesDestination.route) {
@@ -1051,6 +1078,7 @@ class App private constructor (val promptModel: PromptModel) {
                         PresentmentScreen(
                             app = this@App,
                             presentmentModel = presentmentModel,
+                            imageLoader = imageLoader,
                             onPresentationComplete = { navController.popBackStack() },
                         )
                     }

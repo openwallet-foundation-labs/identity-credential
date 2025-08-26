@@ -50,6 +50,7 @@ import org.multipaz.request.Requester
 import org.multipaz.util.Logger
 import kotlin.time.Instant
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.crypto.X509Extension
 import kotlin.random.Random
 
 /**
@@ -377,8 +378,8 @@ object MdocUtil {
     /**
      * Helper function to generate a [DocumentRequest].
      *
-     * @param documentRequest a [org.multipaz.mdoc.request.DeviceRequestParser.DocRequest].
-     * @return a [DocumentRequest] representing for the given [org.multipaz.mdoc.request.DeviceRequestParser.DocRequest].
+     * @param documentRequest a [DeviceRequestParser.DocRequest].
+     * @return a [DocumentRequest] representing for the given [DeviceRequestParser.DocRequest].
      */
     fun generateDocumentRequest(
         documentRequest: DeviceRequestParser.DocRequest
@@ -618,6 +619,7 @@ object MdocUtil {
      * @param serial the serial number to use for the certificate.
      * @param validFrom the point in time the certificate should be valid from.
      * @param validUntil the point in time the certificate should be valid until.
+     * @param extensions additional extensions to include in the reader certificate.
      * @return a [X509Cert] with all the required extensions.
      */
     fun generateReaderCertificate(
@@ -628,8 +630,9 @@ object MdocUtil {
         serial: ASN1Integer,
         validFrom: Instant,
         validUntil: Instant,
+        extensions: List<X509Extension> = emptyList()
     ): X509Cert {
-        return X509Cert.Builder(
+        val builder = X509Cert.Builder(
             publicKey = readerKey,
             signingKey = readerRootKey,
             signatureAlgorithm = readerRootKey.curve.defaultSigningAlgorithm,
@@ -654,7 +657,14 @@ object MdocUtil {
                 false,
                 readerRootCert.getExtensionValue(OID.X509_EXTENSION_CRL_DISTRIBUTION_POINTS.oid)!!
             )
-            .build()
+        for (extension in extensions) {
+            builder.addExtension(
+                oid = extension.oid,
+                critical = extension.isCritical,
+                value = extension.data.toByteArray()
+            )
+        }
+        return builder.build()
     }
 
     /**

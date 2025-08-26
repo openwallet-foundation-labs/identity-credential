@@ -9,8 +9,7 @@ import multipazproject.samples.testapp.generated.resources.barcode_scanning_titl
 import multipazproject.samples.testapp.generated.resources.camera_title
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_examples_title
 import multipazproject.samples.testapp.generated.resources.cloud_secure_area_screen_title
-import multipazproject.samples.testapp.generated.resources.credential_presentment_modal_bottom_sheet_list_screen_title
-import multipazproject.samples.testapp.generated.resources.credential_presentment_modal_bottom_sheet_screen_title
+import multipazproject.samples.testapp.generated.resources.consent_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_multi_device_testing_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
@@ -155,21 +154,9 @@ data object ProvisioningTestDestination : Destination {
     override val title = Res.string.provisioning_test_title
 }
 
-data object CredentialPresentmentModalBottomSheetListDestination : Destination {
-    override val route = "credential_presentment_modal_bottom_sheet_list"
-    override val title = Res.string.credential_presentment_modal_bottom_sheet_list_screen_title
-}
-
-data object CredentialPresentmentBottomSheetDestination : Destination {
-    override val route = "credential_presentment_modal_bottom_sheet"
-    override val title = Res.string.credential_presentment_modal_bottom_sheet_screen_title
-    const val mdlSampleRequestArg = "mdl_sample_request_arg"
-    const val verifierTypeArg = "verifier_type"
-    val routeWithArgs = "$route/{$mdlSampleRequestArg}/{$verifierTypeArg}"
-    val arguments = listOf(
-        navArgument(mdlSampleRequestArg) { type = NavType.StringType },
-        navArgument(verifierTypeArg) { type = NavType.StringType },
-    )
+data object ConsentPromptDestination : Destination {
+    override val route = "consent_prompt"
+    override val title = Res.string.consent_prompt_screen_title
 }
 
 data object QrCodesDestination : Destination {
@@ -275,8 +262,7 @@ val appDestinations = listOf(
     PassphraseEntryFieldDestination,
     PassphrasePromptDestination,
     ProvisioningTestDestination,
-    CredentialPresentmentModalBottomSheetListDestination,
-    CredentialPresentmentBottomSheetDestination,
+    ConsentPromptDestination,
     QrCodesDestination,
     NfcDestination,
     IsoMdocProximitySharingDestination,

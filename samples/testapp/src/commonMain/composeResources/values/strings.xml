@@ -18,8 +18,7 @@
     <string name="cloud_secure_area_screen_title">Cloud Secure Area</string>
     <string name="passphrase_entry_field_screen_title">PassphraseEntryField use-cases</string>
     <string name="passphrase_prompt_screen_title">PassphrasePrompt use-cases</string>
-    <string name="credential_presentment_modal_bottom_sheet_screen_title">CredentialPresentmentModalBottomSheet</string>
-    <string name="credential_presentment_modal_bottom_sheet_list_screen_title">CredentialPresentmentModalBottomSheet use-cases</string>
+    <string name="consent_prompt_screen_title">Consent Prompt use-cases</string>
     <string name="qr_codes_screen_title">QR code generation and scanning</string>
     <string name="nfc_screen_title">NFC sharing and scanning</string>
     <string name="iso_mdoc_proximity_sharing_title">ISO mdoc Proximity Sharing</string>
