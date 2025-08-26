@@ -342,6 +342,41 @@ function rawDcqlReset_complex_credential_set() {
   textArea.value = `{
   "credentials": [
     {
+      "id": "photoid",
+      "format": "mso_mdoc",
+      "meta": {
+        "doctype_value": "org.iso.23220.photoID.1"
+      },
+      "claims": [
+        { "path": ["org.iso.23220.1", "family_name_unicode" ] },
+        { "path": ["org.iso.23220.1", "given_name_unicode" ] },
+        { "path": ["org.iso.23220.1", "portrait" ] }
+      ]
+    },
+    {
+      "id": "mdl",
+      "format": "mso_mdoc",
+      "meta": {
+        "doctype_value": "org.iso.18013.5.1.mDL"
+      },
+      "claims": [
+        { "path": ["org.iso.18013.5.1", "family_name" ] },
+        { "path": ["org.iso.18013.5.1", "given_name" ] },
+        { "path": ["org.iso.18013.5.1", "portrait" ] }
+      ]
+    },
+    {
+      "id": "movieticket",
+      "format": "dc+sd-jwt",
+      "meta": {
+        "vct_values": ["https://utopia.example.com/vct/movieticket"]
+      },
+      "claims": [
+        {"path": ["ticket_number"]},
+        {"path": ["cinema_id"]}
+      ]
+    },
+    {
       "id": "pid",
       "format": "dc+sd-jwt",
       "meta": {
@@ -402,6 +437,7 @@ function rawDcqlReset_complex_credential_set() {
   "credential_sets": [
     {
       "options": [
+        ["mdl", "photoid", "movieticket"],
         [ "pid" ],
         [ "other_pid" ],
         [ "pid_reduced_cred_1", "pid_reduced_cred_2" ]
