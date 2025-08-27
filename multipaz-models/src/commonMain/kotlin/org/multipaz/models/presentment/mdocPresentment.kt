@@ -78,14 +78,14 @@ internal suspend fun mdocPresentment(
                     Cbor.encode(
                         buildCborArray {
                             add(Tagged(24, Bstr(mechanism.encodedDeviceEngagement.toByteArray())))
-                            add(Tagged(24, Bstr(Cbor.encode(eReaderKey.toCoseKey().toDataItem()))))
+                            add(Tagged(24, Bstr(eReaderKey.encodedCoseKey)))
                             add(mechanism.handover)
                         }
                     )
                 sessionEncryption = SessionEncryption(
                     MdocRole.MDOC,
                     mechanism.eDeviceKey,
-                    eReaderKey,
+                    eReaderKey.publicKey,
                     encodedSessionTranscript,
                 )
             }
@@ -170,7 +170,7 @@ internal suspend fun mdocPresentment(
                     credential = mdocCredential,
                     requestedClaims = request.requestedClaims,
                     encodedSessionTranscript = encodedSessionTranscript,
-                    eReaderKey = SessionEncryption.getEReaderKey(sessionData),
+                    eReaderKey = SessionEncryption.getEReaderKey(sessionData).publicKey,
                 )
 
                 if (zkSystemMatch != null) {
