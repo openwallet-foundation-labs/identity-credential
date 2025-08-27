@@ -188,3 +188,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
 tasks["compileKotlinIosX64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosArm64"].dependsOn("kspCommonMainKotlinMetadata")
 tasks["compileKotlinIosSimulatorArm64"].dependsOn("kspCommonMainKotlinMetadata")
+
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}

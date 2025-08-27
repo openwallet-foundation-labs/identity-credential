@@ -139,3 +139,7 @@ tasks.withType<Test>().configureEach {
         systemProperty("java.library.path", nativeLibPath)
     }
 }
+
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}
