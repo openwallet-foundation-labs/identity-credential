@@ -184,11 +184,6 @@ data object IsoMdocMultiDeviceTestingDestination : Destination {
     override val title = Res.string.iso_mdoc_multi_device_testing_title
 }
 
-data object PresentmentDestination : Destination {
-    override val route = "presentment"
-    override val title = Res.string.presentment_title
-}
-
 data object CertificatesViewerExamplesDestination : Destination {
     override val route = "certificates_viewer"
     override val title = Res.string.certificate_viewer_examples_title
@@ -268,7 +263,6 @@ val appDestinations = listOf(
     IsoMdocProximitySharingDestination,
     IsoMdocProximityReadingDestination,
     IsoMdocMultiDeviceTestingDestination,
-    PresentmentDestination,
     CertificatesViewerExamplesDestination,
     CertificateViewerDestination,
     RichTextDestination,
