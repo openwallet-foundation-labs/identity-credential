@@ -80,7 +80,6 @@ import org.multipaz.testapp.ui.NfcScreen
 import org.multipaz.testapp.ui.NotificationsScreen
 import org.multipaz.testapp.ui.PassphraseEntryFieldScreen
 import org.multipaz.testapp.ui.PassphrasePromptScreen
-import org.multipaz.testapp.ui.PresentmentScreen
 import org.multipaz.testapp.ui.ProvisioningTestScreen
 import org.multipaz.testapp.ui.QrCodesScreen
 import org.multipaz.testapp.ui.RichTextScreen
@@ -1054,12 +1053,12 @@ class App private constructor (val promptModel: PromptModel) {
                     }
                     composable(route = IsoMdocProximitySharingDestination.route) {
                         IsoMdocProximitySharingScreen(
+                            presentmentSource = getPresentmentSource(),
                             presentmentModel = presentmentModel,
                             settingsModel = settingsModel,
                             promptModel = promptModel,
-                            onNavigateToPresentmentScreen = {
-                                navController.navigate(PresentmentDestination.route)
-                            },
+                            documentTypeRepository = documentTypeRepository,
+                            imageLoader = imageLoader,
                             showToast = { message -> showToast(message) },
                         )
                     }
@@ -1072,14 +1071,6 @@ class App private constructor (val promptModel: PromptModel) {
                     composable(route = IsoMdocMultiDeviceTestingDestination.route) {
                         IsoMdocMultiDeviceTestingScreen(
                             showToast = { message -> showToast(message) }
-                        )
-                    }
-                    composable(route = PresentmentDestination.route) {
-                        PresentmentScreen(
-                            app = this@App,
-                            presentmentModel = presentmentModel,
-                            imageLoader = imageLoader,
-                            onPresentationComplete = { navController.popBackStack() },
                         )
                     }
                     composable(route = CertificatesViewerExamplesDestination.route) {
