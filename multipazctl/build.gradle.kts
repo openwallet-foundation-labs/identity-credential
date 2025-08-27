@@ -45,3 +45,6 @@ project.setProperty("mainClassName", "org.multipaz.multipazctl.MultipazCtl")
 
 ktor {
 }
+subprojects {
+	apply(plugin = "org.jetbrains.dokka")
+}
