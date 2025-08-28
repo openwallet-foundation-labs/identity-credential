@@ -112,6 +112,7 @@ import org.multipaz.certext.MultipazExtension
 import org.multipaz.certext.fromCbor
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.document.AbstractDocumentMetadata
+import org.multipaz.directaccess.DirectAccessCredential
 import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.knowntypes.IDPass
@@ -322,6 +323,9 @@ class App private constructor (val promptModel: PromptModel) {
             secureAreaRepository = secureAreaRepository
         ) {
             //setTableSpec(testDocumentTableSpec)
+            addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
+                    document -> DirectAccessCredential(document)
+            }
         }
     }
 
@@ -1138,7 +1142,7 @@ class App private constructor (val promptModel: PromptModel) {
             when (snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "OK",
-                duration = SnackbarDuration.Short,
+                duration = SnackbarDuration.Indefinite,
             )) {
                 SnackbarResult.Dismissed -> {
                 }

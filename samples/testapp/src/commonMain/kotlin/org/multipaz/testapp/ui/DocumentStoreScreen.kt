@@ -28,12 +28,42 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.launch
+import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import multipazproject.samples.testapp.generated.resources.Res
+import multipazproject.samples.testapp.generated.resources.driving_license_card_art
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.getDrawableResourceBytes
+import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import org.multipaz.asn1.ASN1Integer
+import org.multipaz.cbor.Bstr
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.RawCbor
+import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.cbor.toDataItem
+import org.multipaz.cose.Cose
+import org.multipaz.cose.CoseLabel
+import org.multipaz.cose.CoseNumberLabel
+import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKeyDoubleCoordinate
+import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.directaccess.DirectAccessCredential
 import org.multipaz.document.DocumentStore
+import org.multipaz.documenttype.knowntypes.DrivingLicense
+import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
+import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.secure_area_test_app.ui.CsaConnectDialog
 import org.multipaz.securearea.CreateKeySettings
@@ -47,21 +77,17 @@ import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.testapp.DocumentModel
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.testapp.TestAppUtils
-import org.multipaz.testapp.platformSecureAreaHasKeyAgreement
-import io.ktor.http.encodeURLParameter
-import kotlinx.coroutines.launch
-import kotlin.time.Clock
-import kotlin.time.Instant
-import kotlinx.io.bytestring.ByteString
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import org.multipaz.crypto.Algorithm
-import org.multipaz.crypto.JsonWebSignature
+import org.multipaz.testapp.TestAppUtils.CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH
 import org.multipaz.testapp.platformHttpClientEngineFactory
+import org.multipaz.testapp.platformSecureAreaHasKeyAgreement
+import org.multipaz.util.Logger
 import org.multipaz.util.Platform
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 private const val TAG = "DocumentStoreScreen"
 
@@ -103,8 +129,12 @@ fun DocumentStoreScreen(
         AlertDialog(
             onDismissRequest = {},
             title = { Text(text = "Creating Documents") },
-            text = { Text(text = "Creating documents and credentials may take a while. " +
-            "This dialog will disappear when the process is complete.") },
+            text = {
+                Text(
+                    text = "Creating documents and credentials may take a while. " +
+                            "This dialog will disappear when the process is complete."
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {}) {
@@ -220,8 +250,10 @@ fun DocumentStoreScreen(
             TextButton(onClick = {
                 coroutineScope.launch {
                     if (deviceKeyMacAlgorithm.value != Algorithm.UNSET && !platformSecureAreaHasKeyAgreement) {
-                        showToast("Platform Secure Area does not have Key Agreement support. " +
-                                "Unset DeviceKey MAC Algorithm or try another Secure Area.")
+                        showToast(
+                            "Platform Secure Area does not have Key Agreement support. " +
+                                    "Unset DeviceKey MAC Algorithm or try another Secure Area."
+                        )
                         return@launch
                     }
                     val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
@@ -341,11 +373,47 @@ fun DocumentStoreScreen(
             }
         }
         item {
+            TextButton(onClick = {
+                coroutineScope.launch {
+                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
+                    provisionDirectAccessDocument(
+                        showProvisioningResult = showProvisioningResult,
+                        documentStore = documentStore,
+                        secureArea = softwareSecureArea,
+                        dsKey = dsKey,
+                        dsCert = dsCert,
+                        showToast = showToast,
+                        deviceKeyAlgorithm = deviceKeyAlgorithm.value,
+                        deviceKeyMacAlgorithm = deviceKeyMacAlgorithm.value,
+                        showDocumentCreationDialog = showDocumentCreationDialog,
+                    )
+                }
+            }) {
+                Text(text = "Create Direct Access mDL")
+            }
+        }
+        item {
+            TextButton(onClick = {
+                coroutineScope.launch {
+                    val (dsKey, dsCert) = generateDsKeyAndCert(documentSigningAlgorithm.value, iacaKey, iacaCert)
+                    deleteDirectAccessDocument(
+                        documentStore = documentStore,
+                        showToast = showToast,
+                        showDocumentCreationDialog = showDocumentCreationDialog,
+                        showProvisioningResult = showProvisioningResult,
+                        documentType = DrivingLicense.getDocumentType().mdocDocumentType!!.docType
+                    )
+                }
+            }) {
+                Text(text = "Delete Direct Access mDL")
+            }
+        }
+        item {
             SettingHeadline("Settings for new documents")
         }
         item {
             SettingMultipleChoice(
-                title ="Credentials per Domain",
+                title = "Credentials per Domain",
                 choices = listOf(1, 2, 3, 5, 10, 15, 20).map { it.toString() },
                 initialChoice = numCredentialsPerDomain.value.toString(),
                 onChoiceSelected = { choice ->
@@ -496,7 +564,8 @@ private suspend fun provisionTestDocuments(
         return
     }
     if (deviceKeyMacAlgorithm != Algorithm.UNSET &&
-        secureArea.supportedAlgorithms.find { it == deviceKeyMacAlgorithm } == null) {
+        secureArea.supportedAlgorithms.find { it == deviceKeyMacAlgorithm } == null
+    ) {
         showToast("Secure Area doesn't support algorithm $deviceKeyMacAlgorithm for DeviceKey for MAC")
         showDocumentCreationDialog.value = false
         return
@@ -537,4 +606,220 @@ private suspend fun provisionTestDocuments(
     showDocumentCreationDialog.value = false
 }
 
+@OptIn(ExperimentalSerializationApi::class, ExperimentalResourceApi::class)
+private suspend fun provisionDirectAccessDocument(
+    showProvisioningResult: MutableState<AnnotatedString?>,
+    documentStore: DocumentStore,
+    secureArea: SecureArea,
+    dsKey: EcPrivateKey,
+    dsCert: X509Cert,
+    deviceKeyAlgorithm: Algorithm,
+    deviceKeyMacAlgorithm: Algorithm,
+    showToast: (message: String) -> Unit,
+    showDocumentCreationDialog: MutableState<Boolean>
+) {
+    // This can be slow... so we show a dialog to help convey this to the user.
+    showDocumentCreationDialog.value = true
+
+    // Dont add if already exists (however, the APDU appears to be tolerant to just overwriting it).
+    if (findDirectAccessExampleDocument(documentStore) != null) {
+        showToast("DirectAccess mDL document already provisioned. Delete it and try again.")
+        showDocumentCreationDialog.value = false
+        return
+    }
+
+    if (secureArea.supportedAlgorithms.find { it == deviceKeyAlgorithm } == null) {
+        showToast("Secure Area doesn't support algorithm $deviceKeyAlgorithm for DeviceKey")
+        showDocumentCreationDialog.value = false
+        return
+    }
+    if (deviceKeyMacAlgorithm != Algorithm.UNSET &&
+        secureArea.supportedAlgorithms.find { it == deviceKeyMacAlgorithm } == null
+    ) {
+        showToast("Secure Area doesn't support algorithm $deviceKeyMacAlgorithm for DeviceKey for MAC")
+        showDocumentCreationDialog.value = false
+        return
+    }
+    try {
+        val numDocsBegin = documentStore.listDocuments().size
+        val timestampBegin = Clock.System.now()
+
+        // Provision doc.
+        require(deviceKeyAlgorithm.isSigning)
+        require(deviceKeyMacAlgorithm == Algorithm.UNSET || deviceKeyMacAlgorithm.isKeyAgreement)
+
+        val cardArt = getDrawableResourceBytes(
+            getSystemResourceEnvironment(),
+            Res.drawable.driving_license_card_art,
+        )
+
+        val displayName = "DirectAccess mDL"
+        val documentType = DrivingLicense.getDocumentType()
+
+        val document = documentStore.createDocument(
+            displayName = displayName,
+            typeDisplayName = documentType.displayName,
+            cardArt = ByteString(cardArt),
+        )
+
+        val now = Clock.System.now()
+        val signedAt = now - 1.hours
+        val validFrom = now - 1.hours
+        val validUntil = now + 365.days
+
+        // Add Credentials
+        if (documentType.mdocDocumentType != null) {
+            val issuerNamespaces = buildIssuerNamespaces {
+                for ((nsName, ns) in documentType.mdocDocumentType?.namespaces!!) {
+                    addNamespace(nsName) {
+                        for ((deName, de) in ns.dataElements) {
+                            val sampleValue = de.attribute.sampleValueMdoc
+                            if (sampleValue != null) {
+                                val value = if (deName.startsWith("given_name")) {
+                                    Tstr("Erika")
+                                } else {
+                                    sampleValue
+                                }
+                                addDataElement(deName, value)
+                            } else {
+                                Logger.w(TAG, "No sample value for data element $deName")
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create authentication keys.
+            val algorithm = deviceKeyAlgorithm
+            if (algorithm != Algorithm.UNSET) {
+                val pemEncodedCert = Res.readBytes("files/owf_identity_credential_reader_cert.pem")
+                val trustedReaderCert = X509Cert.fromPem(pemEncodedCert.decodeToString())
+                val directAccessCredential = DirectAccessCredential.create(
+                    document = document,
+                    asReplacementForIdentifier = null,
+                    domain = CREDENTIAL_DOMAIN_MDOC_NO_USER_AUTH,
+                    documentType = documentType.mdocDocumentType!!.docType
+                )
+
+                // Generate an MSO and issuer-signed data for this authentication key.
+                val msoGenerator = MobileSecurityObjectGenerator(
+                    Algorithm.SHA256,
+                    documentType.mdocDocumentType!!.docType,
+                    directAccessCredential.attestation.publicKey
+                )
+                msoGenerator.setValidityInfo(signedAt, validFrom, validUntil, null)
+                msoGenerator.addValueDigests(issuerNamespaces)
+
+                val mso = msoGenerator.generate()
+                val readerAuth = buildCborArray {
+                    add((trustedReaderCert.ecPublicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding)
+                }
+                val taggedEncodedMso = Cbor.encode(Tagged(24, Bstr(mso)))
+
+                // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
+                //
+                // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+                //
+                val protectedHeaders = mapOf<CoseLabel, DataItem>(
+                    Pair(
+                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                        Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
+                    )
+                )
+                val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+                    Pair(
+                        CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                        X509CertChain(listOf(dsCert)).toDataItem()
+                    )
+                )
+                val encodedIssuerAuth = Cbor.encode(
+                    Cose.coseSign1Sign(
+                        dsKey,
+                        taggedEncodedMso,
+                        true,
+                        dsKey.publicKey.curve.defaultSigningAlgorithm,
+                        protectedHeaders,
+                        unprotectedHeaders
+                    ).toDataItem()
+                )
+                val issuerProvidedAuthenticationData = Cbor.encode(
+                    buildCborMap {
+                        put("issuerNameSpaces", issuerNamespaces.toDataItem())
+                        put("issuerAuth", RawCbor(encodedIssuerAuth))
+                        put("readerAccess", readerAuth)
+                    }
+                )
+
+                // Now that we have issuer-provided authentication data we certify the authentication key.
+                directAccessCredential.certify(
+                    issuerProvidedAuthenticationData,
+                    validFrom,
+                    validUntil
+                )
+            }
+        }
+
+        val timestampEnd = Clock.System.now()
+        val numDocsEnd = documentStore.listDocuments().size
+
+        val provisioningResult = buildAnnotatedString {
+            append("Created ${numDocsEnd - numDocsBegin} document(s) in ${timestampEnd - timestampBegin}.")
+        }
+        showProvisioningResult.value = provisioningResult
+    } catch (e: Throwable) {
+        e.printStackTrace()
+        showToast("Error provisioning documents: $e")
+    }
+    showDocumentCreationDialog.value = false
+}
+
+private suspend fun deleteDirectAccessDocument(
+    showProvisioningResult: MutableState<AnnotatedString?>,
+    documentStore: DocumentStore,
+    documentType: String,
+    showToast: (message: String) -> Unit,
+    showDocumentCreationDialog: MutableState<Boolean>,
+) {
+    // This can be slow... so we show a dialog to help convey this to the user.
+    showDocumentCreationDialog.value = true
+
+    try {
+        val timestampBegin = Clock.System.now()
+
+        // Wipe APDU.
+        DirectAccessCredential.delete(documentType)
+
+        // Remove from DocStore.
+        val directAccessDocumentId = findDirectAccessExampleDocument(documentStore)
+        if (directAccessDocumentId == null) {
+            showToast("Test document DirectAccess mDL is not provisioned or already deleted.")
+            showDocumentCreationDialog.value = false
+            return
+        }
+
+        documentStore.deleteDocument(directAccessDocumentId)
+        val timestampEnd = Clock.System.now()
+        val provisioningResult = buildAnnotatedString {
+            append("Direct Access document deleted in ${timestampEnd - timestampBegin}.")
+        }
+        showProvisioningResult.value = provisioningResult
+
+    } catch (e: Throwable) {
+        e.printStackTrace()
+        showToast("Error deleting document: $e")
+    }
+    showDocumentCreationDialog.value = false
+}
+
+/** Locate the first Document with DirectAccess credentials. */
+private suspend fun findDirectAccessExampleDocument(documentStore: DocumentStore): String? {
+    val directAccessDocumentId = documentStore.listDocuments().firstOrNull { documentId ->
+        documentStore.lookupDocument(documentId)?.let {
+            it.getCredentials().firstOrNull { credential ->
+                credential.credentialType == DirectAccessCredential.CREDENTIAL_TYPE
+            } != null
+        } ?: false
+    }
+    return directAccessDocumentId
+}
 

@@ -689,14 +689,17 @@ private suspend fun doReaderFlowWithTransport(
         readerRootCert = app.readerRootCert,
         zkSystemRepository = app.zkSystemRepository,
     )
-    try {
+
+    Logger.dCbor(TAG, "SessionData to send", encodedDeviceRequest)
+
+    val message = sessionEncryption.encryptMessage(
+        messagePlaintext = encodedDeviceRequest,
+        statusCode = null
+    )
+        Logger.dCbor(TAG, "SessionData to send", message)
+        try {
         transport.open(eDeviceKey)
-        transport.sendMessage(
-            sessionEncryption.encryptMessage(
-                messagePlaintext = encodedDeviceRequest,
-                statusCode = null
-            )
-        )
+        transport.sendMessage(message)
         while (true) {
             val sessionData = transport.waitForMessage()
             if (sessionData.isEmpty()) {
