@@ -17,6 +17,7 @@ enum class TokenType(val code: Byte) {
     FE_TOKEN(0),  // used by the font-end to access/edit the identity, given as `token`
     ACCESS_TOKEN(1),  // used by openid4vci to access identity data
     REFRESH_TOKEN(2),  // used by openid4vci to obtain new access token
+    ADMIN_COOKIE(-1),  // cookie required to create/edit identities
 }
 
 /**

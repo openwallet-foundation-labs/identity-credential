@@ -129,6 +129,7 @@ private suspend fun authorizeUsingSystemOfRecord(
     val responseText = response.readBytes().decodeToString()
     if (response.status != HttpStatusCode.Created) {
         Logger.e(TAG, "PAR request error: ${response.status}: $responseText")
+        throw IllegalStateException("System-of-Record: PAR request error")
     }
     val parsedResponse = Json.parseToJsonElement(responseText).jsonObject
     val requestUri = parsedResponse["request_uri"]!!.jsonPrimitive.content

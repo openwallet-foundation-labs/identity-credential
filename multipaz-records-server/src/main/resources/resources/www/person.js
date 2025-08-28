@@ -2,7 +2,6 @@ load()
 
 async function load() {
     let token = new URLSearchParams(location.search).get("token");
-    console.log("Token: " + token);
     let base = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
     let rawSchema = await (await fetch(base + "identity/schema")).json();
     let byRecordTypeId = {};
@@ -39,7 +38,7 @@ async function load() {
             core: fields,
             records: records
         };
-        data = await(await fetch(base + "identity/get", {
+        let data = await(await fetch(base + "identity/get", {
            method: 'POST',
            headers: {
                'Content-Type': 'application/json',
@@ -155,6 +154,9 @@ function addRecordSection(containerDiv, recordType, recordId) {
                 input.type = "text";
             }
         }
+        if (!recordId && attribute.identifier == "utopia_id_number") {
+            input.readOnly = true
+        }
         row.appendChild(input);
         input.setAttribute("id", id);
         section[attribute.identifier] = input;
@@ -218,7 +220,12 @@ async function save(base, inputs, recordTypes) {
     })).json();
     if (!inputs.token && response.token) {
         inputs.token = response.token;
-        location.href += "?token=" + response.token;
+        let src = location.href;
+        let index = src.indexOf("?")
+        if (index > 0) {
+            src = src.substring(0, index)
+        }
+        location.replace(src + "?token=" + response.token);
     }
 }
 
@@ -275,6 +282,6 @@ async function remove(base, token) {
         body: JSON.stringify({token: token})
     })).json();
     if (response.deleted) {
-        location.href = "list.html";
+        location.href = "index.html";
     }
 }

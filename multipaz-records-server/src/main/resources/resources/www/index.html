@@ -1,12 +1,31 @@
 <!DOCTYPE html>
 <html lang="en-US">
 <head>
-    <title>Utopia Registry</title>
+    <title>Utopia Registry - List of identities</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            margin: 1em;
+        }
+        td, th {
+            border: 1px solid black;
+            padding: 8px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Utopia Registry</h1>
-    <p>
-        <a href="list.html">List of identities</a>
-    </p>
+<h1>Utopia Registry - List of identities</h1>
+<p>
+<table id="list">
+    <tr>
+        <th>Last name</th>
+        <th>First name</th>
+        <th>Utopia id</th>
+    </tr>
+</table>
+<form action="person.html">
+    <input type="submit" value="New Identity" />
+</form>
 </body>
+<script src="list.js"></script>
 </html>
