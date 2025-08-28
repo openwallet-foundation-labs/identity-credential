@@ -8,11 +8,20 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.multipaz.records.data.AuthorizationData
 import org.multipaz.records.data.Identity
+import org.multipaz.records.data.IdentityNotFoundException
 import org.multipaz.records.data.OauthParams
+import org.multipaz.records.data.TokenType
 import org.multipaz.records.data.fromCbor
+import org.multipaz.records.data.idToToken
 import org.multipaz.records.data.toCbor
+import org.multipaz.records.data.tokenToId
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.handler.InvalidRequestException
@@ -20,6 +29,7 @@ import org.multipaz.rpc.handler.SimpleCipher
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 const val OAUTH_REQUEST_URI_PREFIX = "urn:ietf:params:oauth:request_uri:"
@@ -48,10 +58,27 @@ private suspend fun getHtml(code: String, call: ApplicationCall) {
     val cipher = BackendEnvironment.getInterface(SimpleCipher::class)!!
     val oauthParams = OauthParams.fromCbor(cipher.decrypt(code.fromBase64Url()))
     val authorizeHtml = resources.getStringResource("authorize.html")!!
+    val personList = buildJsonArray {
+        Identity.listAll().forEach { id ->
+            try {
+                val identity = Identity.findById(id)
+                val firstName = identity.data.core["given_name"]!!.asTstr
+                val lastName = identity.data.core["family_name"]!!.asTstr
+                val personId = idToToken(TokenType.FE_TOKEN, id, Duration.INFINITE)
+                addJsonObject {
+                    put("personId", personId)
+                    put("name", "$firstName $lastName")
+                }
+            } catch (err: Exception) {
+                Logger.e(TAG, "Failed to read identity '$id'", err)
+            }
+        }
+    }
     call.respondText(
         text = authorizeHtml
             .replace("\$scope", oauthParams.scope)
-            .replace("\$authorizationCode", code),
+            .replace("\$authorizationCode", code)
+            .replace("\$personList", personList.toString()),
         contentType = ContentType.Text.Html
     )
 }
@@ -59,27 +86,20 @@ private suspend fun getHtml(code: String, call: ApplicationCall) {
 /**
  * Handles `authorize` POST request from the authorization web page.
  *
- * If the user has successfully authenticated (for demo purposes we use the name and the
- * date of birth), creates access code.
+ * If the user has successfully "authenticated" (for demo purposes we just allow
+ * selecting person from a list), creates access code.
  */
 suspend fun authorizePost(call: ApplicationCall) {
     val parameters = call.receiveParameters()
     val code = parameters["authorizationCode"]
         ?: throw InvalidRequestException("'authorizationCode' missing")
-    val identities = Identity.findByNameAndDateOfBirth(
-        familyName = parameters["family_name"]
-            ?: throw IllegalArgumentException("family_name required"),
-        givenName = parameters["given_name"]
-            ?: throw IllegalArgumentException("given_name required"),
-        dateOfBirth = parameters["birth_date"]?.let {
-            LocalDate.parse(it)
-        } ?: throw IllegalArgumentException("birth_date required"),
-    )
-    if (identities.isEmpty()) {
+    val person = parameters["person"]
+        ?: throw InvalidRequestException("'person' missing")
+    val id = tokenToId(TokenType.FE_TOKEN, person)
+    try {
+        Identity.findById(id)
+    } catch (_: IdentityNotFoundException) {
         throw IllegalArgumentException("Authorization failed: no such person")
-    }
-    if (identities.size > 1) {
-        throw IllegalArgumentException("Authorization failed: multiple matches")
     }
     val cipher = BackendEnvironment.getInterface(SimpleCipher::class)!!
     val oauthParams = OauthParams.fromCbor(cipher.decrypt(code.fromBase64Url()))
@@ -88,7 +108,7 @@ suspend fun authorizePost(call: ApplicationCall) {
         throw IllegalArgumentException("Authorization session expired")
     }
     val authCode = cipher.encrypt(AuthorizationData(
-        scopeAndId = oauthParams.scope + ":" + identities.first().id,
+        scopeAndId = oauthParams.scope + ":" + id,
         codeChallenge = oauthParams.codeChallenge,
         expiration = Clock.System.now() + 3.minutes
     ).toCbor()).toBase64Url()

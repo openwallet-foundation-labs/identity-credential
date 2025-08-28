@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonObject
 import org.multipaz.records.data.Identity
 import org.multipaz.records.data.TokenType
+import org.multipaz.records.data.toJsonRecord
 import org.multipaz.records.data.tokenToId
 
 /**
@@ -59,7 +60,7 @@ suspend fun identityGet(call: ApplicationCall) {
                 for (field in fields) {
                     val value = identity.data.core[field]
                     if (value != null) {
-                        put(field, value.toJson())
+                        put(field, value.toJsonRecord())
                     }
                 }
             }
@@ -72,7 +73,7 @@ suspend fun identityGet(call: ApplicationCall) {
                             for (recordId in recordIds) {
                                 val record = recordMap[recordId]
                                 if (record != null) {
-                                    put(recordId, record.toJson())
+                                    put(recordId, record.toJsonRecord())
                                 }
                             }
                         }

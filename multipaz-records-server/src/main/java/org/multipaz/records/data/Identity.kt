@@ -3,8 +3,10 @@ package org.multipaz.records.data
 import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.Tstr
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.getTable
+import org.multipaz.storage.KeyExistsStorageException
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
@@ -21,6 +23,7 @@ class Identity private constructor(
     /** Saves updates to data in storage. */
     suspend fun save() {
         val table = BackendEnvironment.getTable(tableSpec)
+        check(id == data.core["utopia_id_number"]!!.asTstr)
         table.update(id, ByteString(data.toCbor()))
     }
 
@@ -28,59 +31,21 @@ class Identity private constructor(
         /** Creates new identity with the given data */
         suspend fun create(data: IdentityData): Identity {
             val table = BackendEnvironment.getTable(tableSpec)
-            val id = table.insert(
-                key = createKeyFor(data.core),
-                data = ByteString(data.toCbor())
-            )
-            return Identity(id, data)
-        }
-
-        private fun dobPrefix(dob: LocalDate): String {
-            val dobId = dob.year * 366 + dob.dayOfYear
-            return byteArrayOf(
-                ((dobId shr 16) and 0xFF).toByte(),
-                ((dobId shr 8) and 0xFF).toByte(),
-                (dobId and 0xFF).toByte()
-            ).toBase64Url()
-        }
-
-        private fun createKeyFor(common: Map<String, DataItem>): String {
-            // Create key based on date of birth to be able to search by it efficiently
-            val dob = common["birth_date"]?.asDateString
-                ?: throw IllegalArgumentException("No date of birth")
-            val suffix = Random.Default.nextBytes(12).toBase64Url()
-            return "${dobPrefix(dob)}$suffix"
-        }
-
-        /**
-         * Finds list of [Identity] objects in storage that match the given name and date of birth.
-         */
-        suspend fun findByNameAndDateOfBirth(
-            familyName: String,
-            givenName: String,
-            dateOfBirth: LocalDate
-        ): List<Identity> = buildList {
-            val limit = 10
-            val dobPrefix = dobPrefix(dateOfBirth)
-            var afterKey = dobPrefix
-            val table = BackendEnvironment.getTable(tableSpec)
             while (true) {
-                val keys = table.enumerate(afterKey = afterKey, limit = limit)
-                for (key in keys) {
-                    if (!key.startsWith(dobPrefix)) {
-                        return@buildList
-                    }
-                    val identity = findById(key)
-                    if (identity.data.core["family_name"]?.asTstr == familyName &&
-                        identity.data.core["given_name"]?.asTstr == givenName) {
-                        check(identity.data.core["birth_date"]?.asDateString == dateOfBirth)
-                        add(identity)
-                    }
+                val mutableCore = data.core.toMutableMap()
+                val n = Random.Default.nextInt(100000000).toString().padStart(8, '0')
+                val utopiaId = n.substring(0, 4) + "-" + n.substring(4, 8)
+                mutableCore["utopia_id_number"] = Tstr(utopiaId)
+                val dataToStore = IdentityData(mutableCore.toMap(), data.records)
+                try {
+                    val id = table.insert(
+                        key = utopiaId,
+                        data = ByteString(dataToStore.toCbor())
+                    )
+                    return Identity(id, dataToStore)
+                } catch (_: KeyExistsStorageException) {
+                    // try a different key
                 }
-                if (keys.size < limit) {
-                    break
-                }
-                afterKey = keys.last()
             }
         }
 

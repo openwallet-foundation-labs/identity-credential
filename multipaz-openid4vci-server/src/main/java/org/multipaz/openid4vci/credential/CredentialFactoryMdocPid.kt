@@ -40,7 +40,7 @@ internal class CredentialFactoryMdocPid : CredentialFactoryBase() {
         get() = "mDoc-Pid"
 
     override val scope: String
-        get() = "mDoc-Pid"
+        get() = "core"
 
     override val format: Openid4VciFormat
         get() = openId4VciFormatPid
@@ -104,6 +104,9 @@ internal class CredentialFactoryMdocPid : CredentialFactoryBase() {
                 addDataElement("given_name", coreData["given_name"])
                 addDataElement("portrait", Bstr(portrait))
                 addDataElement("birth_date", dateOfBirth.toDataItemFullDate())
+                if (coreData.hasKey("utopia_id_number")) {
+                    addDataElement("personal_administrative_number", coreData["utopia_id_number"])
+                }
                 val added = mutableSetOf("family_name", "given_name", "portrait", "birth_date")
 
                 // Values derived from the birth_date

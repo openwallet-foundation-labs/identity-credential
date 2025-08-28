@@ -8,15 +8,27 @@
 <h1>Utopia Registry Authentication</h1>
 <p>Requested record type: $scope</p>
 <h2>Verify your identity</h2>
+<p>
+    Note: this is a sample server, so instead of real authentication, you
+    can just select a desired identity.
+</p>
 <form action="authorize" method="post">
     <input type="hidden" name="authorizationCode" value="$authorizationCode"/>
-    <label for="given_name">First name:</label>
-    <input type="text" id="given_name" name="given_name" value="Ivan"/><br/>
-    <label for="family_name">Last name:</label>
-    <input type="text" id="family_name" name="family_name" value="Ksiva"/><br/>
-    <label for="birth_date">Last name:</label>
-    <input type="date" id="birth_date" name="birth_date" value="1998-09-04"/><br/>
-    <button>Verify</button>
+    <label for="person">Select an identity:</label>
+    <select id="person" name="person">
+        <option value="-">[Not authenticated]</option>
+    </select><br/>
+    <button>Select</button>
 </form>
 </body>
+<script>
+    let personList = $personList;
+    let select = document.getElementById("person");
+    for (person of personList) {
+        let option = document.createElement("option")
+        option.value = person.personId;
+        option.textContent = person.name;
+        select.appendChild(option);
+    }
+</script>
 </html>
