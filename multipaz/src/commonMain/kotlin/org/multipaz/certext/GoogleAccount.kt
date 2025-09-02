@@ -34,9 +34,9 @@ import org.multipaz.cbor.annotation.CborSerializable
 @CborSerializable(schemaHash = "7VrvNoArF_EU_LofYHBhcQnVb1kTsWs2zV22kx_K6Rc")
 data class GoogleAccount(
     val id: String,
-    val emailAddress: String?,
-    val displayName: String?,
-    val profilePictureUri: String?
+    val emailAddress: String? = null,
+    val displayName: String? = null,
+    val profilePictureUri: String? = null
 ) {
     companion object
 }
