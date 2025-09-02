@@ -14,9 +14,9 @@ import org.multipaz.cbor.annotation.CborSerializable
  * ```
  * GoogleAccount = {
  *   "id": tstr,
- *   "emailAddress": tstr,
- *   "displayName": tstr,
- *   "profilePictureUri": tstr
+ *   ? "emailAddress": tstr,
+ *   ? "displayName": tstr,
+ *   ? "profilePictureUri": tstr
  * }
  * ```
  *
@@ -31,12 +31,12 @@ import org.multipaz.cbor.annotation.CborSerializable
  * @property displayName the user's name.
  * @property profilePictureUri an URI pointing to the profile picture for the user.
  */
-@CborSerializable(schemaHash = "E_Tpe6LHdAdxIOEetMiXdBodgOv1qiEHLKgkso12Aag")
+@CborSerializable(schemaHash = "7VrvNoArF_EU_LofYHBhcQnVb1kTsWs2zV22kx_K6Rc")
 data class GoogleAccount(
     val id: String,
-    val emailAddress: String,
-    val displayName: String,
-    val profilePictureUri: String
+    val emailAddress: String?,
+    val displayName: String?,
+    val profilePictureUri: String?
 ) {
     companion object
 }

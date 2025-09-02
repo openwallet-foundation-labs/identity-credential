@@ -230,14 +230,16 @@ class App private constructor (val promptModel: PromptModel) {
             requester.certChain!!.certificates.last().ecPublicKey == MULTIPAZ_IDENTITY_READER_CERT_PUBLIC_KEY
         ) {
             val readerCert = requester.certChain!!.certificates.first()
-            readerCert.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)?.let {
-                MultipazExtension.fromCbor(it).googleAccount?.let {
-                    return TrustMetadata(
-                        displayName = it.emailAddress,
-                        displayIconUrl = it.profilePictureUri,
-                        disclaimer = "The email and picture shown are from the requester's Google Account. " +
-                                "This information has been verified but may not be their real identity"
-                    )
+            readerCert.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)?.let { extData ->
+                MultipazExtension.fromCbor(extData).googleAccount?.let { googleAccount ->
+                    if (googleAccount.emailAddress != null && googleAccount.profilePictureUri != null) {
+                        return TrustMetadata(
+                            displayName = googleAccount.emailAddress,
+                            displayIconUrl = googleAccount.profilePictureUri,
+                            disclaimer = "The email and picture shown are from the requester's Google Account. " +
+                                    "This information has been verified but may not be their real identity"
+                        )
+                    }
                 }
             }
         }
