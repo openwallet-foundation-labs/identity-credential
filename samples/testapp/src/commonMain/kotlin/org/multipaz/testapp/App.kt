@@ -1142,7 +1142,7 @@ class App private constructor (val promptModel: PromptModel) {
             when (snackbarHostState.showSnackbar(
                 message = message,
                 actionLabel = "OK",
-                duration = SnackbarDuration.Indefinite,
+                duration = SnackbarDuration.Short,
             )) {
                 SnackbarResult.Dismissed -> {
                 }

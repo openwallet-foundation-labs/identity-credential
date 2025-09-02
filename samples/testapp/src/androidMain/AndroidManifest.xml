@@ -34,7 +34,6 @@
         android:required="false" />
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="Manifest.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- For posting notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -157,15 +156,6 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
             android:launchMode="singleInstance">
         </activity>
-
-        <receiver
-            android:name=".PowerOnReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
 
         <service
             android:name=".TestAppMdocNdefService"
