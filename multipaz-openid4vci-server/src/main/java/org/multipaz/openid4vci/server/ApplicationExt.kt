@@ -42,6 +42,7 @@ import org.multipaz.openid4vci.request.token
 import org.multipaz.openid4vci.request.wellKnownOauthAuthorization
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
 import org.multipaz.openid4vci.util.AUTHZ_REQ
+import org.multipaz.openid4vci.util.OpenID4VCIRequestError
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.server.ServerConfiguration
 import org.multipaz.server.ServerEnvironment
@@ -73,14 +74,26 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
             } catch (err: CancellationException) {
                 throw err
             } catch (err: InvalidRequestException) {
-                // TODO: format in request-specific way
+                // TODO: migrate to OpenID4VCIRequestError for cases when error must be set to
+                //  anything other than "invalid_request".
                 Logger.e(TAG, "Error", err)
                 err.printStackTrace()
                 call.respondText(
                     status = HttpStatusCode.BadRequest,
                     text = buildJsonObject {
-                        put("error", "invalid")
+                        put("error", "invalid_request")
                         put("error_description", err.message ?: "")
+                    }.toString(),
+                    contentType = ContentType.Application.Json
+                )
+            } catch (err: OpenID4VCIRequestError) {
+                Logger.e(TAG, "OpenID4VCI Error", err)
+                err.printStackTrace()
+                call.respondText(
+                    status = HttpStatusCode.BadRequest,
+                    text = buildJsonObject {
+                        put("error", err.code)
+                        put("error_description", err.description)
                     }.toString(),
                     contentType = ContentType.Application.Json
                 )

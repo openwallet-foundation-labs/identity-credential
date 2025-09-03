@@ -25,4 +25,12 @@ sealed class AuthorizationChallenge {
         /** State url parameter that will be used in redirect url. */
         val state: String
     ): AuthorizationChallenge()
+
+    /** Request the user to enter text (which is assumed to be sensitive) like PIN or password. */
+    data class SecretText(
+        override val id: String,
+        /** True if previous attempt was rejected by the server, need to retry */
+        val retry: Boolean,
+        val request: SecretCodeRequest
+    ): AuthorizationChallenge()
 }

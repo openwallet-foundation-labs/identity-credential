@@ -21,7 +21,6 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.backend.Configuration
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.rpc.handler.SimpleCipher
 import org.multipaz.server.getBaseUrl
@@ -30,6 +29,7 @@ import org.multipaz.util.toBase64Url
 import kotlin.time.Duration
 
 const val OAUTH_REQUEST_URI_PREFIX = "urn:ietf:params:oauth:request_uri:"
+const val MULTIPAZ_PRE_AUTHORIZE_URI = "https://pre-authorize.multipaz.org/"
 const val OPENID4VP_REQUEST_URI_PREFIX = "https://rp.example.com/oidc/request/"
 
 val AUTHZ_REQ = ContentType("application", "oauth-authz-req+jwt")
@@ -49,7 +49,8 @@ enum class OpaqueIdType {
     OPENID4VP_CODE,  // send to /authorize when we want openid4vp request
     OPENID4VP_STATE,  // for state field in openid4vp
     OPENID4VP_PRESENTATION,  // for use in presentation_during_issuance_session
-    RECORDS_STATE  // oauth state to authorize with System of Record
+    RECORDS_STATE,  // oauth state to authorize with System of Record
+    PRE_AUTHORIZED,  // pre-authorized code
 }
 
 /**
@@ -238,7 +239,7 @@ suspend fun createSession(request: ApplicationRequest, parameters: Parameters): 
     // Create a session
     return IssuanceState.createIssuanceState(
         IssuanceState(clientId, scope, attestationKey,
-            dpopKey, redirectUri, codeChallenge, clientState)
+            dpopKey, redirectUri, codeChallenge, null, clientState)
     )
 }
 

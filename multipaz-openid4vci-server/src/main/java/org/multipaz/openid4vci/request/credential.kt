@@ -17,7 +17,6 @@ import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -31,9 +30,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
-import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborMap
-import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.putCborMap
 import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.crypto.EcPublicKey
@@ -63,7 +60,7 @@ suspend fun credential(call: ApplicationCall) {
         authorizeWithDpop(
             call.request,
             state.dpopKey!!,
-            state.clientId,
+            state.clientId!!,
             state.dpopNonce,
             accessToken
         )

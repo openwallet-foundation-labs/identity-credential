@@ -12,7 +12,6 @@ import io.ktor.http.encodeURLParameter
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.receiveParameters
-import io.ktor.server.response.header
 import io.ktor.server.response.respondText
 import kotlin.time.Clock
 import org.multipaz.crypto.Algorithm
@@ -29,6 +28,7 @@ import kotlinx.serialization.json.put
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.openid4vci.util.OpaqueIdType
+import org.multipaz.openid4vci.util.OpenID4VCIRequestError
 import org.multipaz.openid4vci.util.SystemOfRecordAccess
 import org.multipaz.openid4vci.util.authorizeWithDpop
 import org.multipaz.openid4vci.util.codeToId
@@ -40,10 +40,11 @@ import org.multipaz.openid4vci.util.validateClientAttestation
 import org.multipaz.openid4vci.util.validateClientAttestationPoP
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.util.Logger
-import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+private const val PRE_AUTHORIZED_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
 
 /**
  * Takes control over authentication session after web-based user authentication. This is a
@@ -56,7 +57,8 @@ import kotlin.time.Duration.Companion.seconds
 suspend fun token(call: ApplicationCall) {
     val digest: ByteString?
     val parameters = call.receiveParameters()
-    val id = when (parameters["grant_type"]) {
+    val grantType = parameters["grant_type"]
+    val id = when (grantType) {
         "authorization_code" -> {
             val code = parameters["code"]
                 ?: throw InvalidRequestException("'code' parameter missing")
@@ -71,6 +73,12 @@ suspend fun token(call: ApplicationCall) {
             digest = null
             codeToId(OpaqueIdType.REFRESH_TOKEN, refreshToken)
         }
+        PRE_AUTHORIZED_GRANT_TYPE -> {
+            val code = parameters["pre-authorized_code"]
+                ?: throw InvalidRequestException("'pre-authorized_code' parameter missing")
+            digest = null
+            codeToId(OpaqueIdType.PRE_AUTHORIZED, code)
+        }
         else -> throw InvalidRequestException("invalid parameter 'grant_type'")
     }
     val state = IssuanceState.getIssuanceState(id)
@@ -81,18 +89,46 @@ suspend fun token(call: ApplicationCall) {
             throw InvalidRequestException("authorization: bad code_verifier")
         }
     }
+    if (grantType == PRE_AUTHORIZED_GRANT_TYPE && state.txCodeHash != null) {
+        val txCode = parameters["tx_code"]
+            ?: throw OpenID4VCIRequestError("invalid_request", "'tx_code' parameter missing")
+        val txCodeHash =
+            ByteString(Crypto.digest(Algorithm.SHA256, txCode.encodeToByteArray()))
+        if (txCodeHash != state.txCodeHash) {
+            // TODO: only allow certain number of attempts
+            throw OpenID4VCIRequestError("invalid_grant", "incorrect 'tx_code' parameter value")
+        }
+    } else {
+        if (parameters["tx_code"] != null) {
+            throw InvalidRequestException("'tx_code' parameter must not be used")
+        }
+    }
+    val initialPreauthorized = grantType == PRE_AUTHORIZED_GRANT_TYPE && state.clientId == null
+    if (initialPreauthorized) {
+        state.clientId = parameters["client_id"]
+            ?: throw InvalidRequestException("'client_id' parameter missing")
+    }
     // NB: attestationKey can be null there; a token will be issued anyway. However, if a
     // credential factory requires client attestation, credential will only be issued
     // if state.clientAttestationKey is not null
-    val attestationKey = validateClientAttestation(call.request, state.clientId)
-    if (state.clientAttestationKey != attestationKey) {
-        throw InvalidRequestException("inconsistent client attestation key")
+    val clientId = state.clientId!!
+    val attestationKey = validateClientAttestation(call.request, clientId)
+    if (initialPreauthorized) {
+        if (state.clientAttestationKey != null) {
+            throw IllegalStateException()
+        }
+        state.clientAttestationKey = attestationKey
+    } else {
+        if (state.clientAttestationKey != attestationKey) {
+            throw InvalidRequestException("inconsistent client attestation key")
+        }
     }
-    if (state.clientAttestationKey != null) {
-        validateClientAttestationPoP(call.request, state.clientId, state.clientAttestationKey)
+    val clientAttestationKey = state.clientAttestationKey
+    if (clientAttestationKey != null) {
+        validateClientAttestationPoP(call.request, clientId, clientAttestationKey)
     }
     val dpopKey = state.dpopKey ?: establishDPopKey(call.request, parameters, id, state)
-    authorizeWithDpop(call.request, dpopKey, state.clientId, state.dpopNonce)
+    authorizeWithDpop(call.request, dpopKey, clientId, state.dpopNonce)
     state.redirectUri = null
     state.clientState = null
     val expiresIn = 60.minutes
@@ -127,12 +163,11 @@ private suspend fun establishDPopKey(
     state: IssuanceState
 ): EcPublicKey {
     check(state.dpopKey == null)
-    if (state.clientAttestationKey == null && !validateClientAssertion(parameters, state.clientId)) {
+    if (state.clientAttestationKey == null && !validateClientAssertion(parameters, state.clientId!!)) {
         throw InvalidRequestException("clientId must be authenticated")
     }
     val dpopKey = processInitialDPoP(request) ?: throw InvalidRequestException("DPoP is required")
     state.dpopKey = dpopKey
-    IssuanceState.updateDPoPKey(stateId, state)
     IssuanceState.updateIssuanceState(stateId, state)
     return dpopKey
 }

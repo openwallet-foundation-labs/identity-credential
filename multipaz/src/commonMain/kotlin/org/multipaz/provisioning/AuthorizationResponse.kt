@@ -21,4 +21,13 @@ sealed class AuthorizationResponse {
          */
         val parameterizedRedirectUrl: String
     ): AuthorizationResponse()
+
+    /** Provide the secret text requested by [AuthorizationChallenge.SecretText]. */
+    data class SecretText(
+        override val id: String,
+        /**
+         * User response for the secret text request.
+         */
+        val secret: String
+    ): AuthorizationResponse()
 }

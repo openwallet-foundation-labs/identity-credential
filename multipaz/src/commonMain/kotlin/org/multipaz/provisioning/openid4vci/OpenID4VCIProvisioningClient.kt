@@ -58,6 +58,7 @@ internal class OpenID4VCIProvisioningClient(
     var issuerDPoPNonce: String? = null
     var keyChallenge: String? = null
     var redirectState: String? = null
+    var txRetry = false
 
     override suspend fun getMetadata(): ProvisioningMetadata {
         val fullMetadata = issuerConfiguration.provisioningMetadata
@@ -70,6 +71,17 @@ internal class OpenID4VCIProvisioningClient(
 
     override suspend fun getAuthorizationChallenges(): List<AuthorizationChallenge> {
         if (token != null) {
+            return listOf()
+        }
+        if (credentialOffer is CredentialOffer.PreauthorizedCode) {
+            if (credentialOffer.txCode != null) {
+                return listOf(AuthorizationChallenge.SecretText(
+                    id = "tx",
+                    retry = txRetry,
+                    request = credentialOffer.txCode
+                ))
+            }
+            obtainToken(preauthorizedCode = credentialOffer.preauthorizedCode)
             return listOf()
         }
         val requestUri = performPushedAuthorizationRequest()
@@ -89,6 +101,7 @@ internal class OpenID4VCIProvisioningClient(
     override suspend fun authorize(response: AuthorizationResponse) {
         when (response) {
             is AuthorizationResponse.OAuth -> processOauthResponse(response.parameterizedRedirectUrl)
+            is AuthorizationResponse.SecretText -> processSecretTextResponse(response.secret)
         }
     }
 
@@ -316,6 +329,11 @@ internal class OpenID4VCIProvisioningClient(
         pkceCodeVerifier = null
     }
 
+    private suspend fun processSecretTextResponse(secret: String) {
+        val credentialOffer = this.credentialOffer as CredentialOffer.PreauthorizedCode
+        obtainToken(preauthorizedCode = credentialOffer.preauthorizedCode, txCode = secret)
+    }
+
     private suspend fun obtainToken(
         refreshToken: String? = null,
         authorizationCode: String? = null,
@@ -394,6 +412,16 @@ internal class OpenID4VCIProvisioningClient(
             authorizationDPoPNonce = response.headers["DPoP-Nonce"]
             if (response.status != HttpStatusCode.OK) {
                 val errResponseText = response.readBytes().decodeToString()
+                if (preauthorizedCode != null && txCode != null) {
+                    // Transaction Code may be wrong
+                    val errResponse = Json.parseToJsonElement(errResponseText) as JsonObject
+                    if (errResponse.string("error") == "invalid_grant") {
+                        // NB: we do not know if the pre-authorized code is wrong (or expired)
+                        // or tx_code was mis-entered. Assume it is the latter
+                        txRetry = true
+                        return
+                    }
+                }
                 if (!retried && authorizationDPoPNonce != null) {
                     retried = true
                     Logger.e(TAG, "DPoP nonce refreshed: $errResponseText")
@@ -403,6 +431,8 @@ internal class OpenID4VCIProvisioningClient(
                 throw IllegalStateException(
                     if (authorizationCode != null) {
                         "Authorization code rejected by the issuer"
+                    } else if (preauthorizedCode != null) {
+                        "Pre-authorized code rejected by the issuer"
                     } else {
                         "Refresh token (seed credential) rejected by the issuer"
                     }
