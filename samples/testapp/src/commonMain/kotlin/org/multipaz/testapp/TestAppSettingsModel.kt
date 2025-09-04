@@ -10,12 +10,16 @@ import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.models.digitalcredentials.DigitalCredentials
+import org.multipaz.testapp.AidRegistration.routeNfcAidsToHost
+import org.multipaz.testapp.AidRegistration.routeNfcAidsToSe
 import kotlin.Boolean
+import kotlin.time.ExperimentalTime
 
 /**
  * A model for settings for samples/testapp.
@@ -63,6 +67,7 @@ class TestAppSettingsModel private constructor(
 
     private val boundItems = mutableListOf<BoundItem<*>>()
 
+    @OptIn(ExperimentalTime::class)
     private suspend inline fun<reified T> bind(
         variable: MutableStateFlow<T>,
         key: String,
@@ -161,6 +166,52 @@ class TestAppSettingsModel private constructor(
         bind(dcApiProtocols, "dcApiProtocols", DigitalCredentials.Default.supportedProtocols)
 
         bind(cryptoPreferBouncyCastle, "cryptoForceBouncyCastle", false)
+    }
+
+    /**
+     * Represents the available routing options for specific NFC functionalities.
+     * The "Unknown" state is typically represented by a nullable `RoutingOption?` type being `null`.
+     */
+    enum class RoutingOption {
+        /**
+         * Indicates that transactions or operations should be routed through the host
+         * processor (the main CPU of the device).
+         */
+        HOST,
+
+        /**
+         * Indicates that transactions or operations should be routed through a
+         * Secure Element (SE) present on the device.
+         */
+        SE
+    }
+
+    private val _nfcRoutingOption = MutableStateFlow<RoutingOption?>(null)
+    /**
+     * Represents the currently selected routing option for general Secure Element access operations.
+     *
+     * This state is session-only. It defaults to `null` (Unknown) on app start.
+     * Observers can collect this [StateFlow] to react to changes in the SE access routing preference.
+     *
+     * @see RoutingOption
+     */
+    val nfcRoutingOption: StateFlow<RoutingOption?> = _nfcRoutingOption.asStateFlow()
+
+    /**
+     * Selects the NFC routing destination for either SE (Secure Element) or Host (TestApp) for the app session.
+     *
+     * This updates the [nfcRoutingOption] StateFlow.
+     * The selection is not persisted and in some cases will be lost on app restart.
+     *
+     * @param option The [RoutingOption] to set for SE access routing (SE or HOST).
+     */
+    fun selectNfcRoutingDestination(option: RoutingOption) {
+        _nfcRoutingOption.value = option
+        when (_nfcRoutingOption.value) {
+            RoutingOption.HOST -> routeNfcAidsToHost()
+            RoutingOption.SE -> routeNfcAidsToSe()
+            null -> { /* NOOP. */ }
+        }
     }
 
     val presentmentBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)

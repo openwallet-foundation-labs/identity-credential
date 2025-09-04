@@ -27,6 +27,7 @@ import org.multipaz.testapp.DocumentModel
 import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.launch
 import org.multipaz.compose.datetime.formattedDateTime
+import org.multipaz.directaccess.DirectAccessCredential
 
 @Composable
 fun CredentialViewerScreen(
@@ -87,6 +88,28 @@ fun CredentialViewerScreen(
                     // TODO: Show cert chain for key used to sign issuer-signed data. Involves
                     //  getting this over the network as specified in section 5 "JWT VC Issuer Metadata"
                     //  of https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/ ... how annoying
+                }
+                is DirectAccessCredential -> {
+                    KeyValuePairText("ISO mdoc DocType", credentialInfo.credential.docType)
+                    KeyValuePairText(
+                        keyText = "ISO mdoc DS Key Certificate",
+                        valueText = buildAnnotatedString {
+                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
+                                append("Click for details")
+                            }
+                        },
+                        modifier = Modifier.clickable {
+                            coroutineScope.launch {
+                                val issuerSigned = Cbor.decode(credentialInfo.credential.issuerProvidedData)
+                                val issuerAuthCoseSign1 = issuerSigned["issuerAuth"].asCoseSign1
+                                val certChain =
+                                    issuerAuthCoseSign1.unprotectedHeaders[
+                                        CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN)
+                                    ]!!.asX509CertChain
+                                onViewCertificateChain(Cbor.encode(certChain.toDataItem()).toBase64Url())
+                            }
+                        }
+                    )
                 }
             }
 
