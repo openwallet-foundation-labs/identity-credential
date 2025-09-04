@@ -23,6 +23,7 @@ async function displayCredentialConfig(configId) {
     img.className = "credential_logo";
     img.setAttribute("src", display.logo?.uri);
     item.appendChild(img);
+
     let title = document.createElement("h3");
     title.textContent = "Authorization Code Flow";
     item.appendChild(title);
@@ -49,6 +50,67 @@ async function displayCredentialConfig(configId) {
     qr.setAttribute("src", "qr?q=" + encodeURIComponent(href));
     qr.setAttribute("style", "image-rendering: pixelated");
     p2.appendChild(qr);
+
+    let preAuthTitle = document.createElement("h3");
+    preAuthTitle.textContent = "Pre-authorized Offer Flow";
+    item.appendChild(preAuthTitle);
+    let preAuthDiv = document.createElement("div");
+    item.appendChild(preAuthDiv);
+    let preAuthForm = document.createElement("form");
+    preAuthDiv.appendChild(preAuthForm);
+    preAuthForm.method = "GET";
+    preAuthForm.action = "authorize";
+    let preAuthConfigurationId = document.createElement("input")
+    preAuthConfigurationId.type = "hidden";
+    preAuthConfigurationId.name = "configuration_id";
+    preAuthConfigurationId.value = configId;
+    preAuthForm.appendChild(preAuthConfigurationId);
+    let preAuthRequestUri = document.createElement("input")
+    preAuthRequestUri.type = "hidden";
+    preAuthRequestUri.name = "request_uri";
+    preAuthRequestUri.value = "https://pre-authorize.multipaz.org/";
+    preAuthForm.appendChild(preAuthRequestUri);
+    preAuthForm.appendChild(document.createTextNode("Transaction Code: "))
+    let txLength = document.createElement("select");
+    txLength.name = "tx_kind";
+    let txNone = document.createElement("option");
+    txNone.value = "none"
+    txNone.textContent = "None"
+    txLength.appendChild(txNone);
+    let tx4digits = document.createElement("option");
+    tx4digits.value = "n4"
+    tx4digits.textContent = "4 digits"
+    txLength.appendChild(tx4digits);
+    let tx4alpha = document.createElement("option");
+    tx4alpha.value = "a4"
+    tx4alpha.textContent = "4 letters or digits"
+    txLength.appendChild(tx4alpha);
+    let tx6digits = document.createElement("option");
+    tx6digits.value = "n6"
+    tx6digits.textContent = "6 digits"
+    txLength.appendChild(tx6digits);
+    let tx6alpha = document.createElement("option");
+    tx6alpha.value = "a6"
+    tx6alpha.textContent = "6 letters or digits"
+    txLength.appendChild(tx6alpha);
+    preAuthForm.appendChild(txLength);
+    preAuthForm.appendChild(document.createElement("br"));
+    let txBlock = document.createElement("div");
+    txBlock.style.display = "none";
+    txBlock.textContent = "Description: "
+    let txText = document.createElement("input");
+    txText.type = "text";
+    txText.value = "Transaction Code"
+    txText.name = "tx_text";
+    txBlock.appendChild(txText);
+    preAuthForm.appendChild(txBlock);
+    txLength.onchange = function() {
+        txBlock.style.display = txLength.value == "none" ? "none" : "block";
+    };
+    let preAuthButton = document.createElement("input");
+    preAuthButton.type = "submit";
+    preAuthButton.value = "Authorize";
+    preAuthForm.appendChild(preAuthButton);
 
     let certTitle = document.createElement("h3");
     certTitle.textContent = "Credential signing certificate";

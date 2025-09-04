@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.provisioning.SecretCodeRequest
 import org.multipaz.util.Logger
 
 /**
@@ -40,7 +41,8 @@ internal sealed class CredentialOffer {
         override val configurationId: String,
         override val authorizationServer: String?,
         val preauthorizedCode: String,
-        val txCode: TxCode?
+        /* Describes tx_code parameter (see OpenId4Vci spec referenced above) */
+        val txCode: SecretCodeRequest?
     ) : CredentialOffer()
 
     /**
@@ -53,16 +55,8 @@ internal sealed class CredentialOffer {
         val issuerState: String?
     ) : CredentialOffer()
 
-    /**
-     * Describes tx_code parameter (see OpenId4Vci spec referenced above).
-     */
-    data class TxCode(
-        val description: String,
-        val isNumeric: Boolean,
-        val length: Int
-    )
 
-    companion object: JsonParsing("Credential offer") {
+    internal companion object: JsonParsing("Credential offer") {
 
         /**
          * Parse openid4vci credential offer Url (from a deep link or Qr scan) and return
@@ -129,12 +123,12 @@ internal sealed class CredentialOffer {
             }
         }
 
-        private fun extractTxCode(txCodeJson: JsonElement?): TxCode? {
+        private fun extractTxCode(txCodeJson: JsonElement?): SecretCodeRequest? {
             return if (txCodeJson == null) {
                 null
             } else {
                 val obj = txCodeJson.jsonObject
-                TxCode(
+                SecretCodeRequest(
                     description = obj.stringOrNull("description")
                         ?: "Enter transaction code that was previously communicated to you",
                     length = obj.integerOrNull("length") ?: Int.MAX_VALUE,

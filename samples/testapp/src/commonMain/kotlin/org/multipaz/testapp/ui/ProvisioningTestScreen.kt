@@ -10,14 +10,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import org.multipaz.compose.PassphraseEntryField
 import org.multipaz.models.provisioning.ProvisioningModel
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
+import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.testapp.provisioning.ProvisioningSupport
 
 @Composable
@@ -27,44 +31,50 @@ fun ProvisioningTestScreen(
 ) {
     val provisioningState = provisioningModel.state.collectAsState(ProvisioningModel.Idle).value
     Column {
-        if (provisioningState is ProvisioningModel.Authorizing) {
-            Authorize(
-                provisioningModel,
-                provisioningState.authorizationChallenges,
-                provisioningSupport,
-            )
-        } else if (provisioningState is ProvisioningModel.Error) {
-            Text(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(8.dp),
-                style = MaterialTheme.typography.titleLarge,
-                text = "Error: ${provisioningState.err.message}"
-            )
-            Text(
-                modifier = Modifier.padding(4.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                text = "For details: adb logcat -s ProvisioningModel"
-            )
-        } else {
-            val text = when (provisioningState) {
-                ProvisioningModel.Idle -> "Initializing..."
-                ProvisioningModel.Initial -> "Starting provisioning..."
-                ProvisioningModel.Connected -> "Connected to the back-end"
-                ProvisioningModel.ProcessingAuthorization -> "Processing authorization..."
-                ProvisioningModel.Authorized -> "Authorized"
-                ProvisioningModel.RequestingCredentials -> "Requesting credentials..."
-                ProvisioningModel.CredentialsIssued -> "Credentials issued"
-                is ProvisioningModel.Error -> throw IllegalStateException()
-                is ProvisioningModel.Authorizing -> throw IllegalStateException()
+        when (provisioningState) {
+            is ProvisioningModel.Authorizing -> {
+                Authorize(
+                    provisioningModel,
+                    provisioningState.authorizationChallenges,
+                    provisioningSupport,
+                )
             }
-            Text(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(8.dp),
-                style = MaterialTheme.typography.titleLarge,
-                text = text
-            )
+
+            is ProvisioningModel.Error -> {
+                Text(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    text = "Error: ${provisioningState.err.message}"
+                )
+                Text(
+                    modifier = Modifier.padding(4.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    text = "For details: adb logcat -s ProvisioningModel"
+                )
+            }
+
+            else -> {
+                val text = when (provisioningState) {
+                    ProvisioningModel.Idle -> "Initializing..."
+                    ProvisioningModel.Initial -> "Starting provisioning..."
+                    ProvisioningModel.Connected -> "Connected to the back-end"
+                    ProvisioningModel.ProcessingAuthorization -> "Processing authorization..."
+                    ProvisioningModel.Authorized -> "Authorized"
+                    ProvisioningModel.RequestingCredentials -> "Requesting credentials..."
+                    ProvisioningModel.CredentialsIssued -> "Credentials issued"
+                    is ProvisioningModel.Error -> throw IllegalStateException()
+                    is ProvisioningModel.Authorizing -> throw IllegalStateException()
+                }
+                Text(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    text = text
+                )
+            }
         }
     }
 }
@@ -76,13 +86,17 @@ private fun Authorize(
     provisioningSupport: ProvisioningSupport
 ) {
     when (val challenge = challenges.first()) {
-        is AuthorizationChallenge.OAuth -> {
+        is AuthorizationChallenge.OAuth ->
             EvidenceRequestWebView(
                 evidenceRequest = challenge,
                 provisioningModel = provisioningModel,
                 provisioningSupport = provisioningSupport
             )
-        }
+        is AuthorizationChallenge.SecretText ->
+            EvidenceRequestSecretText(
+                challenge = challenge,
+                provisioningModel = provisioningModel
+            )
     }
 }
 
@@ -104,7 +118,6 @@ fun EvidenceRequestWebView(
         // Launch the browser
         // TODO: use Chrome Custom Tabs instead?
         uriHandler.openUri(evidenceRequest.url)
-        // Poll as a fallback
     }
     Column {
         Row(
@@ -117,6 +130,53 @@ fun EvidenceRequestWebView(
                 modifier = Modifier.padding(8.dp),
                 style = MaterialTheme.typography.bodyLarge
             )
+        }
+    }
+}
+
+@Composable
+fun EvidenceRequestSecretText(
+    challenge: AuthorizationChallenge.SecretText,
+    provisioningModel: ProvisioningModel
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val passphraseRequest = challenge.request
+    val constraints = PassphraseConstraints(
+        minLength = passphraseRequest.length ?: 1,
+        maxLength = passphraseRequest.length ?: 10,
+        passphraseRequest.isNumeric
+    )
+    Column {
+        Text(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(8.dp),
+            style = MaterialTheme.typography.titleLarge,
+            text = passphraseRequest.description
+        )
+        if (challenge.retry) {
+            Text(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(8.dp),
+                style = MaterialTheme.typography.titleLarge,
+                text = "Please retry"
+            )
+        }
+        PassphraseEntryField(
+            constraints = constraints,
+            checkWeakPassphrase = false
+        ) { passphrase, meetsRequirements, donePressed ->
+            if (meetsRequirements && donePressed) {
+                coroutineScope.launch {
+                    provisioningModel.provideAuthorizationResponse(
+                        AuthorizationResponse.SecretText(
+                            id = challenge.id,
+                            secret = passphrase
+                        )
+                    )
+                }
+            }
         }
     }
 }

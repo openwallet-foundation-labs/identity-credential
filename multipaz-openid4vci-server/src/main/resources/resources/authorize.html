@@ -3,8 +3,10 @@
 <head>
     <title>Authorize</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<div id="main">
 <h1>Verify your identity</h1>
 <h4>Option1: present EU PID</h4>
 <form action="authorize" method="post" id="form">
@@ -23,6 +25,7 @@
     <input type="date" id="birth_date" name="birth_date" value="1998-09-04"/><br/>
     <button>Verify</button>
 </form>
+</div>
 <script src="authorize.js"></script>
 </body>
 </html>

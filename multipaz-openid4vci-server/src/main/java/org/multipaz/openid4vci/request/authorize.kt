@@ -7,6 +7,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
 import io.ktor.http.encodeURLParameter
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
@@ -26,8 +27,10 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.document.NameSpacedData
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.models.verifier.Openid4VpVerifierModel
+import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.openid4vci.util.AUTHZ_REQ
 import org.multipaz.openid4vci.util.IssuanceState
+import org.multipaz.openid4vci.util.MULTIPAZ_PRE_AUTHORIZE_URI
 import org.multipaz.openid4vci.util.OAUTH_REQUEST_URI_PREFIX
 import org.multipaz.openid4vci.util.OPENID4VP_REQUEST_URI_PREFIX
 import org.multipaz.openid4vci.util.OpaqueIdType
@@ -37,6 +40,7 @@ import org.multipaz.server.getBaseUrl
 import org.multipaz.openid4vci.util.getReaderIdentity
 import org.multipaz.openid4vci.util.getSystemOfRecordUrl
 import org.multipaz.openid4vci.util.idToCode
+import org.multipaz.provisioning.SecretCodeRequest
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.cache
@@ -53,22 +57,49 @@ import kotlin.time.Duration.Companion.minutes
 private const val TAG = "authorize"
 
 suspend fun authorizeGet(call: ApplicationCall) {
-    val requestUri = call.request.queryParameters["request_uri"] ?: ""
-    if (requestUri.startsWith(OAUTH_REQUEST_URI_PREFIX)) {
+    val queryParameters = call.request.queryParameters
+    val requestUri = queryParameters["request_uri"] ?: ""
+    val id = if (requestUri.startsWith(OAUTH_REQUEST_URI_PREFIX)) {
         val code = requestUri.substring(OAUTH_REQUEST_URI_PREFIX.length)
-        val id = codeToId(OpaqueIdType.PAR_CODE, code)
-        val systemOfRecordUrl = BackendEnvironment.getSystemOfRecordUrl()
-        if (systemOfRecordUrl != null) {
-            authorizeUsingSystemOfRecord(id, systemOfRecordUrl, call)
-        } else {
-            // Create a simple web page for the user to authorize the credential issuance.
-            getHtml(id, call)
-        }
+        codeToId(OpaqueIdType.PAR_CODE, code)
     } else if (requestUri.startsWith(OPENID4VP_REQUEST_URI_PREFIX)) {
         // Request a presentation using openid4vp
         getOpenid4Vp(requestUri.substring(OPENID4VP_REQUEST_URI_PREFIX.length), call)
+        return
+    } else if (requestUri == MULTIPAZ_PRE_AUTHORIZE_URI) {
+        val configurationId = queryParameters["configuration_id"]
+            ?: throw InvalidRequestException("'configuration_id' parameter is required")
+        val factory = CredentialFactory.getRegisteredFactories().byOfferId[configurationId]
+            ?: throw InvalidRequestException("invalid 'configuration_id' parameter")
+        val txKind = queryParameters["tx_kind"] ?: "none"
+        val txCode = if (txKind == "none") {
+            null
+        } else {
+            val txText = queryParameters["tx_text"] ?: "Transaction code"
+            val txNumeric = txKind.startsWith("n")
+            val txLength = txKind.substring(1).toInt()
+            SecretCodeRequest(txText, txNumeric, txLength)
+        }
+        // Create a new session
+        IssuanceState.createIssuanceState(IssuanceState(
+            clientId = null,
+            scope = factory.scope,
+            clientAttestationKey = null,
+            dpopKey = null,
+            redirectUri = null,
+            codeChallenge = null,
+            configurationId = configurationId,
+            txCodeSpec = txCode
+        ))
     } else {
         throw InvalidRequestException("Invalid or missing 'request_uri' parameter")
+    }
+    val systemOfRecordUrl = BackendEnvironment.getSystemOfRecordUrl()
+    if (systemOfRecordUrl != null) {
+        authorizeUsingSystemOfRecord(id, systemOfRecordUrl, call)
+    } else {
+        // Create a simple web page for the user to authorize the credential issuance.
+        getHtml(id, call)
     }
 }
 
@@ -215,7 +246,7 @@ private suspend fun getOpenid4Vp(code: String, call: ApplicationCall) {
 }
 
 /**
- * Handle user's authorization and redirect to [FinishAuthorizationServlet].
+ * Handle user's authorization and redirect to `finish_authorization` endpoint.
  */
 suspend fun authorizePost(call: ApplicationCall)  {
     val parameters = call.receiveParameters()
@@ -253,20 +284,8 @@ suspend fun authorizePost(call: ApplicationCall)  {
             }
         }
     } else {
-        // Since we provision our sample documents off EU PID data, format our collected
-        // data using EU PID elements.
-        val givenName = parameters["given_name"]
-        val familyName = parameters["family_name"]
-        val birthDate = parameters["birth_date"]
-        if (givenName == null || familyName == null || birthDate == null) {
-            throw IllegalArgumentException("Authorization failed")
-        }
         // No system of record, just make things up
-        state.systemOfRecordAccess = SystemOfRecordAccess(
-            accessToken = "$givenName:$familyName:$birthDate",
-            accessTokenExpiration = Instant.DISTANT_FUTURE,
-            refreshToken = null
-        )
+        state.systemOfRecordAccess = createFakeSystemOfRecordAccess(parameters)
     }
 
     IssuanceState.updateIssuanceState(id, state)
@@ -274,4 +293,23 @@ suspend fun authorizePost(call: ApplicationCall)  {
     val issuerState = idToCode(OpaqueIdType.ISSUER_STATE, id, 5.minutes)
     call.respondRedirect(
         "finish_authorization?issuer_state=$issuerState")
+}
+
+
+/**
+ * Creates [SystemOfRecordAccess] value for the (dev-only) path where no System of Record
+ * is configured.
+ */
+private fun createFakeSystemOfRecordAccess(parameters: Parameters): SystemOfRecordAccess {
+    val givenName = parameters["given_name"]
+    val familyName = parameters["family_name"]
+    val birthDate = parameters["birth_date"]
+    if (givenName == null || familyName == null || birthDate == null) {
+        throw IllegalArgumentException("Authorization failed")
+    }
+    return SystemOfRecordAccess(
+        accessToken = "$givenName:$familyName:$birthDate",
+        accessTokenExpiration = Instant.DISTANT_FUTURE,
+        refreshToken = null
+    )
 }

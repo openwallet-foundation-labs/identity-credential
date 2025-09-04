@@ -5,7 +5,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondText
-import org.multipaz.util.toBase64Url
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.openid4vci.util.IssuanceState
@@ -16,7 +15,6 @@ import org.multipaz.openid4vci.util.codeToId
 import org.multipaz.openid4vci.util.createSession
 import org.multipaz.openid4vci.util.idToCode
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.rpc.backend.Configuration
 import org.multipaz.server.getBaseUrl
 import java.net.URLEncoder
 import kotlin.time.Duration.Companion.minutes
@@ -42,7 +40,7 @@ suspend fun authorizeChallenge(call: ApplicationCall) {
         authorizeWithDpop(
             call.request,
             state.dpopKey ?: throw IllegalArgumentException("DPoP is required"),
-            state.clientId,
+            state.clientId!!,
             state.dpopNonce,
             null
         )
