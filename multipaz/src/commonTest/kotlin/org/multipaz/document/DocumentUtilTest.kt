@@ -17,7 +17,6 @@ package org.multipaz.document
 
 import kotlinx.coroutines.runBlocking
 import org.multipaz.claim.Claim
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings
@@ -28,11 +27,11 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlinx.coroutines.test.runTest
 import kotlin.time.Instant;
-import org.multipaz.document.DocumentStoreTest.TestSecureAreaBoundCredential
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
 
 class DocumentUtilTest {
     private lateinit var storage: Storage
@@ -64,7 +63,7 @@ class DocumentUtilTest {
         val authKeySettings = CreateKeySettings()
         val numCreds = 10
         val maxUsesPerCred = 5
-        val minValidTimeMillis = 10L
+        val minValidTime = 10.milliseconds
         var numCredsCreated: Int
         val managedCredDomain = "managedCredentials"
 
@@ -85,7 +84,7 @@ class DocumentUtilTest {
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
-            minValidTimeMillis,
+            minValidTime,
             false
         )
         assertEquals(numCreds.toLong(), numCredsCreated.toLong())
@@ -121,7 +120,7 @@ class DocumentUtilTest {
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
-            minValidTimeMillis,
+            minValidTime,
             false
         )
         assertEquals(0, numCredsCreated.toLong())
@@ -148,7 +147,7 @@ class DocumentUtilTest {
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
-            minValidTimeMillis,
+            minValidTime,
             false
         )
         assertEquals(0, numCredsCreated.toLong())
@@ -178,7 +177,7 @@ class DocumentUtilTest {
             Instant.fromEpochMilliseconds(100),
             numCreds,
             maxUsesPerCred,
-            minValidTimeMillis,
+            minValidTime,
             false
         )
         assertEquals(5, numCredsCreated.toLong())
@@ -233,7 +232,7 @@ class DocumentUtilTest {
             Instant.fromEpochMilliseconds(195),
             numCreds,
             maxUsesPerCred,
-            minValidTimeMillis,
+            minValidTime,
             false
         )
         assertEquals(5, numCredsCreated.toLong())

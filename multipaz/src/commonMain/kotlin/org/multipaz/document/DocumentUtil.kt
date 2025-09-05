@@ -16,6 +16,7 @@
 package org.multipaz.document
 
 import org.multipaz.credential.Credential
+import kotlin.time.Duration
 import kotlin.time.Instant;
 
 /**
@@ -48,7 +49,7 @@ object DocumentUtil {
      * @param now the time right now, used for determining which existing credentials to replace.
      * @param numCredentials the number of credentials that should be kept.
      * @param maxUsesPerCredential the maximum number of uses per credential.
-     * @param minValidTimeMillis requests a replacement for a credential if it expires within this window.
+     * @param minValidTime requests a replacement for a credential if it expires within this window.
      * @param dryRun don't actually create the credentials, just return how many would be created.
      * @return the number of credentials created.
      */
@@ -59,7 +60,7 @@ object DocumentUtil {
         now: Instant,
         numCredentials: Int,
         maxUsesPerCredential: Int,
-        minValidTimeMillis: Long,
+        minValidTime: Duration,
         dryRun: Boolean
     ): Int {
         check(dryRun || createCredential != null)
@@ -72,9 +73,7 @@ object DocumentUtil {
             if (authCredential.usageCount >= maxUsesPerCredential) {
                 credentialExceededUseCount = true
             }
-            val expirationDate = Instant.fromEpochMilliseconds(
-                authCredential.validUntil.toEpochMilliseconds() - minValidTimeMillis
-            )
+            val expirationDate = authCredential.validUntil - minValidTime
             if (now > expirationDate) {
                 credentialBeyondExpirationDate = true
             }
@@ -99,7 +98,7 @@ object DocumentUtil {
         // It's possible we need to generate pending credentials that aren't replacements
         val numNonReplacementsToGenerate = (numCredentials
                 - numCredentialsNotNeedingReplacement
-                - numExistingPendingCredentials)
+                - numExistingPendingCredentials).coerceAtLeast(0)
 
         if (!dryRun) {
             if (numNonReplacementsToGenerate > 0) {
