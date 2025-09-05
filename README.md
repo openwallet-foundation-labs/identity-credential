@@ -118,6 +118,30 @@ For a sample using the legacy library, see
 [SimpleVerifierStandalone](https://github.com/davidz25/SimpleVerifierStandalone)
 which is a simple Android mDL reader application.
 
+## Developer Resources
+
+[developer.multipaz.org](developer.multipaz.org) is a comprehensive resource for developers.
+
+### Documentation
+
+- [Getting Started](https://developer.multipaz.org/docs/getting-started): Provides foundational knowledge for new users.
+- [API Reference](https://developer.multipaz.org/kdocs/index.html): Comprehensive documentation for every API endpoint, providing thorough understanding of the available functionalities.
+- [Codelabs](https://developer.multipaz.org/codelabs): Guided tutorials on key identity credential concepts, along with sample apps that provide tangible examples to accelerate development.
+- [Showcase Apps](https://developer.multipaz.org/showcase): Real-world applications built leveraging the Multipaz framework.
+
+### Applications
+
+- [Android Apps](https://apps.multipaz.org/)
+- [Web Verifier App](https://verifier.multipaz.org/)
+- [Issuer Portal](https://issuer.multipaz.org/)
+- [Identity Reader Backend](http://identityreader.multipaz.org/)
+
+### Community & Contribution
+
+- [Contributing Guide](https://developer.multipaz.org/contributing/contributing)
+- [Blog](https://developer.multipaz.org/blog)
+- [Discord](https://discord.com/invite/openwalletfoundation)
+
 ## Note
 
 This is not an official or supported Google product.
