@@ -49,23 +49,23 @@ public class PersonalizationData {
 
     @NonNull LinkedHashMap<String, NamespaceData> mNamespaces = new LinkedHashMap<>();
 
-    Collection<AccessControlProfile> getAccessControlProfiles() {
+    public Collection<AccessControlProfile> getAccessControlProfiles() {
         return Collections.unmodifiableCollection(mProfiles);
     }
 
-    Collection<String> getNamespaces() {
+    public Collection<String> getNamespaces() {
         return Collections.unmodifiableCollection(mNamespaces.keySet());
     }
 
-    Collection<NamespaceData> getNamespaceDatas() {
+    public Collection<NamespaceData> getNamespaceDatas() {
         return Collections.unmodifiableCollection(mNamespaces.values());
     }
 
-    NamespaceData getNamespaceData(String namespace) {
+    public NamespaceData getNamespaceData(String namespace) {
         return mNamespaces.get(namespace);
     }
 
-    static class NamespaceData {
+    public static class NamespaceData {
 
         @NonNull protected String mNamespace;
         @NonNull protected LinkedHashMap<String, EntryData> mEntries = new LinkedHashMap<>();
@@ -74,15 +74,15 @@ public class PersonalizationData {
             this.mNamespace = namespace;
         }
 
-        String getNamespaceName() {
+        public String getNamespaceName() {
             return mNamespace;
         }
 
-        Collection<String> getEntryNames() {
+        public Collection<String> getEntryNames() {
             return Collections.unmodifiableCollection(mEntries.keySet());
         }
 
-        Collection<AccessControlProfileId> getAccessControlProfileIds(String name) {
+        public Collection<AccessControlProfileId> getAccessControlProfileIds(String name) {
             EntryData value = mEntries.get(name);
             if (value != null) {
                 return value.mAccessControlProfileIds;
@@ -90,7 +90,7 @@ public class PersonalizationData {
             return null;
         }
 
-        byte[] getEntryValue(String name) {
+        public byte[] getEntryValue(String name) {
             EntryData value = mEntries.get(name);
             if (value != null) {
                 return value.mValue;

@@ -37,23 +37,23 @@ public class AccessControlProfile {
     }
 
     @NonNull
-    AccessControlProfileId getAccessControlProfileId() {
+    public AccessControlProfileId getAccessControlProfileId() {
         return mAccessControlProfileId;
     }
 
     /**
      * Returns the authentication timeout, in milliseconds.
      */
-    long getUserAuthenticationTimeout() {
+    public long getUserAuthenticationTimeout() {
         return mUserAuthenticationTimeoutMillis;
     }
 
-    boolean isUserAuthenticationRequired() {
+    public boolean isUserAuthenticationRequired() {
         return mUserAuthenticationRequired;
     }
 
     @Nullable
-    X509Certificate getReaderCertificate() {
+    public X509Certificate getReaderCertificate() {
         return mReaderCertificate;
     }
 
