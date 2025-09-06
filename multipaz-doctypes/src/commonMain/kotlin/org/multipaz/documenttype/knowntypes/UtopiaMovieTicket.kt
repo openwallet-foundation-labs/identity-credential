@@ -1,9 +1,13 @@
 package org.multipaz.documenttype.knowntypes
 
+import kotlinx.datetime.parse
 import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.Icon
 import kotlinx.serialization.json.JsonPrimitive
+import org.multipaz.cbor.toDataItemDateTimeString
+import org.multipaz.documenttype.StringOption
+import kotlin.time.Instant
 
 /**
  * Object containing the metadata of the Utopia Movie Ticket Document Type.
@@ -18,8 +22,8 @@ object UtopiaMovieTicket {
         return DocumentType.Builder("Movie Ticket")
             .addJsonDocumentType(type = MOVIE_TICKET_VCT, keyBound = false)
             .addJsonAttribute(
-                DocumentAttributeType.Number,
-                "ticket_number",
+                DocumentAttributeType.String,
+                "ticket_id",
                 "Ticket Number",
                 "Ticket identification/reference number issued at the purchase time.",
                 Icon.NUMBERS,
@@ -27,43 +31,44 @@ object UtopiaMovieTicket {
             )
             .addJsonAttribute(
                 DocumentAttributeType.String,
-                "cinema_id",
+                "cinema",
                 "Cinema Theater",
                 "Cinema theater name, and/or address/location of the admission.",
                 Icon.PLACE,
-                JsonPrimitive(SampleData.CINEMA_ID)
+                JsonPrimitive(SampleData.CINEMA)
             )
             .addJsonAttribute(
                 DocumentAttributeType.String,
-                "movie_id",
+                "movie",
                 "Movie Title",
                 "Movie name, title, and any other show identification information.",
                 Icon.TODAY,
-                JsonPrimitive(SampleData.MOVIE_ID)
+                JsonPrimitive(SampleData.MOVIE)
             )
             .addJsonAttribute(
-                DocumentAttributeType.String,
+                type = DocumentAttributeType.DateTime,
+                identifier = "show_date_time",
+                displayName = "Date and time of the show",
+                description = "Date and time when the movie starts",
+                icon = Icon.TODAY,
+                sampleValue = JsonPrimitive(SampleData.MOVIE_DATE_TIME)
+            )
+            .addJsonAttribute(
+                DocumentAttributeType.StringOptions(
+                    listOf(
+                        StringOption("NR", "NR - Not Rated"),
+                        StringOption("G", "G – General Audiences"),
+                        StringOption("PG", "PG – Parental Guidance Suggested"),
+                        StringOption("PG-13", "PG-13 – Parents Strongly Cautioned"),
+                        StringOption("R", "R – Restricted"),
+                        StringOption("NC-17", "NC-17 – Adults Only"),
+                    )
+                ),
                 "movie_rating",
                 "Age Rating Code",
                 "Movie rating code for age restrictions.",
                 Icon.TODAY,
                 JsonPrimitive(SampleData.MOVIE_RATING)
-            )
-            .addJsonAttribute(
-                DocumentAttributeType.Date,
-                "movie_date",
-                "Date",
-                "Year-month-day of the admission purchased.",
-                Icon.DATE_RANGE,
-                JsonPrimitive(SampleData.MOVIE_DATE)
-            )
-            .addJsonAttribute(
-                DocumentAttributeType.String,
-                "movie_time",
-                "Time",
-                "Hour and minute of the show start (theater clock).",
-                Icon.CALENDAR_CLOCK,
-                JsonPrimitive(SampleData.MOVIE_TIME)
             )
             .addJsonAttribute(
                 DocumentAttributeType.String,
@@ -89,6 +94,13 @@ object UtopiaMovieTicket {
                 Icon.DIRECTIONS_CAR,
                 JsonPrimitive(SampleData.CINEMA_PARKING)
             )
+            .addJsonAttribute(
+                DocumentAttributeType.Picture,
+                "poster",
+                "Movie Poster",
+                description = "Movie Poster",
+                Icon.IMAGE
+            )
             .addSampleRequest(
                 id = "is_parking_prepaid",
                 displayName = "Prepaid Parking",
@@ -98,7 +110,7 @@ object UtopiaMovieTicket {
                 id = "ticket_id",
                 displayName = "Ticket Number",
                 jsonClaims = listOf(
-                    "ticket_number",
+                    "ticket_id",
                 )
             )
             .addSampleRequest(

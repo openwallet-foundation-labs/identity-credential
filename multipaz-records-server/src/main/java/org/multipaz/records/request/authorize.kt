@@ -6,6 +6,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
+import io.ktor.utils.io.CancellationException
 import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonArray
@@ -62,8 +63,8 @@ private suspend fun getHtml(code: String, call: ApplicationCall) {
         Identity.listAll().forEach { id ->
             try {
                 val identity = Identity.findById(id)
-                val firstName = identity.data.core["given_name"]!!.asTstr
-                val lastName = identity.data.core["family_name"]!!.asTstr
+                val firstName = identity.data.core["given_name"]?.asTstr ?: "Unnamed"
+                val lastName = identity.data.core["family_name"]?.asTstr ?: "NoSurname"
                 val personId = idToToken(TokenType.FE_TOKEN, id, Duration.INFINITE)
                 addJsonObject {
                     put("personId", personId)
@@ -93,33 +94,66 @@ suspend fun authorizePost(call: ApplicationCall) {
     val parameters = call.receiveParameters()
     val code = parameters["authorizationCode"]
         ?: throw InvalidRequestException("'authorizationCode' missing")
-    val person = parameters["person"]
-        ?: throw InvalidRequestException("'person' missing")
-    val id = tokenToId(TokenType.FE_TOKEN, person)
-    try {
-        Identity.findById(id)
-    } catch (_: IdentityNotFoundException) {
-        throw IllegalArgumentException("Authorization failed: no such person")
-    }
     val cipher = BackendEnvironment.getInterface(SimpleCipher::class)!!
     val oauthParams = OauthParams.fromCbor(cipher.decrypt(code.fromBase64Url()))
-    if (oauthParams.expiration < Clock.System.now()) {
-        Logger.e(TAG, "Authorization session expired: ${oauthParams.expiration}")
-        throw IllegalArgumentException("Authorization session expired")
-    }
-    val authCode = cipher.encrypt(AuthorizationData(
-        scopeAndId = oauthParams.scope + ":" + id,
-        codeChallenge = oauthParams.codeChallenge,
-        expiration = Clock.System.now() + 3.minutes
-    ).toCbor()).toBase64Url()
-    call.respondRedirect(buildString {
-        append(oauthParams.redirectUri)
-        append("?code=")
-        append(authCode)
-        val clientState = oauthParams.clientState
-        if (!clientState.isNullOrEmpty()) {
-            append("&state=")
-            append(clientState.encodeURLParameter())
+    val person = parameters["person"]
+        ?: throw InvalidRequestException("'person' missing")
+    try {
+        if (person.isEmpty()) {
+            throw AuthorizationFailed()
         }
-    })
+        val id = tokenToId(TokenType.FE_TOKEN, person)
+        try {
+            Identity.findById(id)
+        } catch (_: IdentityNotFoundException) {
+            throw AuthorizationFailed()
+        }
+        if (oauthParams.expiration < Clock.System.now()) {
+            Logger.e(TAG, "Authorization session expired: ${oauthParams.expiration}")
+            throw IllegalArgumentException("Authorization session expired")
+        }
+        val authCode = cipher.encrypt(
+            AuthorizationData(
+                scopeAndId = oauthParams.scope + ":" + id,
+                codeChallenge = oauthParams.codeChallenge,
+                expiration = Clock.System.now() + 3.minutes
+            ).toCbor()
+        ).toBase64Url()
+        call.respondRedirect(buildString {
+            append(oauthParams.redirectUri)
+            append("?code=")
+            append(authCode)
+            val clientState = oauthParams.clientState
+            if (!clientState.isNullOrEmpty()) {
+                append("&state=")
+                append(clientState.encodeURLParameter())
+            }
+        })
+    } catch (err: CancellationException) {
+        throw err
+    } catch (err: Exception) {
+        val (error, description) = when (err) {
+            is InvalidRequestException -> Pair("invalid_request", err.message)
+            is AuthorizationFailed -> Pair("authorization_failed", "Invalid credentials")
+            else -> Pair("internal",
+                (err::class.simpleName ?: "Unknown") + ": " + err.message)
+        }
+        Logger.e(TAG, "$error: $description", err)
+        call.respondRedirect(buildString {
+            append(oauthParams.redirectUri)
+            append("?error=")
+            append(error)
+            if (description != null) {
+                append("&error_description=")
+                append(description.encodeURLParameter())
+            }
+            val clientState = oauthParams.clientState
+            if (!clientState.isNullOrEmpty()) {
+                append("&state=")
+                append(clientState.encodeURLParameter())
+            }
+        })
+    }
 }
+
+private class AuthorizationFailed: Exception("Authorization failed")

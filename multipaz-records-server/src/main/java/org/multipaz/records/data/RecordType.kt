@@ -13,6 +13,12 @@ class RecordType(
     val attribute: DocumentAttribute,
     val subAttributes: Map<String, RecordType> = mapOf()
 ) {
+    // List is represented by an an "attribute" with the name "*"
+    val isList: Boolean get() =
+        attribute.type == DocumentAttributeType.ComplexType && subAttributes.containsKey("*")
+
+    val listElement: RecordType get() = subAttributes["*"]!!
+
     class Builder internal constructor(
         val identifier: String
     ) {
@@ -56,6 +62,15 @@ class RecordType(
             addPrimitive(DocumentAttributeType.String, identifier, displayName, description, icon)
         }
 
+        fun addNumber(
+            identifier: String,
+            displayName: String,
+            description: String,
+            icon: Icon? = null,
+        ) {
+            addPrimitive(DocumentAttributeType.Number, identifier, displayName, description, icon)
+        }
+
         fun addDate(
             identifier: String,
             displayName: String,
@@ -63,6 +78,15 @@ class RecordType(
             icon: Icon? = null,
         ) {
             addPrimitive(DocumentAttributeType.Date, identifier, displayName, description, icon)
+        }
+
+        fun addDateTime(
+            identifier: String,
+            displayName: String,
+            description: String,
+            icon: Icon? = null,
+        ) {
+            addPrimitive(DocumentAttributeType.DateTime, identifier, displayName, description, icon)
         }
 
         fun addPicture(
@@ -79,6 +103,36 @@ class RecordType(
             val builder = Builder(identifier)
             block.invoke(builder)
             subAttributes[identifier] = builder.build()
+        }
+
+        fun addPrimitiveList(
+            type: DocumentAttributeType,
+            identifier: String,
+            displayName: String,
+            description: String,
+            icon: Icon? = null
+        ) {
+            addComplex(identifier) {
+                this.displayName = displayName
+                this.description = description
+                this.icon = icon
+                addPrimitive(type, "*", "", "")
+            }
+        }
+
+        fun addComplexList(
+            identifier: String,
+            displayName: String,
+            description: String,
+            icon: Icon? = null,
+            block: Builder.() -> Unit
+        ) {
+            addComplex(identifier) {
+                this.displayName = displayName
+                this.description = description
+                this.icon = icon
+                addComplex("*", block)
+            }
         }
 
         fun build(): RecordType {

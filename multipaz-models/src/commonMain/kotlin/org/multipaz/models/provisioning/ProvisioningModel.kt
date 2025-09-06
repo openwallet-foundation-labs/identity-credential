@@ -249,21 +249,22 @@ class ProvisioningModel(
                 if (credentials.size != 1) {
                     throw IllegalStateException("Only a single keyless credential must be issued")
                 }
-                KeylessSdJwtVcCredential.create(
-                    document,
-                    null,
-                    CREDENTIAL_DOMAIN_SD_JWT_VC_KEYLESS,
-                    (format as CredentialFormat.SdJwt).vct
-                )
-            } else {
-                for ((credentialData, pendingCredential) in credentials.zip(pendingCredentials)) {
-                    // TODO: remove validity parameters, extract them from the credentialData
-                    pendingCredential.certify(
-                        credentialData.toByteArray(),
-                        Clock.System.now(),
-                        Clock.System.now() + 30.days
+                pendingCredentials = listOf(
+                    KeylessSdJwtVcCredential.create(
+                        document,
+                        null,
+                        CREDENTIAL_DOMAIN_SD_JWT_VC_KEYLESS,
+                        (format as CredentialFormat.SdJwt).vct
                     )
-                }
+                )
+            }
+            for ((credentialData, pendingCredential) in credentials.zip(pendingCredentials)) {
+                // TODO: remove validity parameters, extract them from the credentialData
+                pendingCredential.certify(
+                    credentialData.toByteArray(),
+                    Clock.System.now(),
+                    Clock.System.now() + 30.days
+                )
             }
         } catch (err: Throwable) {
             documentStore.deleteDocument(document.identifier)

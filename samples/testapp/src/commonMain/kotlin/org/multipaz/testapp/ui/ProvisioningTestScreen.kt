@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import org.multipaz.compose.PassphraseEntryField
 import org.multipaz.models.provisioning.ProvisioningModel
 import org.multipaz.provisioning.AuthorizationChallenge
+import org.multipaz.provisioning.AuthorizationException
 import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.securearea.PassphraseConstraints
 import org.multipaz.testapp.provisioning.ProvisioningSupport
@@ -40,7 +41,28 @@ fun ProvisioningTestScreen(
                 )
             }
 
-            is ProvisioningModel.Error -> {
+            is ProvisioningModel.Error -> if (provisioningState.err is AuthorizationException) {
+                Text(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    text = "Authorization failed"
+                )
+                val err = provisioningState.err as AuthorizationException
+                Text(
+                    modifier = Modifier.padding(4.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Error code: ${err.code}"
+                )
+                if (err.description != null) {
+                    Text(
+                        modifier = Modifier.padding(4.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        text = err.description!!
+                    )
+                }
+            } else {
                 Text(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)

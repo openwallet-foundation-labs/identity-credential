@@ -2,19 +2,25 @@
 <html lang="en-US">
 <head>
     <title>Utopia Registry - individual's records</title>
-    <style>
-        /* this is for left-to-right languages only */
-        .controls { display: table; }
-        .row { display: table-row; }
-        .row * { display: table-cell; margin-bottom: 8px;}
-        .row label { text-align: end; }
-        .actions { margin-top: 1em; padding-top: 1em; }
-        .record { margin: 1em; background: #EFF; }
-        .core { margin: 1em; background: #EEF; }
-    </style>
+    <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-<h1>Utopia Registry - individual's records</h1>
+<body class="wide">
+<div id="main">
+<div id="login"></div>
+<h1 class="state_name">State</h1>
+<h2>Individual's records</h2>
+<p class="purpose">
+    You are playing the role of <i class="official_name">Admin</i> of
+    <i class="state_name">State</i>. This page contains all the records
+    for the given individual that <i class="state_name">State</i>
+    maintains. The first section <i>Core personal information</i> contains data that is
+    applicable to everyone. Additional sections are optional.
+    <span class="logged_in">You are logged in and thus have power to alter
+    the information, be sure to save it using button at the bottom of this
+    page.</span>
+    <span class="logged_out">As you are not logged in, you can play with the
+    data, but it won't be saved. Use "Login" button at the top of the page to log in.</span>
+</p>
 <div id="core"></div>
 <h2>Records</h2>
 <div>
@@ -25,10 +31,13 @@
 <button id="addRecord">Add</button>
 </div>
 <div id="records"></div>
-<div class="actions">
+<div class="actions logged_in">
     <button id="save">Save</button>
     <button id="delete">Delete</button>
 </div>
+</div>
 </body>
 <script src="person.js"></script>
+<script src="login.js"></script>
+<script src="metadata.js"></script>
 </html>

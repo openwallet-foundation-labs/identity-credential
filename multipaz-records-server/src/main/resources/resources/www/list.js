@@ -39,3 +39,4 @@ async function fetchIdentity(base, row, token) {
     link.href = "person.html?token=" + token;
     row.appendChild(idnum);
 }
+

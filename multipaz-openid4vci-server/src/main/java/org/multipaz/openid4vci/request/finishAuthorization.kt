@@ -23,6 +23,7 @@ import org.multipaz.provisioning.SecretCodeRequest
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.rpc.handler.InvalidRequestException
+import org.multipaz.util.Logger
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -35,19 +36,25 @@ private const val TAG = "finish_authorization"
  */
 suspend fun finishAuthorization(call: ApplicationCall) {
     val systemOfRecordUrl = BackendEnvironment.getSystemOfRecordUrl()
+    val stateParam = call.request.queryParameters["state"]
+        ?: throw InvalidRequestException("missing parameter 'state'")
     val id = if (systemOfRecordUrl == null) {
         // working without system of record
-        val issuerState = call.request.queryParameters["issuer_state"]
-            ?: throw InvalidRequestException("missing parameter 'issuer_state'")
-        codeToId(OpaqueIdType.ISSUER_STATE, issuerState)
+        codeToId(OpaqueIdType.ISSUER_STATE, stateParam)
     } else {
         // redirected from the system of record
-        val state = call.request.queryParameters["state"]
-            ?: throw InvalidRequestException("missing parameter 'state'")
-        codeToId(OpaqueIdType.RECORDS_STATE, state)
+        codeToId(OpaqueIdType.RECORDS_STATE, stateParam)
     }
     val state = IssuanceState.getIssuanceState(id)
-    if (systemOfRecordUrl != null) {
+    var error: String? = call.request.queryParameters["error"]
+
+    if (systemOfRecordUrl == null) {
+        if (state.authorized != true) {
+            // We only could get there if something was tampering with redirects.
+            Logger.e(TAG, "Unexpected state: not authorized, yet no error specified")
+            error = "unexpected_state"
+        }
+    } else if (error == null) {
         // NB: System-of-Record access code is sensitive. In our simple implementation
         // we store it in the database as plain text. For better security it could be
         // encrypted using hash of an active encrypted code produced by idToCode
@@ -55,20 +62,37 @@ suspend fun finishAuthorization(call: ApplicationCall) {
         // re-encrypted any time a new code is issued) and is not warranted in the sample code.
         state.systemOfRecordAuthCode = call.request.queryParameters["code"]
             ?: throw InvalidRequestException("missing parameter 'code'")
+        state.authorized = true
     }
     if (state.clientId != null) {
         // regular authorization flow
-        val authCode = idToCode(OpaqueIdType.REDIRECT, id, 2.minutes)
         IssuanceState.updateIssuanceState(id, state)
-        processRedirect(call, authCode, state)
+        processRedirect(
+            call = call,
+            error = error,
+            authCode = if (error == null) {
+                idToCode(OpaqueIdType.REDIRECT, id, 2.minutes)
+            } else {
+                null
+            },
+            state = state
+        )
     } else {
         // pre-authorized flow
-        val preauthCode = idToCode(OpaqueIdType.PRE_AUTHORIZED, id, 100.days)
-        val txCode: String? = state.txCodeSpec?.generateRandom()?.also {
-            state.txCodeHash = ByteString(Crypto.digest(Algorithm.SHA256, it.encodeToByteArray()))
+        val txCode: String? = if (error == null) {
+            state.txCodeSpec?.generateRandom()?.also {
+                state.txCodeHash = ByteString(Crypto.digest(Algorithm.SHA256, it.encodeToByteArray()))
+            }
+        } else {
+            null
         }
         IssuanceState.updateIssuanceState(id, state)
-        preauthorizedOffer(call, preauthCode, txCode, state)
+        if (error == null) {
+            val preauthCode = idToCode(OpaqueIdType.PRE_AUTHORIZED, id, 100.days)
+            preauthorizedOffer(call, preauthCode, txCode, state)
+        } else {
+            preauthorizedError(call, error)
+        }
     }
 }
 
@@ -85,12 +109,28 @@ private fun SecretCodeRequest.generateRandom(): String {
     return code.toString()
 }
 
-private suspend fun processRedirect(call: ApplicationCall, authCode: String, state: IssuanceState) {
+private suspend fun processRedirect(
+    call: ApplicationCall,
+    error: String?,
+    authCode: String?,
+    state: IssuanceState
+) {
     val redirectUri = state.redirectUri ?: throw IllegalStateException("No redirect url")
     val parameterizedUri = buildString {
         append(redirectUri)
-        append("?code=")
-        append(authCode)
+        append("?")
+        if (error != null) {
+            append("error=")
+            append(error.encodeURLParameter())
+            val description = call.request.queryParameters["error_description"]
+            if (description != null) {
+                append("&error_description=")
+                append(description.encodeURLParameter())
+            }
+        } else {
+            append("code=")
+            append(authCode)
+        }
         append("&iss=")
         append(BackendEnvironment.getBaseUrl().encodeURLParameter())
         val clientState = state.clientState
@@ -162,6 +202,22 @@ private suspend fun preauthorizedOffer(
             } else {
                 "Verification code: <code>$txCode</code>"
             }),
+        contentType = ContentType.Text.Html
+    )
+}
+
+private suspend fun preauthorizedError(
+    call: ApplicationCall,
+    error: String
+) {
+    val description = call.request.queryParameters["error_description"]
+        ?: "No further information"
+    val resources = BackendEnvironment.getInterface(Resources::class)!!
+    val preauthorizedHtml = resources.getStringResource("pre-authorized-error.html")!!
+    call.respondText(
+        text = preauthorizedHtml
+            .replace("\$error", error)
+            .replace("\$description", description),
         contentType = ContentType.Text.Html
     )
 }

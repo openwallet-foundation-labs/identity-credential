@@ -1,9 +1,19 @@
 package org.multipaz.records.data
 
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.call
 import io.ktor.server.request.receiveParameters
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.respondRedirect
+import io.ktor.server.response.respondText
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.handler.InvalidRequestException
 import org.multipaz.server.getBaseUrl
@@ -32,20 +42,25 @@ suspend fun validateAdminCookie(call: ApplicationCall) {
  * (supplied password matching given administrative password).
  */
 suspend fun adminAuth(call: ApplicationCall, adminPassword: String) {
-    val enteredPassword = call.receiveParameters()["password"]
-        ?: throw InvalidRequestException("No password specified")
-    if (enteredPassword != adminPassword) {
-        call.respondRedirect(BackendEnvironment.getBaseUrl() + "/login.html?err=Wrong+password")
+    val request = Json.parseToJsonElement(call.receiveText()) as JsonObject
+    if (request["password"]?.jsonPrimitive?.content != adminPassword) {
+        call.respondText(
+            status = HttpStatusCode.BadRequest,
+            text = buildJsonObject {
+                put("error", "auth_failed")
+                put("error_description", "incorrect password")
+            }.toString(),
+            contentType = ContentType.Application.Json
+        )
     } else {
-        val baseUrl = BackendEnvironment.getBaseUrl()
         val duration = 1.days
         val cookie = idToToken(TokenType.ADMIN_COOKIE, "", duration + 10.seconds)
-        call.response.cookies.append(
-            name = "admin_auth",
-            value = cookie,
-            maxAge = duration.inWholeSeconds,
-            path = Url(baseUrl).encodedPath + "/"
+        call.respondText(
+            text = buildJsonObject {
+                put("cookie", cookie)
+                put("expiresIn", duration.inWholeSeconds)
+            }.toString(),
+            contentType = ContentType.Application.Json
         )
-        call.respondRedirect("$baseUrl/index.html")
     }
 }
