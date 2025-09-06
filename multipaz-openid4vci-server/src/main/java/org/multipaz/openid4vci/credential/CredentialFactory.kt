@@ -59,6 +59,7 @@ internal interface CredentialFactory {
                     CredentialFactoryMdocPid(),
                     CredentialFactoryUtopiaNaturatization(),
                     CredentialFactoryUtopiaMovieTicket(),
+                    CredentialFactoryPhotoID(),
                 )
                 factories.forEach { it.initialize() }
                 registeredFactories = RegisteredFactories(
