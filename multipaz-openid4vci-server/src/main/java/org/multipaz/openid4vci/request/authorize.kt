@@ -13,6 +13,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
+import io.ktor.utils.io.CancellationException
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
@@ -253,46 +254,69 @@ suspend fun authorizePost(call: ApplicationCall)  {
     val code = parameters["authorizationCode"]
         ?: throw InvalidRequestException("'authorizationCode' missing")
     val id = codeToId(OpaqueIdType.AUTHORIZATION_STATE, code)
-    val state = IssuanceState.getIssuanceState(id)
-    val data = NameSpacedData.Builder()
+    val stateCode = idToCode(OpaqueIdType.ISSUER_STATE, id, 5.minutes)
 
-    val baseUrl = BackendEnvironment.getBaseUrl()
-    val pidData = parameters["pidData"]
-    if (pidData != null) {
-        val baseUri = URI(baseUrl)
-        val origin = baseUri.scheme + "://" + baseUri.authority
-        val credMap = state.openid4VpVerifierModel!!.processResponse(
-            origin,
-            pidData
-        )
-        state.openid4VpVerifierModel = null
+    try {
+        val state = IssuanceState.getIssuanceState(id)
+        val data = NameSpacedData.Builder()
+        val baseUrl = BackendEnvironment.getBaseUrl()
+        val pidData = parameters["pidData"]
+        if (pidData != null) {
+            val baseUri = URI(baseUrl)
+            val origin = baseUri.scheme + "://" + baseUri.authority
+            val credMap = state.openid4VpVerifierModel!!.processResponse(
+                origin,
+                pidData
+            )
+            state.openid4VpVerifierModel = null
 
-        when (val presentation = credMap["pid"]!!) {
-            is Openid4VpVerifierModel.MdocPresentation -> {
-                for (document in presentation.deviceResponse.documents) {
-                    for (namespaceName in document.issuerNamespaces) {
-                        for (dataElementName in document.getIssuerEntryNames(namespaceName)) {
-                            val value = document.getIssuerEntryData(namespaceName, dataElementName)
-                            data.putEntry(namespaceName, dataElementName, value)
+            when (val presentation = credMap["pid"]!!) {
+                is Openid4VpVerifierModel.MdocPresentation -> {
+                    for (document in presentation.deviceResponse.documents) {
+                        for (namespaceName in document.issuerNamespaces) {
+                            for (dataElementName in document.getIssuerEntryNames(namespaceName)) {
+                                val value =
+                                    document.getIssuerEntryData(namespaceName, dataElementName)
+                                data.putEntry(namespaceName, dataElementName, value)
+                            }
                         }
                     }
                 }
-            }
 
-            is Openid4VpVerifierModel.SdJwtPresentation -> {
-                TODO()
+                is Openid4VpVerifierModel.SdJwtPresentation -> {
+                    TODO()
+                }
             }
+        } else {
+            // No system of record, just make things up
+            state.systemOfRecordAccess = createFakeSystemOfRecordAccess(parameters)
         }
-    } else {
-        // No system of record, just make things up
-        state.systemOfRecordAccess = createFakeSystemOfRecordAccess(parameters)
+
+        state.authorized = true  // OK to issue authorization code
+        IssuanceState.updateIssuanceState(id, state)
+
+        call.respondRedirect("finish_authorization?state=$stateCode")
+    } catch (err: CancellationException) {
+        throw err
+    } catch (err: Exception) {
+        val (error, description) = when (err) {
+            is InvalidRequestException -> Pair("invalid_request", err.message)
+            is AuthorizationFailed -> Pair("authorization_failed", "Invalid credentials")
+            else -> Pair("internal",
+                (err::class.simpleName ?: "Unknown") + ": " + err.message)
+        }
+        Logger.e(TAG, "$error: $description", err)
+        call.respondRedirect(buildString {
+            append("finish_authorization?state=")
+            append(stateCode)
+            append("&error=")
+            append(error)
+            if (description != null) {
+                append("&error_description=")
+                append(description.encodeURLParameter())
+            }
+        })
     }
-
-    IssuanceState.updateIssuanceState(id, state)
-
-    val issuerState = idToCode(OpaqueIdType.ISSUER_STATE, id, 5.minutes)
-    call.respondRedirect(
-        "finish_authorization?issuer_state=$issuerState")
 }
 
 
@@ -304,8 +328,8 @@ private fun createFakeSystemOfRecordAccess(parameters: Parameters): SystemOfReco
     val givenName = parameters["given_name"]
     val familyName = parameters["family_name"]
     val birthDate = parameters["birth_date"]
-    if (givenName == null || familyName == null || birthDate == null) {
-        throw IllegalArgumentException("Authorization failed")
+    if (givenName.isNullOrBlank() || familyName.isNullOrBlank() || birthDate.isNullOrBlank()) {
+        throw AuthorizationFailed()
     }
     return SystemOfRecordAccess(
         accessToken = "$givenName:$familyName:$birthDate",
@@ -313,3 +337,5 @@ private fun createFakeSystemOfRecordAccess(parameters: Parameters): SystemOfReco
         refreshToken = null
     )
 }
+
+private class AuthorizationFailed: Exception("Authorization failed")

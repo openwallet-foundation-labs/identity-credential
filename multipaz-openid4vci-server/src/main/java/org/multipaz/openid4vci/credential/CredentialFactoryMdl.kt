@@ -68,13 +68,12 @@ internal class CredentialFactoryMdl : CredentialFactoryBase() {
 
         val coreData = data["core"]
         val dateOfBirth = coreData["birth_date"].asDateString
-        val portrait = if (coreData.hasKey("portrait")) {
-            coreData["portrait"].asBstr
+        val address = if (coreData.hasKey("address")) {
+            val addressObject = coreData["address"]
+            if (addressObject.hasKey("formatted")) addressObject["formatted"] else null
         } else {
-            val resources = BackendEnvironment.getInterface(Resources::class)!!
-            resources.getRawResource("female.jpg")!!.toByteArray()
+            null
         }
-
         val records = data["records"]
         if (!records.hasKey("mDL")) {
             throw IllegalArgumentException("No driver's license was issued to this person")
@@ -88,6 +87,8 @@ internal class CredentialFactoryMdl : CredentialFactoryBase() {
         val timeSigned = Instant.fromEpochSeconds(now.epochSeconds, 0)
         val validFrom = Instant.fromEpochSeconds(now.epochSeconds, 0)
         val validUntil = validFrom + 30.days
+
+        val resources = BackendEnvironment.getInterface(Resources::class)!!
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val docType = DrivingLicense.MDL_DOCTYPE
@@ -111,20 +112,38 @@ internal class CredentialFactoryMdl : CredentialFactoryBase() {
 
         val issuerNamespaces = buildIssuerNamespaces {
             addNamespace(DrivingLicense.MDL_NAMESPACE) {
-                // Transfer core fields
-                addDataElement("family_name", coreData["family_name"])
-                addDataElement("given_name", coreData["given_name"])
-                addDataElement("portrait", Bstr(portrait))
+                val added = mutableSetOf("birth_date")
                 addDataElement("birth_date", dateOfBirth.toDataItemFullDate())
-                val added = mutableSetOf("family_name", "given_name", "portrait", "birth_date")
 
                 // Transfer fields from mDL record that have counterparts in the mDL credential
                 for ((nameItem, value) in mdlData.asMap) {
                     val name = nameItem.asTstr
-                    if (mdocType.dataElements.contains(name)) {
+                    if (!added.contains(name) && mdocType.dataElements.contains(name)) {
                         addDataElement(name, value)
                         added.add(name)
                     }
+                }
+
+                if (address != null) {
+                    addDataElement("resident_address", address)
+                    added.add("resident_address")
+                }
+
+                // Transfer core fields that have counterparts in the mDL credential
+                for ((nameItem, value) in coreData.asMap) {
+                    val name = nameItem.asTstr
+                    if (!added.contains(name) && mdocType.dataElements.contains(name)) {
+                        addDataElement(name, value)
+                        added.add(name)
+                    }
+                }
+
+                if (!added.contains("portrait")) {
+                    addDataElement(
+                        dataElementName = "portrait",
+                        value = Bstr(resources.getRawResource("female.jpg")!!.toByteArray())
+                    )
+                    added.add("portrait")
                 }
 
                 // Values derived from the birth_date
@@ -134,25 +153,7 @@ internal class CredentialFactoryMdl : CredentialFactoryBase() {
                 addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
                 addDataElement( "age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
 
-                addDataElement(
-                    "driving_privileges",
-                    buildCborArray {
-                        addCborMap {
-                            put("vehicle_category_code", "A")
-                            put("issue_date", Tagged(1004, Tstr("2018-08-09")))
-                            put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-                        }
-                        addCborMap {
-                            put("vehicle_category_code", "B")
-                            put("issue_date", Tagged(1004, Tstr("2017-02-23")))
-                            put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
-                        }
-                    }
-                )
-                added.add("driving_privileges")
-
-                // Add all mandatory elements for completeness. This will come from the System of
-                // Record in the future
+                // Add all mandatory elements for completeness if they are missing.
                 for ((elementName, data) in mdocType.dataElements) {
                     if (!data.mandatory || added.contains(elementName)) {
                         continue

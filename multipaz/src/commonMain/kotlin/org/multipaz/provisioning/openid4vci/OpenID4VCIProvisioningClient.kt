@@ -29,6 +29,7 @@ import kotlinx.serialization.json.putJsonArray
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.provisioning.AuthorizationChallenge
+import org.multipaz.provisioning.AuthorizationException
 import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.KeyBindingInfo
 import org.multipaz.provisioning.CredentialFormat
@@ -323,6 +324,11 @@ internal class OpenID4VCIProvisioningClient(
         }
         releaseStateValue(redirectState!!)
         redirectState = null
+        val error = navigatedUrl.parameters["error"]
+        if (error != null) {
+            val description = navigatedUrl.parameters["error_description"]
+            throw AuthorizationException(error, description)
+        }
         val code = navigatedUrl.parameters["code"]
             ?: throw IllegalStateException("Openid4Vci: no code in authorization response")
         obtainToken(authorizationCode = code, codeVerifier = pkceCodeVerifier!!)

@@ -12,15 +12,17 @@ import kotlin.time.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.sdjwt.SdJwt
+import org.multipaz.server.getBaseUrl
 
 internal class CredentialFactoryUtopiaNaturatization : CredentialFactoryBase() {
     override val offerId: String
         get() = "utopia_naturalization"
 
     override val scope: String
-        get() = "utopia_naturalization_sd_jwt"
+        get() = "naturalization"
 
     override val format: Openid4VciFormat
         get() = FORMAT
@@ -46,12 +48,20 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactoryBase() {
         authenticationKey: EcPublicKey?
     ): String {
         check(authenticationKey != null)
+        val issuer = BackendEnvironment.getBaseUrl()
         val coreData = data["core"]
+
+        val records = data["records"]
+        if (!records.hasKey("naturalization")) {
+            throw IllegalArgumentException("No naturalization record for this person")
+        }
+        val nzData = records["naturalization"].asMap.values.firstOrNull() ?: buildCborMap { }
+
         val identityAttributes = buildJsonObject {
             put("given_name", coreData["given_name"].asTstr)
             put("family_name", coreData["family_name"].asTstr)
             put("birth_date", coreData["birth_date"].asDateString.toString())
-            put("naturalization_date", "2024-05-01")  // Utopia Naturalization Day (aka April Fools)
+            put("naturalization_date", nzData["naturalization_date"].asDateString.toString())
         }
 
         val now = Clock.System.now()
@@ -67,7 +77,7 @@ internal class CredentialFactoryUtopiaNaturatization : CredentialFactoryBase() {
             kbKey = authenticationKey,
             claims = identityAttributes,
             nonSdClaims = buildJsonObject {
-                put("iss", "https://example-issuer.com")
+                put("iss", issuer)
                 put("vct", UtopiaNaturalization.VCT)
                 put("iat", timeSigned.epochSeconds)
                 put("nbf", validFrom.epochSeconds)

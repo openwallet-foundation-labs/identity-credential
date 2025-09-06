@@ -68,11 +68,10 @@ internal object SampleData {
 
     //Movie ticket specific sample data
     const val TICKET_NUMBER = 123456789
-    const val CINEMA_ID = "Sample Cinema Name, Address."
-    const val MOVIE_ID = "Sample Movie Title"
+    const val CINEMA = "Sample Cinema Name, Address."
+    const val MOVIE = "Sample Movie Title"
     const val MOVIE_RATING = "PG-13"
-    const val MOVIE_DATE = "2024-12-31"
-    const val MOVIE_TIME = "23:00"
+    const val MOVIE_DATE_TIME = "2024-12-31T21:00:00Z"
     const val THEATRE_NAME = "11"
     const val THEATRE_SEAT = "G2"
     const val CINEMA_PARKING = true

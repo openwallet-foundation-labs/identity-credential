@@ -1,0 +1,109 @@
+@import "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined";
+
+html {
+    background-color: #FAF0FF;
+    height: 100%;
+}
+
+body {
+    max-width: 720px;
+    min-height: 100%;
+    margin: 0px auto;
+    background-color: white;
+}
+
+body.wide {
+    max-width: 1320px;
+}
+
+div#main {
+    padding: 12px;
+}
+
+.header {
+    border-bottom: 2px solid black
+}
+
+table {
+    border-collapse: collapse;
+    margin: 1em;
+}
+
+td, th {
+    border: 1px solid black;
+    padding: 8px;
+}
+
+/* this is for left-to-right languages only */
+
+.controls {
+    display: table;
+}
+
+.row {
+    display: table-row;
+}
+
+.row > * {
+    display: table-cell;
+}
+
+.row > label {
+    padding-right: 4px;
+}
+
+.row > .icon {
+    padding: 8px 8px 0px;
+}
+
+.row .material-symbols-outlined {
+    font-size: 1.2em;
+    vertical-align: bottom;
+}
+
+.actions {
+    padding: 1em;
+}
+
+.record {
+    margin: 1em;
+    background: #EFF;
+}
+
+.core {
+    margin: 1em;
+    background: #EEF;
+}
+
+.list {
+}
+
+.item {
+    margin: 0.5em;
+    border: 1px solid black;
+    padding: 0.5em;
+    background: #EFE;
+}
+
+.item .item {
+    background: #FFE;
+}
+
+.row_section {
+    margin: 0.5em;
+    border: 1px solid black;
+    padding: 0.5em;
+    background: #EFE;
+}
+
+.purpose {
+    max-width: 720px;
+}
+
+input, select {
+    width: 240px;
+}
+
+input[type=checkbox], input[type=submit] {
+    width: auto;
+}

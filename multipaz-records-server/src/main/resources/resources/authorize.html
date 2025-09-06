@@ -3,23 +3,33 @@
 <head>
     <title>Utopia Registry Authentication</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<h1>Utopia Registry Authentication</h1>
-<p>Requested record type: $scope</p>
-<h2>Verify your identity</h2>
+<div id="main">
+<h1 class="state_name">State</h1>
+<h2>Authorization</h2>
+<h3>Requested record type: $scope</h3>
 <p>
-    Note: this is a sample server, so instead of real authentication, you
-    can just select a desired identity.
+    You are playing the role of a <i class="subject_name">user</i> of
+    <i class="state_name">State</i>. You are
+    trying to access information in <i class="state_name">State</i> system about
+    yourself (e.g. to request a digital identity). In the real world,
+    this would require authenticating yourself in some way. In the
+    fictional <i class="state_name">State</i> world, <i class="subject_name">user</i>s
+    are fully trusted and are just allowed to select their identity below in leu of
+    a real authentication. Select "[Not authenticated]" to emulate failed authentication.
 </p>
+<h2>Verify your identity</h2>
 <form action="authorize" method="post">
     <input type="hidden" name="authorizationCode" value="$authorizationCode"/>
     <label for="person">Select an identity:</label>
     <select id="person" name="person">
-        <option value="-">[Not authenticated]</option>
+        <option value="">[Not authenticated]</option>
     </select><br/>
     <button>Select</button>
 </form>
+</div>
 </body>
 <script>
     let personList = $personList;
@@ -31,4 +41,5 @@
         select.appendChild(option);
     }
 </script>
+<script src="metadata.js"></script>
 </html>

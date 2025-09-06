@@ -2,19 +2,32 @@
 <html lang="en-US">
 <head>
     <title>Utopia Registry - List of identities</title>
-    <style>
-        table {
-            border-collapse: collapse;
-            margin: 1em;
-        }
-        td, th {
-            border: 1px solid black;
-            padding: 8px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<h1>Utopia Registry - List of identities</h1>
+<div id="main">
+<div id="login"></div>
+<h1 class="state_name">State</h1>
+<h2>Registry</h2>
+<p class="purpose">
+    You are playing the role of <i class="official_name">Admin</i> of
+    <i class="state_name">State</i>. <i class="state_name">State</i>
+    is a fictional state, of course, and all individuals here are fictional as well. This
+    page contains the list of individuals registered in <i class="state_name">State</i>.
+    An individual is uniquely identified by "Utopia id" which is assigned automatically when
+    an individual is first entered in the system. Click on "Utopia id" to review the
+    information on the given individual. Digital identities issued by
+    <i class="state_name">State</i> are based on the information entered in this system.
+</p>
+<p class="logged_in">You are logged in and thus have power to
+    add a new individual by clicking "New Individual" at the bottom of
+    the page. Make sure to only enter fictional identities here, this system
+    is designed for demo purposes only and as such should not be used to store
+    any real-world personal information!
+</p>
+<p class="logged_out">As you are not logged in, you can view, but not alter this data.
+    Use "Login" button at the top of the page to log in.
+</p>
 <p>
 <table id="list">
     <tr>
@@ -23,9 +36,12 @@
         <th>Utopia id</th>
     </tr>
 </table>
-<form action="person.html">
-    <input type="submit" value="New Identity" />
+<form class="logged_in" action="person.html">
+    <input type="submit" value="New Individual" />
 </form>
+</div>
 </body>
 <script src="list.js"></script>
+<script src="login.js"></script>
+<script src="metadata.js"></script>
 </html>

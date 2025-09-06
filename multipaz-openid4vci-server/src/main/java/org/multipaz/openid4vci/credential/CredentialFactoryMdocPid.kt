@@ -30,6 +30,9 @@ import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.util.Logger
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -65,11 +68,12 @@ internal class CredentialFactoryMdocPid : CredentialFactoryBase() {
 
         val coreData = data["core"]
         val dateOfBirth = coreData["birth_date"].asDateString
-        val portrait = if (coreData.hasKey("portrait")) {
-            coreData["portrait"].asBstr
+
+        val address = if (coreData.hasKey("address")) {
+            val addressObject = coreData["address"]
+            if (addressObject.hasKey("formatted")) addressObject["formatted"] else null
         } else {
-            val resources = BackendEnvironment.getInterface(Resources::class)!!
-            resources.getRawResource("male.jpg")!!.toByteArray()
+            null
         }
 
         // Create AuthKeys and MSOs, make sure they're valid for 30 days. Also make
@@ -88,6 +92,8 @@ internal class CredentialFactoryMdocPid : CredentialFactoryBase() {
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
 
+        val resources = BackendEnvironment.getInterface(Resources::class)!!
+
         val mdocType = EUPersonalID.getDocumentType()
             .mdocDocumentType!!.namespaces[EUPersonalID.EUPID_NAMESPACE]!!
 
@@ -99,15 +105,35 @@ internal class CredentialFactoryMdocPid : CredentialFactoryBase() {
 
         val issuerNamespaces = buildIssuerNamespaces {
             addNamespace(EUPersonalID.EUPID_NAMESPACE) {
-                // Transfer core fields
-                addDataElement("family_name", coreData["family_name"])
-                addDataElement("given_name", coreData["given_name"])
-                addDataElement("portrait", Bstr(portrait))
+
+                val added = mutableSetOf("birth_date")
                 addDataElement("birth_date", dateOfBirth.toDataItemFullDate())
+
                 if (coreData.hasKey("utopia_id_number")) {
                     addDataElement("personal_administrative_number", coreData["utopia_id_number"])
                 }
-                val added = mutableSetOf("family_name", "given_name", "portrait", "birth_date")
+
+                if (address != null) {
+                    addDataElement("resident_address", address)
+                    added.add("resident_address")
+                }
+
+                if (!added.contains("portrait")) {
+                    addDataElement(
+                        dataElementName = "portrait",
+                        value = Bstr(resources.getRawResource("female.jpg")!!.toByteArray())
+                    )
+                    added.add("portrait")
+                }
+
+                // Transfer core fields that have counterparts in the PID credential
+                for ((nameItem, value) in coreData.asMap) {
+                    val name = nameItem.asTstr
+                    if (!added.contains(name) && mdocType.dataElements.contains(name)) {
+                        addDataElement(name, value)
+                        added.add(name)
+                    }
+                }
 
                 // Values derived from the birth_date
                 addDataElement("age_in_years",

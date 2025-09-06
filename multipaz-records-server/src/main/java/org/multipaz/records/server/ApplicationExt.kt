@@ -15,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import org.multipaz.records.data.AdminCookieInvalid
 import org.multipaz.records.data.IdentityNotFoundException
 import org.multipaz.records.data.adminAuth
@@ -43,7 +44,6 @@ private const val TAG = "ApplicationExt"
 
 private typealias RequestWrapper =
         suspend PipelineContext<*,ApplicationCall>.(
-            requireAdminLogin: Boolean,
             body: suspend PipelineContext<*,ApplicationCall>.() -> Unit
         ) -> Unit
 
@@ -59,21 +59,21 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
         ?: Random.nextBytes(15).toBase64Url().also {
             Logger.e(TAG, "No 'admin_password' in config, generated: '$it'")
         }
-    val runRequest: RequestWrapper = { adminOnly, body ->
+    val runRequest: RequestWrapper = { body ->
         val self = this
         withContext(env.await()) {
             try {
-                if (adminOnly) {
-                    validateAdminCookie(call)
-                }
                 body.invoke(self)
             } catch (err: CancellationException) {
                 throw err
             } catch (_: AdminCookieInvalid) {
                 call.respondText(
                     status = HttpStatusCode.Unauthorized,
-                    text = "Need to login as admin",
-                    contentType = ContentType.Text.Plain
+                    text = buildJsonObject {
+                        put("error", "unauthorized")
+                        put("error_description", "admin login required")
+                    }.toString(),
+                    contentType = ContentType.Application.Json
                 )
             } catch (err: InvalidRequestException) {
                 Logger.e(TAG, "Error", err)
@@ -110,74 +110,86 @@ fun Application.configureRouting(configuration: ServerConfiguration) {
     }
     routing {
         get("/") {
-            runRequest(false) {
-                val redirect =
-                    try {
-                        validateAdminCookie(call)
-                        "index.html"
-                    } catch (err: AdminCookieInvalid) {
-                        "login.html"
-                    }
+            runRequest {
                 val baseUrl = BackendEnvironment.getBaseUrl()
-                call.respondRedirect("$baseUrl/$redirect")
+                call.respondRedirect("$baseUrl/index.html")
             }
         }
         get("/login.html") {
-            runRequest(false) {
+            runRequest {
                 fetchResource(call, "login.html")
             }
         }
         get("/{path...}") {
             val path = call.parameters["path"]!!
-            runRequest(false) {
-                when (path) {
-                    "index.html", "person.html" ->
-                        try {
-                            validateAdminCookie(call)
-                        } catch (_: AdminCookieInvalid) {
-                            val baseUrl = BackendEnvironment.getBaseUrl()
-                            call.respondRedirect("$baseUrl/login.html")
-                            return@runRequest
-                        }
-                }
+            runRequest {
                 fetchResource(call, path)
             }
         }
+        get("/identity/metadata") {
+            runRequest {
+                call.respondText(
+                    text = buildJsonObject {
+                        putJsonObject("names") {
+                            put(
+                                "state",
+                                configuration.getValue("state_name") ?: "Demo Principality"
+                            )
+                            put(
+                                "official",
+                                configuration.getValue("official_name") ?: "Chief Administrator"
+                            )
+                            put("subject", configuration.getValue("subject_name") ?: "user")
+                        }
+                    }.toString(),
+                    contentType = ContentType.Application.Json
+                )
+            }
+        }
         post("/identity/auth") {
-            runRequest(false) { adminAuth(call, adminPassword) }
+            runRequest { adminAuth(call, adminPassword) }
         }
         post("/identity/list") {
-            runRequest(true) { identityList(call) }
+            runRequest { identityList(call) }
         }
         post("/identity/get") {
-            runRequest(true) { identityGet(call) }
+            runRequest { identityGet(call) }
         }
         post("/identity/create") {
-            runRequest(true) { identityPut(call, create = true) }
+            runRequest {
+                validateAdminCookie(call)
+                identityPut(call, create = true)
+            }
         }
         post("/identity/update") {
-            runRequest(true) { identityPut(call, create = false) }
+            runRequest {
+                validateAdminCookie(call)
+                identityPut(call, create = false)
+            }
         }
         post("/identity/delete") {
-            runRequest(true) { identityDelete(call) }
+            runRequest {
+                validateAdminCookie(call)
+                identityDelete(call)
+            }
         }
         get("/identity/schema") {
-            runRequest(true) { identitySchema(call) }
+            runRequest { identitySchema(call) }
         }
         post("/par") {
-            runRequest(false) { pushedAuthorizationRequest(call) }
+            runRequest { pushedAuthorizationRequest(call) }
         }
         get("/authorize") {
-            runRequest(false) { authorizeGet(call) }
+            runRequest { authorizeGet(call) }
         }
         post("/authorize") {
-            runRequest(false) { authorizePost(call) }
+            runRequest { authorizePost(call) }
         }
         post("/token") {
-            runRequest(false) { token(call) }
+            runRequest { token(call) }
         }
         get("/data") {
-            runRequest(false) { data(call) }
+            runRequest { data(call) }
         }
     }
 }

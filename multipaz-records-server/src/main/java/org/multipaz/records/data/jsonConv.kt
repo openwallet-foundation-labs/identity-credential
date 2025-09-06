@@ -1,6 +1,13 @@
 package org.multipaz.records.data
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.format.FormatStringsInDatetimeFormats
+import kotlinx.datetime.format.byUnicodePattern
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -14,16 +21,36 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.Nint
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.Uint
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
+import org.multipaz.cbor.toDataItemDateTimeString
 import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.documenttype.DocumentAttributeType
+import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64
 import org.multipaz.util.toBase64
+import kotlin.time.Instant
+
+private val UTOPIA_TIMEZONE = TimeZone.UTC
+
+@OptIn(FormatStringsInDatetimeFormats::class)
+private val LOCAL_FORMAT = LocalDateTime.Format {
+    year()
+    chars("-")
+    monthNumber()
+    chars("-")
+    day()
+    chars("T")
+    hour()
+    chars(":")
+    minute()
+}
 
 /**
  * Converts [JsonElement] to [DataItem] based on the given record type.
@@ -38,6 +65,10 @@ fun JsonElement.toDataItem(recordType: RecordType): DataItem {
                 when (val type = recordType.attribute.type) {
                     DocumentAttributeType.Date ->
                         LocalDate.parse(content).toDataItemFullDate()
+                    DocumentAttributeType.DateTime ->
+                        LocalDateTime.parse(content, LOCAL_FORMAT)
+                            .toInstant(UTOPIA_TIMEZONE)
+                            .toDataItemDateTimeString()
                     DocumentAttributeType.Blob, DocumentAttributeType.Picture ->
                         Bstr(content.fromBase64())
                     DocumentAttributeType.String, is DocumentAttributeType.StringOptions ->
@@ -79,15 +110,24 @@ fun DataItem.toJsonRecord(): JsonElement {
         Simple.FALSE -> JsonPrimitive(false)
         is Tstr -> JsonPrimitive(asTstr)
         is Bstr -> JsonPrimitive(asBstr.toBase64())
-        is Tagged -> JsonPrimitive(asDateString.toString())
-        is CborArray -> buildJsonArray {
-            for (item in items) {
-                add(item.toJson())
-            }
+        is Uint, is Nint -> JsonPrimitive(asNumber)
+        is Tagged -> when (tagNumber) {
+            Tagged.FULL_DATE_STRING ->
+                JsonPrimitive(asDateString.toString())
+            Tagged.DATE_TIME_STRING ->
+                JsonPrimitive(asDateTimeString
+                    .toLocalDateTime(UTOPIA_TIMEZONE)
+                    .format(LOCAL_FORMAT))
+            else -> throw IllegalArgumentException("Unsupported cbor tagged type")
         }
+        is CborArray -> buildJsonArray {
+                for (item in items) {
+                    add(item.toJsonRecord())
+                }
+            }
         is CborMap -> buildJsonObject {
             for ((key, item) in asMap) {
-                put(key.asTstr, item.toJson())
+                put(key.asTstr, item.toJsonRecord())
             }
         }
         else -> throw IllegalArgumentException("Unsupported cbor type")

@@ -495,4 +495,13 @@ object Options {
         StringOption("EAZ", "Zanzibar"),
         StringOption("ZW", "Zimbabwe")
     )
+
+    // Values for vehicle categories according to ISO/IEC 18013-1 Annex B
+    // TODO: fill it from the actual standard
+    val VEHICLE_CATEGORY_CODE_ISO_IEC_18013_1_ANNEX_B = listOf(
+        StringOption("A", "A - Motorcycle"),
+        StringOption("B", "B - Car"),
+        StringOption("C", "C - Truck"),
+        StringOption("D", "D - Bus"),
+    )
 }

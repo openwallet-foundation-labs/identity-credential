@@ -1,5 +1,6 @@
 package org.multipaz.openid4vci.credential
 
+import kotlinx.serialization.json.JsonObject
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.documenttype.knowntypes.UtopiaMovieTicket
 import kotlin.time.Clock
@@ -7,14 +8,17 @@ import kotlin.time.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.sdjwt.SdJwt
+import org.multipaz.server.getBaseUrl
 
 internal class CredentialFactoryUtopiaMovieTicket : CredentialFactoryBase() {
     override val offerId: String
         get() = "utopia_movie_ticket"
 
     override val scope: String
-        get() = "utopia_movie_ticket_sd_jwt"
+        get() = "movie"
 
     override val format: Openid4VciFormat
         get() = FORMAT
@@ -40,10 +44,13 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactoryBase() {
         authenticationKey: EcPublicKey?
     ): String {
         check(authenticationKey == null)
-        val identityAttributes = buildJsonObject {
-            put("ticket_number", "123456789")
-            put("seat_id", "G2")
+        val issuer = BackendEnvironment.getBaseUrl()
+
+        val records = data["records"]
+        if (!records.hasKey("movie")) {
+            throw IllegalArgumentException("No movie ticket for this person")
         }
+        val ticket = records["movie"].asMap.values.firstOrNull() ?: buildCborMap { }
 
         val now = Clock.System.now()
 
@@ -56,9 +63,9 @@ internal class CredentialFactoryUtopiaMovieTicket : CredentialFactoryBase() {
             issuerAlgorithm = signingKey.curve.defaultSigningAlgorithmFullySpecified,
             issuerCertChain = signingCertificateChain,
             kbKey = null,
-            claims = identityAttributes,
+            claims = ticket.toJson() as JsonObject,
             nonSdClaims = buildJsonObject {
-                put("iss", "https://example-issuer.com")
+                put("iss", issuer)
                 put("vct", UtopiaMovieTicket.MOVIE_TICKET_VCT)
                 put("iat", timeSigned.epochSeconds)
                 put("nbf", validFrom.epochSeconds)
