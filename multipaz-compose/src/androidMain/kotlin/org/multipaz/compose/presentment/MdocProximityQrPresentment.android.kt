@@ -31,7 +31,7 @@ import org.multipaz.mdoc.engagement.buildDeviceEngagement
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.advertise
-import org.multipaz.mdoc.transport.waitForConnection
+import org.multipaz.mdoc.transport.MdocConnectionSession
 import org.multipaz.presentment.Iso18013Presentment
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentModel
@@ -142,50 +142,64 @@ private fun MdocProximityQrPresentmentAndroid(
 
                             state = StateAndroid.SHOW_QR_CODE
 
-                            val transport = advertisedTransports.waitForConnection(
-                                eSenderKey = eDeviceKey.publicKey,
-                            )
+                            val session = MdocConnectionSession(advertisedTransports, eDeviceKey.publicKey)
+                            var failure: Exception? = null
+                            try {
+                                val transport = session.waitForConnection()
 
-                            PresentmentActivity.presentmentModel.reset(
-                                source = source,
-                                preselectedDocuments = preselectedDocuments
-                            )
-                            val intent = Intent(applicationContext, PresentmentActivity::class.java)
-                            intent.addFlags(
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                        Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                                        Intent.FLAG_ACTIVITY_NO_ANIMATION
-                            )
-                            applicationContext.startActivity(intent)
+                                PresentmentActivity.presentmentModel.reset(
+                                    source = source,
+                                    preselectedDocuments = preselectedDocuments
+                                )
+                                val intent = Intent(applicationContext, PresentmentActivity::class.java)
+                                intent.addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                            Intent.FLAG_ACTIVITY_NO_ANIMATION
+                                )
+                                applicationContext.startActivity(intent)
 
-                            state = StateAndroid.TRANSACTING
+                                state = StateAndroid.TRANSACTING
 
-                            listenForCancellationFromUiJob = CoroutineScope(Dispatchers.Main).launch {
-                                PresentmentActivity.presentmentModel.state.collect { state ->
-                                    if (state == PresentmentModel.State.CanceledByUser) {
-                                        transactionJob?.cancel()
-                                        listenForCancellationFromUiJob?.cancel()
-                                        listenForCancellationFromUiJob = null
+                                listenForCancellationFromUiJob = CoroutineScope(Dispatchers.Main).launch {
+                                    PresentmentActivity.presentmentModel.state.collect { state ->
+                                        if (state == PresentmentModel.State.CanceledByUser) {
+                                            transactionJob?.cancel()
+                                            listenForCancellationFromUiJob?.cancel()
+                                            listenForCancellationFromUiJob = null
+                                        }
                                     }
+                                }
+
+                                Iso18013Presentment(
+                                    transport = transport,
+                                    eDeviceKey = eDeviceKey,
+                                    deviceEngagement = deviceEngagement,
+                                    handover = Simple.NULL,
+                                    source = source,
+                                    keyAgreementPossible = listOf(eDeviceKeyCurve),
+                                    onWaitingForRequest = { PresentmentActivity.presentmentModel.setWaitingForReader() },
+                                    onWaitingForUserInput = { PresentmentActivity.presentmentModel.setWaitingForUserInput() },
+                                    onDocumentsInFocus = { documents ->
+                                        PresentmentActivity.presentmentModel.setDocumentsSelected(selectedDocuments = documents)
+                                    },
+                                    onSendingResponse = { PresentmentActivity.presentmentModel.setSending() }
+                                )
+                                PresentmentActivity.presentmentModel.setCompleted(null)
+                            } catch (error: Exception) {
+                                failure = error
+                                throw error
+                            } finally {
+                                session.close()
+                                try {
+                                    session.awaitClosed()
+                                } catch (cleanupError: Exception) {
+                                    if (failure == null) throw cleanupError
+                                    if (failure !== cleanupError) failure.addSuppressed(cleanupError)
                                 }
                             }
 
-                            Iso18013Presentment(
-                                transport = transport,
-                                eDeviceKey = eDeviceKey,
-                                deviceEngagement = deviceEngagement,
-                                handover = Simple.NULL,
-                                source = source,
-                                keyAgreementPossible = listOf(eDeviceKeyCurve),
-                                onWaitingForRequest = { PresentmentActivity.presentmentModel.setWaitingForReader() },
-                                onWaitingForUserInput = { PresentmentActivity.presentmentModel.setWaitingForUserInput() },
-                                onDocumentsInFocus = { documents ->
-                                    PresentmentActivity.presentmentModel.setDocumentsSelected(selectedDocuments = documents)
-                                },
-                                onSendingResponse = { PresentmentActivity.presentmentModel.setSending() }
-                            )
-                            PresentmentActivity.presentmentModel.setCompleted(null)
                         } catch (e: Exception) {
                             if (e is CancellationException) {
                                 PresentmentActivity.presentmentModel.setCompleted(

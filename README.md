@@ -204,6 +204,14 @@ For a SwiftUI version of `samples/testapp` see `samples/SwiftTestApp` which work
 on iOS and is a testbed for the Swift bindings as well as the SwiftUI components
 in `multipaz-swiftui`.
 
+When selecting an advertised mdoc transport, use `MdocConnectionSession(transports, eSenderKey)`
+and call `session.waitForConnection()`. The selected transport can still be `CONNECTING`;
+the session owns its pending `open()` until presentment ends. Call `session.close()` on every
+exit path and await `session.awaitClosed()` to observe connection and cleanup errors.
+Swift callers should await cleanup in an independent, explicitly awaited `Task` if the
+transaction task was cancelled; see the session's [API documentation](multipaz/src/commonMain/kotlin/org/multipaz/mdoc/transport/MdocConnectionSession.kt)
+and the QR presentment implementations for complete cleanup patterns.
+
 For a fully-featured proximity reader app using Multipaz, see
 [MpzIdentityReader](https://github.com/openwallet-foundation/multipaz-identity-reader/).
 Prebuilt APKs are available from https://apps.multipaz.org.

@@ -38,7 +38,7 @@ import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.advertise
-import org.multipaz.mdoc.transport.waitForConnection
+import org.multipaz.mdoc.transport.MdocConnectionSession
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
@@ -369,49 +369,62 @@ abstract class MdocNdefService(
             transportFactory = MdocTransportFactory.Default,
             options = settings.transportOptions,
         )
-        val transport = transports.waitForConnection(
-            eSenderKey = eDeviceKey.publicKey,
-        )
+        val session = MdocConnectionSession(transports, eDeviceKey.publicKey)
+        var monitorJob: Job? = null
+        try {
+            var failure: Exception? = null
+            try {
+                val transport = session.waitForConnection()
+                val context = currentCoroutineContext()
+                monitorJob = CoroutineScope(context).launch {
+                    transport.state.collect { state ->
+                        if (state == MdocTransport.State.FAILED || state == MdocTransport.State.CLOSED) {
+                            context.cancel(CancellationException("Transport $state"))
+                        }
+                    }
+                }
 
-        val context = currentCoroutineContext()
-        val monitorJob = CoroutineScope(context).launch {
-            transport.state.collect { state ->
-                if (state == MdocTransport.State.FAILED || state == MdocTransport.State.CLOSED) {
-                    context.cancel(CancellationException("Transport $state"))
+                val preselectedDocuments = settings.presentmentModel?.documentsSelected?.value ?: emptyList()
+                settings.presentmentModel?.setConnecting()
+                Iso18013Presentment(
+                    transport = transport,
+                    eDeviceKey = eDeviceKey,
+                    deviceEngagement = Cbor.decode(encodedDeviceEngagement.toByteArray()),
+                    handover = handover,
+                    source = settings.source,
+                    keyAgreementPossible = listOf(eDeviceKey.curve),
+                    preselectedDocuments = preselectedDocuments,
+                    onWaitingForRequest = { settings.presentmentModel?.setWaitingForReader() },
+                    onWaitingForUserInput = { settings.presentmentModel?.setWaitingForUserInput() },
+                    onDocumentsInFocus = { documents ->
+                        settings.presentmentModel?.setDocumentsSelected(selectedDocuments = documents)
+                    },
+                    onSendingResponse = { settings.presentmentModel?.setSending() }
+                )
+            } catch (error: Exception) {
+                failure = error
+                throw error
+            } finally {
+                monitorJob?.cancel()
+                listenForCancellationFromUiJob?.cancel()
+                listenForCancellationFromUiJob = null
+                session.close()
+                try {
+                    session.awaitClosed()
+                } catch (cleanupError: Exception) {
+                    if (failure == null) throw cleanupError
+                    if (failure !== cleanupError) failure.addSuppressed(cleanupError)
                 }
             }
-        }
-
-        try {
-            val preselectedDocuments = settings.presentmentModel?.documentsSelected?.value ?: emptyList()
-            settings.presentmentModel?.setConnecting()
-            Iso18013Presentment(
-                transport = transport,
-                eDeviceKey = eDeviceKey,
-                deviceEngagement = Cbor.decode(encodedDeviceEngagement.toByteArray()),
-                handover = handover,
-                source = settings.source,
-                keyAgreementPossible = listOf(eDeviceKey.curve),
-                preselectedDocuments = preselectedDocuments,
-                onWaitingForRequest = { settings.presentmentModel?.setWaitingForReader() },
-                onWaitingForUserInput = { settings.presentmentModel?.setWaitingForUserInput() },
-                onDocumentsInFocus = { documents ->
-                    settings.presentmentModel?.setDocumentsSelected(selectedDocuments = documents)
-                },
-                onSendingResponse = { settings.presentmentModel?.setSending() }
-            )
             settings.presentmentModel?.setCompleted(null)
         } catch (e: Exception) {
             Logger.w(TAG, "Caught error while performing 18013-5 transaction", e)
             if (e is CancellationException) {
                 settings.presentmentModel?.setCompleted(PresentmentCanceledException("Presentment was cancelled"))
+                throw e
             } else {
                 settings.presentmentModel?.setCompleted(e)
             }
-        } finally {
-            monitorJob.cancel()
-            listenForCancellationFromUiJob?.cancel()
-            listenForCancellationFromUiJob = null
         }
     }
 

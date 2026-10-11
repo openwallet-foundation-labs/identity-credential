@@ -26,7 +26,7 @@ import org.multipaz.mdoc.engagement.buildDeviceEngagement
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.advertise
-import org.multipaz.mdoc.transport.waitForConnection
+import org.multipaz.mdoc.transport.MdocConnectionSession
 import org.multipaz.presentment.Iso18013Presentment
 import org.multipaz.presentment.PresentmentSource
 import org.multipaz.prompt.PromptModel
@@ -136,20 +136,34 @@ internal fun MdocProximityQrPresentmentDefault(
 
                             state = State.SHOW_QR_CODE
 
-                            val transport = advertisedTransports.waitForConnection(
-                                eSenderKey = eDeviceKey.publicKey,
-                            )
+                            val session = MdocConnectionSession(advertisedTransports, eDeviceKey.publicKey)
+                            var failure: Exception? = null
+                            try {
+                                val transport = session.waitForConnection()
 
-                            state = State.TRANSACTING
+                                state = State.TRANSACTING
 
-                            Iso18013Presentment(
-                                transport = transport,
-                                eDeviceKey = eDeviceKey,
-                                deviceEngagement = deviceEngagement,
-                                handover = Simple.NULL,
-                                source = source,
-                                keyAgreementPossible = listOf(eDeviceKeyCurve),
-                            )
+                                Iso18013Presentment(
+                                    transport = transport,
+                                    eDeviceKey = eDeviceKey,
+                                    deviceEngagement = deviceEngagement,
+                                    handover = Simple.NULL,
+                                    source = source,
+                                    keyAgreementPossible = listOf(eDeviceKeyCurve),
+                                )
+
+                            } catch (error: Exception) {
+                                failure = error
+                                throw error
+                            } finally {
+                                session.close()
+                                try {
+                                    session.awaitClosed()
+                                } catch (cleanupError: Exception) {
+                                    if (failure == null) throw cleanupError
+                                    if (failure !== cleanupError) failure.addSuppressed(cleanupError)
+                                }
+                            }
 
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e

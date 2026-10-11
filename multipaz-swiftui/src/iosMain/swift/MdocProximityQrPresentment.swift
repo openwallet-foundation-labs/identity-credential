@@ -18,6 +18,7 @@ final class MdocPresentmentViewModel: ObservableObject {
     @Published var transactionError: Error?
     
     private var transactionTask: Task<Void, Never>?
+    private var currentTransactionId: Foundation.UUID?
     
     // Dependencies
     let source: PresentmentSource
@@ -31,8 +32,14 @@ final class MdocPresentmentViewModel: ObservableObject {
     }
     
     func startTransaction(qrSettings: MdocProximityQrSettings) {
+        transactionTask?.cancel()
+        let transactionId = Foundation.UUID()
+        currentTransactionId = transactionId
         self.transactionError = nil
         transactionTask = Task {
+            var transactionFailure: Error?
+            var connectionSession: MdocConnectionSession?
+            defer { connectionSession?.close() }
             do {
                 let eDeviceKey = try await Crypto.shared.createEcPrivateKey(curve: eDeviceKeyCurve)
                 
@@ -53,16 +60,21 @@ final class MdocPresentmentViewModel: ObservableObject {
                 }
 
                 let encodedDeviceEngagement = try Cbor.shared.encode(item: deviceEngagement.toDataItem())
-                self.qrCodeToShow = "mdoc:" + encodedDeviceEngagement.toBase64Url()
-
-                self.state = .showQrCode
+                if !Task.isCancelled && self.currentTransactionId == transactionId {
+                    self.qrCodeToShow = "mdoc:" + encodedDeviceEngagement.toBase64Url()
+                    self.state = .showQrCode
+                }
                 
-                let transport = try await ConnectionHelperKt.waitForConnection(
-                    advertisedTransports,
+                let session = try MdocConnectionSession(
+                    transports: advertisedTransports,
                     eSenderKey: eDeviceKey.publicKey
                 )
+                connectionSession = session
+                let transport = try await session.waitForConnection()
 
-                self.state = .transacting
+                if !Task.isCancelled && self.currentTransactionId == transactionId {
+                    self.state = .transacting
+                }
                 
                 try await Iso18013Presentment(
                     transport: transport,
@@ -82,19 +94,40 @@ final class MdocPresentmentViewModel: ObservableObject {
                 )
                 
             } catch {
-                if !Task.isCancelled {
-                    self.transactionError = error
-                }
+                transactionFailure = error
             }
             
-            if !Task.isCancelled {
+            if let session = connectionSession {
+                session.close()
+                // This bounded cleanup task does not inherit the transaction task's cancellation.
+                // Its SKIE dispatcher remains live until awaitClosed returns.
+                let cleanup = await Task { try await session.awaitClosed() }.result
+                if case .failure(let error) = cleanup {
+                    if let primaryError = transactionFailure {
+                        transactionFailure = NSError(
+                            domain: "MdocPresentmentCleanup", code: 0,
+                            userInfo: [
+                                NSUnderlyingErrorKey: primaryError,
+                                NSLocalizedDescriptionKey: "\(primaryError.localizedDescription); \(error.localizedDescription)"
+                            ]
+                        )
+                    } else {
+                        transactionFailure = error
+                    }
+                }
+            }
+
+            if !Task.isCancelled && self.currentTransactionId == transactionId {
+                self.transactionError = transactionFailure
                 self.state = .completed
                 self.transactionTask = nil
+                self.currentTransactionId = nil
             }
         }
     }
     
     func cancelTransaction() {
+        currentTransactionId = nil
         transactionTask?.cancel()
         transactionTask = nil
     }
@@ -106,7 +139,7 @@ final class MdocPresentmentViewModel: ObservableObject {
 
 private func onWaitingForRequest() -> Void {}
 private func onWaitingForUserInput() -> Void {}
-private func onDocumenstInFocus(_ documents: [Document]) -> Void {}
+private func onDocumenstInFocus(_ documents: [Multipaz.Document]) -> Void {}
 private func onSendingResponse() -> Void {}
 
 // MARK: - Public SwiftUI View
@@ -120,7 +153,7 @@ public struct MdocProximityQrPresentment<
 >: View {
     
     // MARK: Public Properties
-    public let preselectedDocuments: [Document]
+    public let preselectedDocuments: [Multipaz.Document]
     public let eDeviceKeyCurve: EcCurve
     public let transportFactory: MdocTransportFactory
     
@@ -146,7 +179,7 @@ public struct MdocProximityQrPresentment<
     ///   - showCompleted: a ``View`` which will be shown when the transaction is complete. This should should show feedback (either success or error, depending on the error parameter) and call the passed-in ``reset()`` closure when ready to reset the state and go back and show a QR button.
     public init(
         source: PresentmentSource,
-        preselectedDocuments: [Document] = [],
+        preselectedDocuments: [Multipaz.Document] = [],
         eDeviceKeyCurve: EcCurve = .p256,
         transportFactory: MdocTransportFactory = MdocTransportFactoryDefault(),
         @ViewBuilder prepareSettings: @escaping (_ generateQrCode: @escaping (MdocProximityQrSettings) -> Void) -> PrepareSettingsContent,
