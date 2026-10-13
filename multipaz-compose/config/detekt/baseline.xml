@@ -5,7 +5,6 @@
     <ID>UndocumentedPublicClass:Util.kt$ApplicationInfo</ID>
     <ID>UndocumentedPublicFunction:ConsentPromptDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ConsentPromptDialog( model: PromptDialogModel&lt;ConsentPromptDialogModel.ConsentPromptRequest, CredentialSelection>, imageLoader: ImageLoader?, maxHeight: Dp? )</ID>
     <ID>UndocumentedPublicFunction:ImagePicker.kt$ImagePicker$fun launch()</ID>
-    <ID>UndocumentedPublicFunction:PassphrasePromptDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PassphrasePromptDialog(model: PromptDialogModel&lt;PassphrasePromptDialogModel.PassphraseRequest, String>)</ID>
     <ID>UndocumentedPublicProperty:Util.kt$ApplicationInfo$val icon: ImageBitmap</ID>
     <ID>UndocumentedPublicProperty:Util.kt$ApplicationInfo$val name: String</ID>
   </CurrentIssues>

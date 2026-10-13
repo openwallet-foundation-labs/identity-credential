@@ -339,6 +339,11 @@ sealed class X509SignedBuilder<BuilderT: X509SignedBuilder<BuilderT>>(
     }
 
 
+    /**
+     * Adds the to-be-signed structure to [tbsList].
+     *
+     * @param tbsList mutable list receiving the ASN.1 objects that form the TBS structure.
+     */
     protected abstract suspend fun buildTbs(tbsList: MutableList<ASN1Object>)
 
     /**

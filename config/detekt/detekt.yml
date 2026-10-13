@@ -24,7 +24,7 @@ comments:
   UndocumentedPublicFunction:
     active: true
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/build/generated/**', '**/commonMain/generated/**']
-    searchProtectedFunction: false
+    searchProtectedFunction: true
   UndocumentedPublicProperty:
     active: true
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/build/generated/**', '**/commonMain/generated/**']

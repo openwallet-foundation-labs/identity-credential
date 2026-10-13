@@ -1,4 +1,5 @@
 import org.apache.commons.io.output.ByteArrayOutputStream
+import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 
 plugins {
@@ -186,6 +187,14 @@ dependencies {
 
 subprojects {
     plugins.withId("org.jetbrains.dokka") {
+        extensions.configure<DokkaExtension> {
+            dokkaSourceSets.configureEach {
+                documentedVisibilities(
+                    VisibilityModifier.Public,
+                    VisibilityModifier.Protected
+                )
+            }
+        }
         dependencies {
             "dokkaPlugin"("org.multipaz:dokka-known-subclasses-plugin:1.0.0")
         }

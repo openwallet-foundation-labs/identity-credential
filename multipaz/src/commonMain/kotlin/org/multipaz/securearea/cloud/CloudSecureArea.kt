@@ -173,6 +173,11 @@ open class CloudSecureArea protected constructor(
     private var cloudBindingKey: EcPublicKey? = null
     private var registrationContext: ByteString? = null
 
+    /**
+     * Loads persisted Cloud Secure Area state and initializes its platform secure area.
+     *
+     * @throws IllegalArgumentException if [identifier] does not have the required prefix.
+     */
     protected open suspend fun initialize() {
         require(identifier.startsWith(IDENTIFIER_PREFIX))
         deviceAttestationId = storageTable.get(DEVICE_ATTESTATION_ID, identifier)?.decodeToString()
