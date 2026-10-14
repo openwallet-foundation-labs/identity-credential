@@ -29,9 +29,7 @@
     <ID>UndocumentedPublicClass:BaseStorageTable.kt$BaseStorageTable : StorageTable</ID>
     <ID>UndocumentedPublicClass:CborMerge.kt$CborMerge</ID>
     <ID>UndocumentedPublicClass:ClientCheckImpl.kt$ClientCheckImpl : ClientCheckRpcAuthInspector</ID>
-    <ID>UndocumentedPublicClass:ClientCheckStub.kt$ClientCheckStub : RpcStubClientCheck</ID>
     <ID>UndocumentedPublicClass:ClientRegistrationImpl.kt$ClientRegistrationImpl : ClientRegistration</ID>
-    <ID>UndocumentedPublicClass:ClientRegistrationStub.kt$ClientRegistrationStub : RpcStubClientRegistration</ID>
     <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$BatchCreateKeyRequest0 : Command</ID>
     <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$BatchCreateKeyResponse0 : Command</ID>
     <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$Command</ID>
@@ -50,9 +48,7 @@
     <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$SignRequest0 : Command</ID>
     <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$SignRequest1 : Command</ID>
     <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$SignResponse0 : Command</ID>
-    <ID>UndocumentedPublicClass:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol$SignResponse1 : Command</ID>
     <ID>UndocumentedPublicClass:ConsentPromptDialogModel.kt$ConsentPromptDialogModel : PromptDialogModel</ID>
-    <ID>UndocumentedPublicClass:ConsentPromptDialogModel.kt$ConsentPromptDialogModel$ConsentPromptRequest</ID>
     <ID>UndocumentedPublicClass:ConsentPromptDialogModel.kt$ConsentPromptDialogModel$DialogType : DialogType</ID>
     <ID>UndocumentedPublicClass:CredentialFormat.kt$CredentialFormat$Mdoc : CredentialFormat</ID>
     <ID>UndocumentedPublicClass:CredentialFormat.kt$CredentialFormat$SdJwt : CredentialFormat</ID>
@@ -73,7 +69,6 @@
     <ID>UndocumentedPublicClass:EphemeralStorage.kt$EphemeralStorage : BaseStorage</ID>
     <ID>UndocumentedPublicClass:EphemeralStorageItem.kt$EphemeralStorageItem : Comparable</ID>
     <ID>UndocumentedPublicClass:HexUtil.kt$HexUtil</ID>
-    <ID>UndocumentedPublicClass:IdentifierList.kt$IdentifierList$Builder</ID>
     <ID>UndocumentedPublicClass:InvalidRequestException.kt$InvalidRequestException : RuntimeException</ID>
     <ID>UndocumentedPublicClass:KeyExistsStorageException.kt$KeyExistsStorageException : StorageException</ID>
     <ID>UndocumentedPublicClass:KeyUnlockDataProvider.kt$KeyUnlockDataProvider$Key : Key</ID>
@@ -82,8 +77,6 @@
     <ID>UndocumentedPublicClass:NfcTransportMdoc.kt$NfcTransportMdoc$NfcError : Exception</ID>
     <ID>UndocumentedPublicClass:NfcTransportMdocReader.kt$NfcTransportMdocReader : MdocTransport</ID>
     <ID>UndocumentedPublicClass:NoRecordStorageException.kt$NoRecordStorageException : StorageException</ID>
-    <ID>UndocumentedPublicClass:OpenID4VCI.kt$OpenID4VCI</ID>
-    <ID>UndocumentedPublicClass:OpenID4VCIBackendStub.kt$OpenID4VCIBackendStub : RpcStubOpenID4VCIBackend</ID>
     <ID>UndocumentedPublicClass:OpenID4VP.kt$OpenID4VP</ID>
     <ID>UndocumentedPublicClass:OpenID4VP.kt$OpenID4VP$ResponseMode</ID>
     <ID>UndocumentedPublicClass:OpenID4VP.kt$OpenID4VP$Version</ID>
@@ -118,7 +111,6 @@
     <ID>UndocumentedPublicClass:ZkRequest.kt$ZkRequest</ID>
     <ID>UndocumentedPublicFunction:ASN1BitString.kt$ASN1BitString$fun asBooleans(): BooleanArray</ID>
     <ID>UndocumentedPublicFunction:ASN1BitString.kt$ASN1BitString.Companion$fun parse(content: ByteArray): ASN1BitString</ID>
-    <ID>UndocumentedPublicFunction:ASN1Boolean.kt$ASN1Boolean.Companion$fun parse(content: ByteArray): ASN1Boolean</ID>
     <ID>UndocumentedPublicFunction:ASN1Integer.kt$ASN1Integer.Companion$fun parse(content: ByteArray, tag: Int): ASN1Integer</ID>
     <ID>UndocumentedPublicFunction:ASN1Null.kt$ASN1Null.Companion$fun parse(content: ByteArray): ASN1Null</ID>
     <ID>UndocumentedPublicFunction:ASN1ObjectIdentifier.kt$ASN1ObjectIdentifier.Companion$fun parse(content: ByteArray): ASN1ObjectIdentifier</ID>
@@ -142,155 +134,30 @@
     <ID>UndocumentedPublicFunction:AndroidAttestationExtensionParser.kt$AndroidAttestationExtensionParser$fun getTeeAuthorizationValue(tag: Int): ASN1Object</ID>
     <ID>UndocumentedPublicFunction:AndroidAttestationExtensionParser.kt$AndroidAttestationExtensionParser$fun getUserAuthenticationType(): Long</ID>
     <ID>UndocumentedPublicFunction:AndroidAttestationExtensionParser.kt$AndroidAttestationExtensionParser$fun prettyPrint(): String</ID>
-    <ID>UndocumentedPublicFunction:AssertionBindingKeys_Cbor.kt$fun AssertionBindingKeys.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:AssertionBindingKeys_Cbor.kt$fun AssertionBindingKeys.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:AssertionBindingKeys_Cbor.kt$fun AssertionBindingKeys_fromDataItem(dataItem: DataItem): AssertionBindingKeys</ID>
-    <ID>UndocumentedPublicFunction:AssertionGenericCbor_Cbor.kt$fun AssertionGenericCbor.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:AssertionGenericCbor_Cbor.kt$fun AssertionGenericCbor.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:AssertionGenericCbor_Cbor.kt$fun AssertionGenericCbor_fromDataItem(dataItem: DataItem): AssertionGenericCbor</ID>
-    <ID>UndocumentedPublicFunction:AssertionNonce_Cbor.kt$fun AssertionNonce.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:AssertionNonce_Cbor.kt$fun AssertionNonce.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:AssertionNonce_Cbor.kt$fun AssertionNonce_fromDataItem(dataItem: DataItem): AssertionNonce</ID>
-    <ID>UndocumentedPublicFunction:AssertionPoPKey_Cbor.kt$fun AssertionPoPKey.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:AssertionPoPKey_Cbor.kt$fun AssertionPoPKey.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:AssertionPoPKey_Cbor.kt$fun AssertionPoPKey_fromDataItem(dataItem: DataItem): AssertionPoPKey</ID>
-    <ID>UndocumentedPublicFunction:AssertionRpcAuth_Cbor.kt$fun AssertionRpcAuth.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:AssertionRpcAuth_Cbor.kt$fun AssertionRpcAuth.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:AssertionRpcAuth_Cbor.kt$fun AssertionRpcAuth_fromDataItem(dataItem: DataItem): AssertionRpcAuth</ID>
-    <ID>UndocumentedPublicFunction:Assertion_Cbor.kt$fun Assertion.Companion.fromCbor(data: ByteArray): Assertion</ID>
-    <ID>UndocumentedPublicFunction:Assertion_Cbor.kt$fun Assertion.Companion.fromDataItem(dataItem: DataItem): Assertion</ID>
-    <ID>UndocumentedPublicFunction:Assertion_Cbor.kt$fun Assertion.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:Assertion_Cbor.kt$fun Assertion.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:AsymmetricKey.kt$AsymmetricKey.Companion$fun anonymous( privateKey: EcPrivateKey, algorithm: Algorithm = privateKey.curve.defaultSigningAlgorithmFullySpecified ): AsymmetricKey</ID>
-    <ID>UndocumentedPublicFunction:AsymmetricKey.kt$AsymmetricKey.Companion$suspend fun anonymous( secureArea: SecureArea, alias: String, unlockReason: Reason = Reason.Unspecified, algorithm: Algorithm? = null ): AsymmetricKey</ID>
-    <ID>UndocumentedPublicFunction:AsymmetricKey.kt$AsymmetricKey.Companion$suspend fun ephemeral(algorithm: Algorithm = Algorithm.ESP256): AsymmetricKey</ID>
     <ID>UndocumentedPublicFunction:BackendEnvironment.kt$BackendEnvironment$fun&lt;T: Any> getInterface(clazz: KClass&lt;T>): T?</ID>
     <ID>UndocumentedPublicFunction:BackendEnvironment.kt$BackendEnvironment.Companion$fun get(coroutineContext: CoroutineContext): BackendEnvironment</ID>
     <ID>UndocumentedPublicFunction:BackendEnvironment.kt$BackendEnvironment.Companion$suspend fun &lt;T: Any> getInterface(clazz: KClass&lt;T>): T?</ID>
     <ID>UndocumentedPublicFunction:BackendEnvironmentStorageExt.kt$suspend fun BackendEnvironment.Companion.getTable(tableSpec: StorageTableSpec): StorageTable</ID>
     <ID>UndocumentedPublicFunction:BackendEnvironmentStorageExt.kt$suspend fun BackendEnvironment.getTable(tableSpec: StorageTableSpec): StorageTable</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyRequest0_Cbor.kt$fun BatchCreateKeyRequest0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyRequest0_Cbor.kt$fun BatchCreateKeyRequest0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyRequest0_Cbor.kt$fun BatchCreateKeyRequest0_fromDataItem(dataItem: DataItem): BatchCreateKeyRequest0</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyRequest1_Cbor.kt$fun BatchCreateKeyRequest1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyRequest1_Cbor.kt$fun BatchCreateKeyRequest1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyRequest1_Cbor.kt$fun BatchCreateKeyRequest1_fromDataItem(dataItem: DataItem): BatchCreateKeyRequest1</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyResponse0_Cbor.kt$fun BatchCreateKeyResponse0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyResponse0_Cbor.kt$fun BatchCreateKeyResponse0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyResponse0_Cbor.kt$fun BatchCreateKeyResponse0_fromDataItem(dataItem: DataItem): BatchCreateKeyResponse0</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyResponse1_Cbor.kt$fun BatchCreateKeyResponse1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyResponse1_Cbor.kt$fun BatchCreateKeyResponse1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:BatchCreateKeyResponse1_Cbor.kt$fun BatchCreateKeyResponse1_fromDataItem(dataItem: DataItem): BatchCreateKeyResponse1</ID>
-    <ID>UndocumentedPublicFunction:CheckPassphraseRequest_Cbor.kt$fun CheckPassphraseRequest.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CheckPassphraseRequest_Cbor.kt$fun CheckPassphraseRequest.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CheckPassphraseRequest_Cbor.kt$fun CheckPassphraseRequest_fromDataItem(dataItem: DataItem): CheckPassphraseRequest</ID>
-    <ID>UndocumentedPublicFunction:CheckPassphraseResponse_Cbor.kt$fun CheckPassphraseResponse.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CheckPassphraseResponse_Cbor.kt$fun CheckPassphraseResponse.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CheckPassphraseResponse_Cbor.kt$fun CheckPassphraseResponse_fromDataItem(dataItem: DataItem): CheckPassphraseResponse</ID>
     <ID>UndocumentedPublicFunction:ClientCheck.kt$ClientCheck$@RpcMethod suspend fun ping(message: String): String</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckImpl_Cbor.kt$fun ClientCheckImpl.Companion.fromCbor(data: ByteArray): ClientCheckImpl</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckImpl_Cbor.kt$fun ClientCheckImpl.Companion.fromDataItem(dataItem: DataItem): ClientCheckImpl</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckImpl_Cbor.kt$fun ClientCheckImpl.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckImpl_Cbor.kt$fun ClientCheckImpl.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckImpl_Registration.kt$fun ClientCheckImpl.Companion.register(dispatcherBuilder: RpcDispatcherLocal.Builder)</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckStub.kt$ClientCheckStub.Companion$fun fromCbor( data: ByteArray, dispatcher: RpcDispatcher, notifier: RpcNotifier, ): ClientCheckStub</ID>
-    <ID>UndocumentedPublicFunction:ClientCheckStub.kt$ClientCheckStub.Companion$fun fromDataItem( data: DataItem, dispatcher: RpcDispatcher, notifier: RpcNotifier, ): ClientCheckStub</ID>
     <ID>UndocumentedPublicFunction:ClientRegistration.kt$ClientRegistration$@RpcMethod suspend fun challenge(): ByteString</ID>
     <ID>UndocumentedPublicFunction:ClientRegistration.kt$ClientRegistration$@RpcMethod suspend fun register(deviceAttestation: DeviceAttestation): String</ID>
     <ID>UndocumentedPublicFunction:ClientRegistrationImpl.kt$ClientRegistrationImpl.Companion$suspend fun getClientRequirements()</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationImpl_Cbor.kt$fun ClientRegistrationImpl.Companion.fromCbor(data: ByteArray): ClientRegistrationImpl</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationImpl_Cbor.kt$fun ClientRegistrationImpl.Companion.fromDataItem(dataItem: DataItem): ClientRegistrationImpl</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationImpl_Cbor.kt$fun ClientRegistrationImpl.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationImpl_Cbor.kt$fun ClientRegistrationImpl.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationImpl_Registration.kt$fun ClientRegistrationImpl.Companion.register(dispatcherBuilder: RpcDispatcherLocal.Builder)</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationStub.kt$ClientRegistrationStub.Companion$fun fromCbor( data: ByteArray, dispatcher: RpcDispatcher, notifier: RpcNotifier, ): ClientRegistrationStub</ID>
-    <ID>UndocumentedPublicFunction:ClientRegistrationStub.kt$ClientRegistrationStub.Companion$fun fromDataItem( data: DataItem, dispatcher: RpcDispatcher, notifier: RpcNotifier, ): ClientRegistrationStub</ID>
     <ID>UndocumentedPublicFunction:CloudKeyAttestation.kt$CloudKeyAttestation$fun toDataItem()</ID>
     <ID>UndocumentedPublicFunction:CloudKeyAttestation.kt$CloudKeyAttestation.Companion$fun fromDataItem(dataItem: DataItem)</ID>
     <ID>UndocumentedPublicFunction:CloudSecureArea.kt$CloudSecureArea$open suspend fun communicateLowlevel( endpointUri: String, requestData: ByteArray ): Pair&lt;Int, ByteArray></ID>
     <ID>UndocumentedPublicFunction:CloudSecureArea.kt$CloudSecureArea$suspend fun unregister()</ID>
-    <ID>UndocumentedPublicFunction:Command_Cbor.kt$fun Command.Companion.fromCbor(data: ByteArray): Command</ID>
-    <ID>UndocumentedPublicFunction:Command_Cbor.kt$fun Command.Companion.fromDataItem(dataItem: DataItem): Command</ID>
-    <ID>UndocumentedPublicFunction:Command_Cbor.kt$fun Command.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:Command_Cbor.kt$fun Command.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:Configuration.kt$Configuration$fun getValue(key: String): String?</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyRequest0_Cbor.kt$fun CreateKeyRequest0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyRequest0_Cbor.kt$fun CreateKeyRequest0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyRequest0_Cbor.kt$fun CreateKeyRequest0_fromDataItem(dataItem: DataItem): CreateKeyRequest0</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyRequest1_Cbor.kt$fun CreateKeyRequest1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyRequest1_Cbor.kt$fun CreateKeyRequest1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyRequest1_Cbor.kt$fun CreateKeyRequest1_fromDataItem(dataItem: DataItem): CreateKeyRequest1</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyResponse0_Cbor.kt$fun CreateKeyResponse0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyResponse0_Cbor.kt$fun CreateKeyResponse0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyResponse0_Cbor.kt$fun CreateKeyResponse0_fromDataItem(dataItem: DataItem): CreateKeyResponse0</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyResponse1_Cbor.kt$fun CreateKeyResponse1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyResponse1_Cbor.kt$fun CreateKeyResponse1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CreateKeyResponse1_Cbor.kt$fun CreateKeyResponse1_fromDataItem(dataItem: DataItem): CreateKeyResponse1</ID>
     <ID>UndocumentedPublicFunction:Credential.kt$Credential$suspend fun addToDocument()</ID>
-    <ID>UndocumentedPublicFunction:Credential.kt$Credential$suspend fun replacementForDeleted()</ID>
-    <ID>UndocumentedPublicFunction:CredentialCertification_Cbor.kt$fun CredentialCertification.Companion.fromCbor(data: ByteArray): CredentialCertification</ID>
-    <ID>UndocumentedPublicFunction:CredentialCertification_Cbor.kt$fun CredentialCertification.Companion.fromDataItem(dataItem: DataItem): CredentialCertification</ID>
-    <ID>UndocumentedPublicFunction:CredentialCertification_Cbor.kt$fun CredentialCertification.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CredentialCertification_Cbor.kt$fun CredentialCertification.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:CredentialFormat.kt$CredentialFormat.Companion$fun fromJson(json: JsonObject): CredentialFormat?</ID>
-    <ID>UndocumentedPublicFunction:CredentialFormat_Cbor.kt$fun CredentialFormat.Companion.fromCbor(data: ByteArray): CredentialFormat</ID>
-    <ID>UndocumentedPublicFunction:CredentialFormat_Cbor.kt$fun CredentialFormat.Companion.fromDataItem(dataItem: DataItem): CredentialFormat</ID>
-    <ID>UndocumentedPublicFunction:CredentialFormat_Cbor.kt$fun CredentialFormat.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CredentialFormat_Cbor.kt$fun CredentialFormat.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:CredentialKeyAttestation_Cbor.kt$fun CredentialKeyAttestation.Companion.fromCbor(data: ByteArray): CredentialKeyAttestation</ID>
-    <ID>UndocumentedPublicFunction:CredentialKeyAttestation_Cbor.kt$fun CredentialKeyAttestation.Companion.fromDataItem(dataItem: DataItem): CredentialKeyAttestation</ID>
-    <ID>UndocumentedPublicFunction:CredentialKeyAttestation_Cbor.kt$fun CredentialKeyAttestation.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:CredentialKeyAttestation_Cbor.kt$fun CredentialKeyAttestation.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:DeviceAssertionMaker.kt$DeviceAssertionMaker$suspend fun makeDeviceAssertion( assertionFactory: (attestationChallenge: String) -> Assertion ): DeviceAssertion</ID>
-    <ID>UndocumentedPublicFunction:DeviceAssertion_Cbor.kt$fun DeviceAssertion.Companion.fromCbor(data: ByteArray): DeviceAssertion</ID>
-    <ID>UndocumentedPublicFunction:DeviceAssertion_Cbor.kt$fun DeviceAssertion.Companion.fromDataItem(dataItem: DataItem): DeviceAssertion</ID>
-    <ID>UndocumentedPublicFunction:DeviceAssertion_Cbor.kt$fun DeviceAssertion.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:DeviceAssertion_Cbor.kt$fun DeviceAssertion.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationAndroid_Cbor.kt$fun DeviceAttestationAndroid.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationAndroid_Cbor.kt$fun DeviceAttestationAndroid.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationAndroid_Cbor.kt$fun DeviceAttestationAndroid_fromDataItem(dataItem: DataItem): DeviceAttestationAndroid</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationIos_Cbor.kt$fun DeviceAttestationIos.Companion.fromCbor(data: ByteArray): DeviceAttestationIos</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationIos_Cbor.kt$fun DeviceAttestationIos.Companion.fromDataItem(dataItem: DataItem): DeviceAttestationIos</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationIos_Cbor.kt$fun DeviceAttestationIos.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationIos_Cbor.kt$fun DeviceAttestationIos.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationJvm_Cbor.kt$fun DeviceAttestationJvm.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationJvm_Cbor.kt$fun DeviceAttestationJvm.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestationJvm_Cbor.kt$fun DeviceAttestationJvm_fromDataItem(dataItem: DataItem): DeviceAttestationJvm</ID>
     <ID>UndocumentedPublicFunction:DeviceAttestationValidationData.kt$DeviceAttestationValidationData$fun withChallenge(challenge: ByteString): DeviceAttestationValidationData</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestation_Cbor.kt$fun DeviceAttestation.Companion.fromCbor(data: ByteArray): DeviceAttestation</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestation_Cbor.kt$fun DeviceAttestation.Companion.fromDataItem(dataItem: DataItem): DeviceAttestation</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestation_Cbor.kt$fun DeviceAttestation.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:DeviceAttestation_Cbor.kt$fun DeviceAttestation.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:DeviceRequest.kt$DeviceRequest$fun getRequester(): X509CertChain?</ID>
     <ID>UndocumentedPublicFunction:DeviceRequest.kt$DeviceRequest.Builder$fun build(): DeviceRequest</ID>
     <ID>UndocumentedPublicFunction:Document.kt$Document$suspend fun edit(editAction: suspend Editor.() -> Unit)</ID>
     <ID>UndocumentedPublicFunction:DocumentGenerator.kt$DocumentGenerator$fun setIssuerNamespaces(issuerNamespaces: IssuerNamespaces)</ID>
-    <ID>UndocumentedPublicFunction:E2EERequest_Cbor.kt$fun E2EERequest.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:E2EERequest_Cbor.kt$fun E2EERequest.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:E2EERequest_Cbor.kt$fun E2EERequest_fromDataItem(dataItem: DataItem): E2EERequest</ID>
-    <ID>UndocumentedPublicFunction:E2EEResponse_Cbor.kt$fun E2EEResponse.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:E2EEResponse_Cbor.kt$fun E2EEResponse.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:E2EEResponse_Cbor.kt$fun E2EEResponse_fromDataItem(dataItem: DataItem): E2EEResponse</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupRequest0_Cbor.kt$fun E2EESetupRequest0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupRequest0_Cbor.kt$fun E2EESetupRequest0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupRequest0_Cbor.kt$fun E2EESetupRequest0_fromDataItem(dataItem: DataItem): E2EESetupRequest0</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupRequest1_Cbor.kt$fun E2EESetupRequest1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupRequest1_Cbor.kt$fun E2EESetupRequest1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupRequest1_Cbor.kt$fun E2EESetupRequest1_fromDataItem(dataItem: DataItem): E2EESetupRequest1</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupResponse0_Cbor.kt$fun E2EESetupResponse0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupResponse0_Cbor.kt$fun E2EESetupResponse0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupResponse0_Cbor.kt$fun E2EESetupResponse0_fromDataItem(dataItem: DataItem): E2EESetupResponse0</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupResponse1_Cbor.kt$fun E2EESetupResponse1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupResponse1_Cbor.kt$fun E2EESetupResponse1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:E2EESetupResponse1_Cbor.kt$fun E2EESetupResponse1_fromDataItem(dataItem: DataItem): E2EESetupResponse1</ID>
     <ID>UndocumentedPublicFunction:EcCurve.kt$EcCurve.Companion$fun fromInt(coseCurveIdentifier: Int): EcCurve</ID>
-    <ID>UndocumentedPublicFunction:EcPrivateKey.kt$EcPrivateKey$fun toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:EcPrivateKey.kt$EcPrivateKey.Companion$fun fromDataItem(dataItem: DataItem): EcPrivateKey</ID>
-    <ID>UndocumentedPublicFunction:EcPublicKey.kt$EcPublicKey$fun toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:EcPublicKey.kt$EcPublicKey.Companion$fun fromDataItem(dataItem: DataItem): EcPublicKey</ID>
-    <ID>UndocumentedPublicFunction:EcSignature.kt$EcSignature$fun toCoseEncoded()</ID>
-    <ID>UndocumentedPublicFunction:EcSignature.kt$EcSignature$fun toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:EcSignature.kt$EcSignature$fun toDerEncoded(): ByteArray</ID>
     <ID>UndocumentedPublicFunction:EcSignature.kt$EcSignature.Companion$fun fromCoseEncoded(coseSignature: ByteArray): EcSignature</ID>
     <ID>UndocumentedPublicFunction:EcSignature.kt$EcSignature.Companion$fun fromDataItem(dataItem: DataItem): EcSignature</ID>
     <ID>UndocumentedPublicFunction:EcSignature.kt$EcSignature.Companion$fun fromDerEncoded( keySizeBits: Int, derEncodedSignature: ByteArray ): EcSignature</ID>
@@ -300,21 +167,6 @@
     <ID>UndocumentedPublicFunction:EphemeralStorageEngine.kt$EphemeralStorageEngine$fun toCbor(): ByteArray</ID>
     <ID>UndocumentedPublicFunction:EphemeralStorageEngine.kt$EphemeralStorageEngine.Companion$fun fromCbor(encodedData: ByteArray): EphemeralStorageEngine</ID>
     <ID>UndocumentedPublicFunction:EphemeralStorageItem.kt$EphemeralStorageItem$fun expired(now: Instant): Boolean</ID>
-    <ID>UndocumentedPublicFunction:EphemeralStorageItem_Cbor.kt$fun EphemeralStorageItem.Companion.fromCbor(data: ByteArray): EphemeralStorageItem</ID>
-    <ID>UndocumentedPublicFunction:EphemeralStorageItem_Cbor.kt$fun EphemeralStorageItem.Companion.fromDataItem(dataItem: DataItem): EphemeralStorageItem</ID>
-    <ID>UndocumentedPublicFunction:EphemeralStorageItem_Cbor.kt$fun EphemeralStorageItem.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:EphemeralStorageItem_Cbor.kt$fun EphemeralStorageItem.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReaderUsb_Cbor.kt$fun ExternalNfcReaderUsb.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReaderUsb_Cbor.kt$fun ExternalNfcReaderUsb.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReaderUsb_Cbor.kt$fun ExternalNfcReaderUsb_fromDataItem(dataItem: DataItem): ExternalNfcReaderUsb</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReader_Cbor.kt$fun ExternalNfcReader.Companion.fromCbor(data: ByteArray): ExternalNfcReader</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReader_Cbor.kt$fun ExternalNfcReader.Companion.fromDataItem(dataItem: DataItem): ExternalNfcReader</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReader_Cbor.kt$fun ExternalNfcReader.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:ExternalNfcReader_Cbor.kt$fun ExternalNfcReader.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:GoogleAccount_Cbor.kt$fun GoogleAccount.Companion.fromCbor(data: ByteArray): GoogleAccount</ID>
-    <ID>UndocumentedPublicFunction:GoogleAccount_Cbor.kt$fun GoogleAccount.Companion.fromDataItem(dataItem: DataItem): GoogleAccount</ID>
-    <ID>UndocumentedPublicFunction:GoogleAccount_Cbor.kt$fun GoogleAccount.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:GoogleAccount_Cbor.kt$fun GoogleAccount.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:HandoverRequestRecord.kt$HandoverRequestRecord$fun generateNdefRecord(): NdefRecord</ID>
     <ID>UndocumentedPublicFunction:HandoverRequestRecord.kt$HandoverRequestRecord.Companion$fun fromNdefRecord(record: NdefRecord): HandoverRequestRecord?</ID>
     <ID>UndocumentedPublicFunction:HandoverSelectRecord.kt$HandoverSelectRecord$fun generateNdefRecord(): NdefRecord</ID>
@@ -323,34 +175,7 @@
     <ID>UndocumentedPublicFunction:HtmlUtil.kt$fun String.htmlEscape(): String</ID>
     <ID>UndocumentedPublicFunction:HttpTransport.kt$HttpTransport$suspend fun post(url: String, data: ByteString): ByteString</ID>
     <ID>UndocumentedPublicFunction:HttpTransport.kt$HttpTransport.Companion$fun processStatus(url: String, status: Int, statusText: String)</ID>
-    <ID>UndocumentedPublicFunction:IdentifierList.kt$IdentifierList$fun contains(identifier: Bstr)</ID>
-    <ID>UndocumentedPublicFunction:IdentifierList.kt$IdentifierList$fun contains(identifier: ByteString)</ID>
-    <ID>UndocumentedPublicFunction:IdentifierList.kt$IdentifierList$suspend fun serializeAsCwt( key: AsymmetricKey, subject: String, expiresIn: Duration = 20.minutes + Random.Default.nextInt(1000).seconds )</ID>
-    <ID>UndocumentedPublicFunction:IdentifierList.kt$IdentifierList.Builder$fun add(identifier: ByteString)</ID>
-    <ID>UndocumentedPublicFunction:IdentifierList.kt$IdentifierList.Builder$fun build(): IdentifierList</ID>
-    <ID>UndocumentedPublicFunction:IdentifierList.kt$IdentifierList.Companion$suspend fun fromCwt( cwt: ByteArray, publicKey: EcPublicKey? = null, checks: Map&lt;WebTokenCheck, String> = mapOf() ): IdentifierList</ID>
-    <ID>UndocumentedPublicFunction:InvalidRequestException_Cbor.kt$fun InvalidRequestException.Companion.fromCbor(data: ByteArray): InvalidRequestException</ID>
-    <ID>UndocumentedPublicFunction:InvalidRequestException_Cbor.kt$fun InvalidRequestException.Companion.fromDataItem(dataItem: DataItem): InvalidRequestException</ID>
-    <ID>UndocumentedPublicFunction:InvalidRequestException_Cbor.kt$fun InvalidRequestException.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:InvalidRequestException_Cbor.kt$fun InvalidRequestException.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:InvalidRequestException_Registration.kt$fun InvalidRequestException.Companion.register(exceptionMapBuilder: RpcExceptionMap.Builder)</ID>
     <ID>UndocumentedPublicFunction:JsonCannedRequest.kt$JsonCannedRequest$fun toDcqlString()</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementRequest0_Cbor.kt$fun KeyAgreementRequest0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementRequest0_Cbor.kt$fun KeyAgreementRequest0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementRequest0_Cbor.kt$fun KeyAgreementRequest0_fromDataItem(dataItem: DataItem): KeyAgreementRequest0</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementRequest1_Cbor.kt$fun KeyAgreementRequest1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementRequest1_Cbor.kt$fun KeyAgreementRequest1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementRequest1_Cbor.kt$fun KeyAgreementRequest1_fromDataItem(dataItem: DataItem): KeyAgreementRequest1</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementResponse0_Cbor.kt$fun KeyAgreementResponse0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementResponse0_Cbor.kt$fun KeyAgreementResponse0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementResponse0_Cbor.kt$fun KeyAgreementResponse0_fromDataItem(dataItem: DataItem): KeyAgreementResponse0</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementResponse1_Cbor.kt$fun KeyAgreementResponse1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementResponse1_Cbor.kt$fun KeyAgreementResponse1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:KeyAgreementResponse1_Cbor.kt$fun KeyAgreementResponse1_fromDataItem(dataItem: DataItem): KeyAgreementResponse1</ID>
-    <ID>UndocumentedPublicFunction:KeyAttestation_Cbor.kt$fun KeyAttestation.Companion.fromCbor(data: ByteArray): KeyAttestation</ID>
-    <ID>UndocumentedPublicFunction:KeyAttestation_Cbor.kt$fun KeyAttestation.Companion.fromDataItem(dataItem: DataItem): KeyAttestation</ID>
-    <ID>UndocumentedPublicFunction:KeyAttestation_Cbor.kt$fun KeyAttestation.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:KeyAttestation_Cbor.kt$fun KeyAttestation.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:Logger.kt$Logger$fun d(tag: String, msg: String)</ID>
     <ID>UndocumentedPublicFunction:Logger.kt$Logger$fun d(tag: String, msg: String, throwable: Throwable)</ID>
     <ID>UndocumentedPublicFunction:Logger.kt$Logger$fun dCbor(tag: String, message: String, dataItem: DataItem)</ID>
@@ -377,61 +202,23 @@
     <ID>UndocumentedPublicFunction:Logger.kt$Logger$fun wCbor(tag: String, message: String, encodedCbor: ByteArray)</ID>
     <ID>UndocumentedPublicFunction:Logger.kt$Logger$fun wHex(tag: String, message: String, data: ByteArray)</ID>
     <ID>UndocumentedPublicFunction:Logger.kt$Logger$fun wJson(tag: String, message: String, json: JsonElement)</ID>
-    <ID>UndocumentedPublicFunction:Mdoc_Cbor.kt$fun Mdoc.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:Mdoc_Cbor.kt$fun Mdoc.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:Mdoc_Cbor.kt$fun Mdoc_fromDataItem(dataItem: DataItem): Mdoc</ID>
     <ID>UndocumentedPublicFunction:MobileSecurityObjectGenerator.kt$MobileSecurityObjectGenerator$suspend fun addValueDigests( issuerNamespaces: IssuerNamespaces )</ID>
     <ID>UndocumentedPublicFunction:MobileSecurityObjectParser.kt$MobileSecurityObjectParser.MobileSecurityObject$fun parse(encodedMobileSecurityObject: ByteArray)</ID>
-    <ID>UndocumentedPublicFunction:MultipazExtension_Cbor.kt$fun MultipazExtension.Companion.fromCbor(data: ByteArray): MultipazExtension</ID>
-    <ID>UndocumentedPublicFunction:MultipazExtension_Cbor.kt$fun MultipazExtension.Companion.fromDataItem(dataItem: DataItem): MultipazExtension</ID>
-    <ID>UndocumentedPublicFunction:MultipazExtension_Cbor.kt$fun MultipazExtension.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:MultipazExtension_Cbor.kt$fun MultipazExtension.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:NameSpacedData.kt$NameSpacedData$fun toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:NameSpacedData.kt$NameSpacedData.Companion$fun fromDataItem(mapDataItem: DataItem): NameSpacedData</ID>
     <ID>UndocumentedPublicFunction:NfcTransportMdoc.kt$NfcTransportMdoc.Companion$fun onDeactivated()</ID>
     <ID>UndocumentedPublicFunction:NfcTransportMdoc.kt$NfcTransportMdoc.Companion$fun processCommandApdu( commandApdu: ByteArray, sendResponse: (responseApdu: ByteArray) -> Unit, )</ID>
-    <ID>UndocumentedPublicFunction:OpenID4VCIBackendStub.kt$OpenID4VCIBackendStub.Companion$fun fromCbor( data: ByteArray, dispatcher: RpcDispatcher, notifier: RpcNotifier, ): OpenID4VCIBackendStub</ID>
-    <ID>UndocumentedPublicFunction:OpenID4VCIBackendStub.kt$OpenID4VCIBackendStub.Companion$fun fromDataItem( data: DataItem, dispatcher: RpcDispatcher, notifier: RpcNotifier, ): OpenID4VCIBackendStub</ID>
     <ID>UndocumentedPublicFunction:OriginInfo.kt$OriginInfo$abstract fun toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:OriginInfo.kt$OriginInfo.Companion$fun fromDataItem(dataItem: DataItem): OriginInfo?</ID>
     <ID>UndocumentedPublicFunction:OriginInfoDomain.kt$OriginInfoDomain.Companion$fun fromDataItem(dataItem: DataItem): OriginInfoDomain?</ID>
-    <ID>UndocumentedPublicFunction:PassphraseConstraints_Cbor.kt$fun PassphraseConstraints.Companion.fromCbor(data: ByteArray): PassphraseConstraints</ID>
-    <ID>UndocumentedPublicFunction:PassphraseConstraints_Cbor.kt$fun PassphraseConstraints.Companion.fromDataItem(dataItem: DataItem): PassphraseConstraints</ID>
-    <ID>UndocumentedPublicFunction:PassphraseConstraints_Cbor.kt$fun PassphraseConstraints.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:PassphraseConstraints_Cbor.kt$fun PassphraseConstraints.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:PromptModel.kt$PromptModel.Builder$abstract fun build(): PromptModel</ID>
     <ID>UndocumentedPublicFunction:PromptModel.kt$PromptModel.Builder$fun&lt;PromptDialogModelT: PromptDialogModel&lt;*,*>> addPromptDialogModel( dialogModel: PromptDialogModelT )</ID>
     <ID>UndocumentedPublicFunction:PromptModel.kt$PromptModel.Builder$open fun addCommonDialogs()</ID>
-    <ID>UndocumentedPublicFunction:PromptModelExt.kt$fun PromptModel.getConsentPromptDialogModel()</ID>
-    <ID>UndocumentedPublicFunction:PromptModelExt.kt$fun PromptModel.getPassphraseDialogModel()</ID>
-    <ID>UndocumentedPublicFunction:RegisterRequest0_Cbor.kt$fun RegisterRequest0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RegisterRequest0_Cbor.kt$fun RegisterRequest0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RegisterRequest0_Cbor.kt$fun RegisterRequest0_fromDataItem(dataItem: DataItem): RegisterRequest0</ID>
-    <ID>UndocumentedPublicFunction:RegisterRequest1_Cbor.kt$fun RegisterRequest1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RegisterRequest1_Cbor.kt$fun RegisterRequest1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RegisterRequest1_Cbor.kt$fun RegisterRequest1_fromDataItem(dataItem: DataItem): RegisterRequest1</ID>
-    <ID>UndocumentedPublicFunction:RegisterResponse0_Cbor.kt$fun RegisterResponse0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RegisterResponse0_Cbor.kt$fun RegisterResponse0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RegisterResponse0_Cbor.kt$fun RegisterResponse0_fromDataItem(dataItem: DataItem): RegisterResponse0</ID>
-    <ID>UndocumentedPublicFunction:RegisterResponse1_Cbor.kt$fun RegisterResponse1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RegisterResponse1_Cbor.kt$fun RegisterResponse1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RegisterResponse1_Cbor.kt$fun RegisterResponse1_fromDataItem(dataItem: DataItem): RegisterResponse1</ID>
-    <ID>UndocumentedPublicFunction:RegisterStage2Request0_Cbor.kt$fun RegisterStage2Request0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RegisterStage2Request0_Cbor.kt$fun RegisterStage2Request0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RegisterStage2Request0_Cbor.kt$fun RegisterStage2Request0_fromDataItem(dataItem: DataItem): RegisterStage2Request0</ID>
-    <ID>UndocumentedPublicFunction:RegisterStage2Response0_Cbor.kt$fun RegisterStage2Response0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RegisterStage2Response0_Cbor.kt$fun RegisterStage2Response0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RegisterStage2Response0_Cbor.kt$fun RegisterStage2Response0_fromDataItem(dataItem: DataItem): RegisterStage2Response0</ID>
     <ID>UndocumentedPublicFunction:Resources.kt$Resources$fun getRawResource(name: String): ByteString?</ID>
     <ID>UndocumentedPublicFunction:Resources.kt$Resources$fun getStringResource(name: String): String?</ID>
     <ID>UndocumentedPublicFunction:RpcAuthContext.kt$RpcAuthContext.Companion$suspend fun getClientDeviceAttestation(): DeviceAttestation?</ID>
     <ID>UndocumentedPublicFunction:RpcAuthContext.kt$RpcAuthContext.Companion$suspend fun getClientId(): String</ID>
     <ID>UndocumentedPublicFunction:RpcAuthContext.kt$RpcAuthContext.Companion$suspend fun getSessionId(): String</ID>
-    <ID>UndocumentedPublicFunction:RpcAuthException_Cbor.kt$fun RpcAuthException.Companion.fromCbor(data: ByteArray): RpcAuthException</ID>
-    <ID>UndocumentedPublicFunction:RpcAuthException_Cbor.kt$fun RpcAuthException.Companion.fromDataItem(dataItem: DataItem): RpcAuthException</ID>
-    <ID>UndocumentedPublicFunction:RpcAuthException_Cbor.kt$fun RpcAuthException.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:RpcAuthException_Cbor.kt$fun RpcAuthException.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:RpcAuthException_Registration.kt$fun RpcAuthException.Companion.register(exceptionMapBuilder: RpcExceptionMap.Builder)</ID>
     <ID>UndocumentedPublicFunction:RpcAuthInspectorAssertion.kt$RpcAuthInspectorAssertion.Companion$suspend fun getClientDeviceAttestation( clientId: String ): DeviceAttestation?</ID>
     <ID>UndocumentedPublicFunction:RpcAuthorizedDeviceClient.kt$RpcAuthorizedDeviceClient$fun shutdown()</ID>
     <ID>UndocumentedPublicFunction:RpcDispatcher.kt$RpcDispatcher$suspend fun dispatch(target: String, method: String, args: DataItem): List&lt;DataItem></ID>
@@ -445,9 +232,6 @@
     <ID>UndocumentedPublicFunction:RpcExceptionMap.kt$RpcExceptionMap$fun handleExceptionReturn(returnList: List&lt;DataItem>)</ID>
     <ID>UndocumentedPublicFunction:RpcExceptionMap.kt$RpcExceptionMap.Builder$fun &lt;ExceptionT : Throwable> addException( exceptionId: String, serializer: (ExceptionT) -> DataItem, deserializer: (DataItem) -> ExceptionT, exceptionClasses: List&lt;KClass&lt;out ExceptionT>>, )</ID>
     <ID>UndocumentedPublicFunction:RpcExceptionMap.kt$RpcExceptionMap.Builder$fun build(): RpcExceptionMap</ID>
-    <ID>UndocumentedPublicFunction:RpcNonceAndSession.kt$RpcNonceAndSession.Companion$suspend fun checkNonce( clientId: String, nonce: ByteString, expiration: Instant ): RpcNonceAndSession</ID>
-    <ID>UndocumentedPublicFunction:RpcNonceAndSession.kt$RpcNonceAndSession.Companion$suspend fun validateAndExtractNonceAndSession( assertion: AssertionRpcAuth, target: String, method: String, payload: Bstr, timeout: Duration = 10.minutes, ): RpcNonceAndSession</ID>
-    <ID>UndocumentedPublicFunction:RpcNonceAndSession.kt$RpcNonceAndSession.Companion$suspend fun validateAndExtractNonceAndSession( assertion: AssertionRpcAuth, target: String, method: String, payload: Bstr, timeout: Duration, nonceChecker: suspend ( clientId: String, nonce: ByteString, expiration: Instant ) -> RpcNonceAndSession ): RpcNonceAndSession</ID>
     <ID>UndocumentedPublicFunction:RpcNotifier.kt$RpcNotifier$suspend fun unregister(target: String, opaqueState: DataItem)</ID>
     <ID>UndocumentedPublicFunction:RpcNotifier.kt$RpcNotifier$suspend fun&lt;NotificationT: Any> register( target: String, opaqueState: DataItem, notifications: MutableSharedFlow&lt;NotificationT>, deserializer: (DataItem) -> NotificationT )</ID>
     <ID>UndocumentedPublicFunction:RpcNotifierPoll.kt$RpcNotifierPoll$suspend fun loop()</ID>
@@ -455,40 +239,9 @@
     <ID>UndocumentedPublicFunction:RpcStub.kt$RpcStub$fun toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:RpcStub.kt$RpcStub.Companion$fun rpcParameter(obj: Any)</ID>
     <ID>UndocumentedPublicFunction:SdJwtVcCredential.kt$SdJwtVcCredential$suspend fun getClaimsImpl( documentTypeRepository: DocumentTypeRepository? ): List&lt;JsonClaim></ID>
-    <ID>UndocumentedPublicFunction:SdJwt_Cbor.kt$fun SdJwt.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SdJwt_Cbor.kt$fun SdJwt.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SdJwt_Cbor.kt$fun SdJwt_fromDataItem(dataItem: DataItem): SdJwt</ID>
-    <ID>UndocumentedPublicFunction:SecretCodeRequest_Cbor.kt$fun SecretCodeRequest.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SecretCodeRequest_Cbor.kt$fun SecretCodeRequest.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SecretCodeRequest_Cbor.kt$fun SecretCodeRequest_fromDataItem(dataItem: DataItem): SecretCodeRequest</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationAndroidKeystore_Cbor.kt$fun SecureAreaConfigurationAndroidKeystore.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationAndroidKeystore_Cbor.kt$fun SecureAreaConfigurationAndroidKeystore.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationAndroidKeystore_Cbor.kt$fun SecureAreaConfigurationAndroidKeystore_fromDataItem(dataItem: DataItem): SecureAreaConfigurationAndroidKeystore</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationCloud_Cbor.kt$fun SecureAreaConfigurationCloud.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationCloud_Cbor.kt$fun SecureAreaConfigurationCloud.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationCloud_Cbor.kt$fun SecureAreaConfigurationCloud_fromDataItem(dataItem: DataItem): SecureAreaConfigurationCloud</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationSoftware_Cbor.kt$fun SecureAreaConfigurationSoftware.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationSoftware_Cbor.kt$fun SecureAreaConfigurationSoftware.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfigurationSoftware_Cbor.kt$fun SecureAreaConfigurationSoftware_fromDataItem(dataItem: DataItem): SecureAreaConfigurationSoftware</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfiguration_Cbor.kt$fun SecureAreaConfiguration.Companion.fromCbor(data: ByteArray): SecureAreaConfiguration</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfiguration_Cbor.kt$fun SecureAreaConfiguration.Companion.fromDataItem(dataItem: DataItem): SecureAreaConfiguration</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfiguration_Cbor.kt$fun SecureAreaConfiguration.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SecureAreaConfiguration_Cbor.kt$fun SecureAreaConfiguration.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:SecureAreaProvider.kt$SecureAreaProvider$suspend fun get(): T</ID>
     <ID>UndocumentedPublicFunction:ServiceSelectRecord.kt$ServiceSelectRecord$fun toNdefRecord(): NdefRecord</ID>
     <ID>UndocumentedPublicFunction:ServiceSelectRecord.kt$ServiceSelectRecord.Companion$fun fromNdefRecord(record: NdefRecord): ServiceSelectRecord?</ID>
-    <ID>UndocumentedPublicFunction:SignRequest0_Cbor.kt$fun SignRequest0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SignRequest0_Cbor.kt$fun SignRequest0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SignRequest0_Cbor.kt$fun SignRequest0_fromDataItem(dataItem: DataItem): SignRequest0</ID>
-    <ID>UndocumentedPublicFunction:SignRequest1_Cbor.kt$fun SignRequest1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SignRequest1_Cbor.kt$fun SignRequest1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SignRequest1_Cbor.kt$fun SignRequest1_fromDataItem(dataItem: DataItem): SignRequest1</ID>
-    <ID>UndocumentedPublicFunction:SignResponse0_Cbor.kt$fun SignResponse0.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SignResponse0_Cbor.kt$fun SignResponse0.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SignResponse0_Cbor.kt$fun SignResponse0_fromDataItem(dataItem: DataItem): SignResponse0</ID>
-    <ID>UndocumentedPublicFunction:SignResponse1_Cbor.kt$fun SignResponse1.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:SignResponse1_Cbor.kt$fun SignResponse1.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:SignResponse1_Cbor.kt$fun SignResponse1_fromDataItem(dataItem: DataItem): SignResponse1</ID>
     <ID>UndocumentedPublicFunction:SimpleCipher.kt$SimpleCipher$suspend fun decrypt(ciphertext: ByteArray): ByteArray</ID>
     <ID>UndocumentedPublicFunction:SimpleCipher.kt$SimpleCipher$suspend fun encrypt(plaintext: ByteArray): ByteArray</ID>
     <ID>UndocumentedPublicFunction:SqlStatementMaker.kt$SqlStatementMaker$fun enumerateStatement(withData: Boolean)</ID>
@@ -496,27 +249,9 @@
     <ID>UndocumentedPublicFunction:StorageTableSpec.kt$StorageTableSpec$open suspend fun schemaUpgrade(oldTable: BaseStorageTable)</ID>
     <ID>UndocumentedPublicFunction:TnepStatusRecord.kt$TnepStatusRecord$fun toNdefRecord(): NdefRecord</ID>
     <ID>UndocumentedPublicFunction:TnepStatusRecord.kt$TnepStatusRecord.Companion$fun fromNdefRecord(record: NdefRecord): TnepStatusRecord?</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryRical_Cbor.kt$fun TrustEntryRical.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryRical_Cbor.kt$fun TrustEntryRical.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryRical_Cbor.kt$fun TrustEntryRical_fromDataItem(dataItem: DataItem): TrustEntryRical</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryVical_Cbor.kt$fun TrustEntryVical.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryVical_Cbor.kt$fun TrustEntryVical.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryVical_Cbor.kt$fun TrustEntryVical_fromDataItem(dataItem: DataItem): TrustEntryVical</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryX509Cert_Cbor.kt$fun TrustEntryX509Cert.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryX509Cert_Cbor.kt$fun TrustEntryX509Cert.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:TrustEntryX509Cert_Cbor.kt$fun TrustEntryX509Cert_fromDataItem(dataItem: DataItem): TrustEntryX509Cert</ID>
-    <ID>UndocumentedPublicFunction:TrustEntry_Cbor.kt$fun TrustEntry.Companion.fromCbor(data: ByteArray): TrustEntry</ID>
-    <ID>UndocumentedPublicFunction:TrustEntry_Cbor.kt$fun TrustEntry.Companion.fromDataItem(dataItem: DataItem): TrustEntry</ID>
-    <ID>UndocumentedPublicFunction:TrustEntry_Cbor.kt$fun TrustEntry.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:TrustEntry_Cbor.kt$fun TrustEntry.toDataItem(): DataItem</ID>
-    <ID>UndocumentedPublicFunction:TrustMetadata_Cbor.kt$fun TrustMetadata.Companion.fromCbor(data: ByteArray): TrustMetadata</ID>
-    <ID>UndocumentedPublicFunction:TrustMetadata_Cbor.kt$fun TrustMetadata.Companion.fromDataItem(dataItem: DataItem): TrustMetadata</ID>
-    <ID>UndocumentedPublicFunction:TrustMetadata_Cbor.kt$fun TrustMetadata.toCbor(): ByteArray</ID>
-    <ID>UndocumentedPublicFunction:TrustMetadata_Cbor.kt$fun TrustMetadata.toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:UUID.kt$UUID$fun toByteArray(): ByteArray</ID>
     <ID>UndocumentedPublicFunction:UUID.kt$UUID.Companion$fun fromByteArray(encodedUuid: ByteArray): UUID</ID>
     <ID>UndocumentedPublicFunction:UUID.kt$UUID.Companion$fun fromString(str: String): UUID</ID>
-    <ID>UndocumentedPublicFunction:UUID.kt$UUID.Companion$fun randomUUID(random: Random = Random.Default): UUID</ID>
     <ID>UndocumentedPublicFunction:X509Crl.kt$X509Crl.Builder$fun addRevoked(serial: ASN1Integer, time: Instant): Builder</ID>
     <ID>UndocumentedPublicFunction:X509Crl.kt$X509Crl.Builder$suspend fun build(): X509Crl</ID>
     <ID>UndocumentedPublicFunction:X509Crl.kt$suspend inline fun buildX509Crl( signingKey: AsymmetricKey, issuer: X500Name, thisUpdate: Instant, nextUpdate: Instant?, block: X509Crl.Builder.() -> Unit ): X509Crl</ID>
@@ -525,7 +260,6 @@
     <ID>UndocumentedPublicFunction:X509Signed.kt$X509Signed$fun getExtensionsSeq(): ASN1Sequence?</ID>
     <ID>UndocumentedPublicFunction:X509Signed.kt$X509Signed$fun toDataItem(): DataItem</ID>
     <ID>UndocumentedPublicFunction:ZkRequest.kt$ZkRequest$fun toDataItem()</ID>
-    <ID>UndocumentedPublicFunction:validateAndroidKeyAttestation.kt$suspend fun validateAndroidKeyAttestation( chain: X509CertChain, challenge: ByteString?, requireGmsAttestation: Boolean, requireVerifiedBootGreen: Boolean, requireKeyMintSecurityLevel: AndroidKeystoreSecurityLevel, requireAppSignatureCertificateDigests: Set&lt;ByteString>, requireAppPackages: Set&lt;String> )</ID>
     <ID>UndocumentedPublicFunction:validateCloudSecureAreaAttestation.kt$fun isCloudKeyAttestation(chain: X509CertChain): Boolean</ID>
     <ID>UndocumentedPublicFunction:validateCloudSecureAreaAttestation.kt$suspend fun validateCloudKeyAttestation( chain: X509CertChain, nonce: ByteString, trustedRootKeys: Set&lt;ByteString> )</ID>
     <ID>UndocumentedPublicProperty:ASN1BitString.kt$ASN1BitString$val numUnusedBits: Int</ID>
@@ -595,20 +329,13 @@
     <ID>UndocumentedPublicProperty:AndroidKeystoreSecurityLevel.kt$AndroidKeystoreSecurityLevel$STRONG_BOX</ID>
     <ID>UndocumentedPublicProperty:AndroidKeystoreSecurityLevel.kt$AndroidKeystoreSecurityLevel$TRUSTED_ENVIRONMENT</ID>
     <ID>UndocumentedPublicProperty:AssertionBindingKeys.kt$AssertionBindingKeys$val publicKeys: List&lt;EcPublicKey></ID>
-    <ID>UndocumentedPublicProperty:AssertionBindingKeys_Cbor.kt$@CborSerializableGenerated(schemaId = "e09cLB92DemxKlcHrpGY-PBX6zwVShehqc3iaw5ItjU") val AssertionBindingKeys_cborSchemaId = ByteString(123, 79, 92, 44, 31, 118, 13, -23, -79, 42, 87, 7, -82, -111, -104, -8, -16, 87, -21, 60, 21, 74, 23, -95, -87, -51, -30, 107, 14, 72, -74, 53)</ID>
     <ID>UndocumentedPublicProperty:AssertionGenericCbor.kt$AssertionGenericCbor$val data: DataItem</ID>
-    <ID>UndocumentedPublicProperty:AssertionGenericCbor_Cbor.kt$@CborSerializableGenerated(schemaId = "S3fzhJjR5kye14U-pAt-gks6W5qId3-Zvs8A0FnLedY") val AssertionGenericCbor_cborSchemaId = ByteString(75, 119, -13, -124, -104, -47, -26, 76, -98, -41, -123, 62, -92, 11, 126, -126, 75, 58, 91, -102, -120, 119, 127, -103, -66, -49, 0, -48, 89, -53, 121, -42)</ID>
-    <ID>UndocumentedPublicProperty:AssertionNonce_Cbor.kt$@CborSerializableGenerated(schemaId = "zhMgsVgot5RDtRT1lkn0UA7tr04TBwsWpqC6AE9upS8") val AssertionNonce_cborSchemaId = ByteString(-50, 19, 32, -79, 88, 40, -73, -108, 67, -75, 20, -11, -106, 73, -12, 80, 14, -19, -81, 78, 19, 7, 11, 22, -90, -96, -70, 0, 79, 110, -91, 47)</ID>
-    <ID>UndocumentedPublicProperty:AssertionPoPKey_Cbor.kt$@CborSerializableGenerated(schemaId = "EzJD-VUSnoUldPO6YxI4HUwqZkfMV2UQoZrX8P8p8JU") val AssertionPoPKey_cborSchemaId = ByteString(19, 50, 67, -7, 85, 18, -98, -123, 37, 116, -13, -70, 99, 18, 56, 29, 76, 42, 102, 71, -52, 87, 101, 16, -95, -102, -41, -16, -1, 41, -16, -107)</ID>
     <ID>UndocumentedPublicProperty:AssertionRpcAuth.kt$AssertionRpcAuth$val clientId: String</ID>
     <ID>UndocumentedPublicProperty:AssertionRpcAuth.kt$AssertionRpcAuth$val method: String</ID>
     <ID>UndocumentedPublicProperty:AssertionRpcAuth.kt$AssertionRpcAuth$val nonce: ByteString</ID>
     <ID>UndocumentedPublicProperty:AssertionRpcAuth.kt$AssertionRpcAuth$val payloadHash: ByteString</ID>
     <ID>UndocumentedPublicProperty:AssertionRpcAuth.kt$AssertionRpcAuth$val target: String</ID>
     <ID>UndocumentedPublicProperty:AssertionRpcAuth.kt$AssertionRpcAuth$val timestamp: Instant</ID>
-    <ID>UndocumentedPublicProperty:AssertionRpcAuth_Cbor.kt$@CborSerializableGenerated(schemaId = "WtOZUpkF0aYQfUBBHJg6vGpSvpgZj-PzQGjB8lj5h4I") val AssertionRpcAuth_cborSchemaId = ByteString(90, -45, -103, 82, -103, 5, -47, -90, 16, 125, 64, 65, 28, -104, 58, -68, 106, 82, -66, -104, 25, -113, -29, -13, 64, 104, -63, -14, 88, -7, -121, -126)</ID>
-    <ID>UndocumentedPublicProperty:Assertion_Cbor.kt$@CborSerializableGenerated(schemaId = "tegS2O43kAnkyJqssBt7QQMty1hOijWJmxTCSqVZJJY") val Assertion_cborSchemaId = ByteString(-75, -24, 18, -40, -18, 55, -112, 9, -28, -56, -102, -84, -80, 27, 123, 65, 3, 45, -53, 88, 78, -118, 53, -119, -101, 20, -62, 74, -91, 89, 36, -106)</ID>
-    <ID>UndocumentedPublicProperty:Assertion_Cbor.kt$val Assertion.Companion.cborSchemaId: ByteString get() = Assertion_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:AuthorizationChallenge.kt$AuthorizationChallenge.SecretText$val request: SecretCodeRequest</ID>
     <ID>UndocumentedPublicProperty:AuthorizationException.kt$AuthorizationException$val code: String</ID>
     <ID>UndocumentedPublicProperty:AuthorizationException.kt$AuthorizationException$val description: String?</ID>
@@ -617,21 +344,11 @@
     <ID>UndocumentedPublicProperty:BaseStorage.kt$BaseStorage.Companion$// NB: MySQL does not allow table names longer than 64 characters and we need 2 // characters for the prefix. Without prefix we'd have to exclude SQL keywords from // valid table names. const val MAX_TABLE_NAME_LENGTH = 60</ID>
     <ID>UndocumentedPublicProperty:BaseStorage.kt$BaseStorage.Companion$const val MAX_KEY_SIZE = 1024</ID>
     <ID>UndocumentedPublicProperty:BaseStorageTable.kt$BaseStorageTable$val spec: StorageTableSpec</ID>
-    <ID>UndocumentedPublicProperty:BatchCreateKeyRequest0_Cbor.kt$@CborSerializableGenerated(schemaId = "Pdrsl1RRuev2jXpArnb8TuC3KyUjMq4BjwzOJXiHRZA") val BatchCreateKeyRequest0_cborSchemaId = ByteString(61, -38, -20, -105, 84, 81, -71, -21, -10, -115, 122, 64, -82, 118, -4, 78, -32, -73, 43, 37, 35, 50, -82, 1, -113, 12, -50, 37, 120, -121, 69, -112)</ID>
-    <ID>UndocumentedPublicProperty:BatchCreateKeyRequest1_Cbor.kt$@CborSerializableGenerated(schemaId = "7yBlpz1l8dFy_1Z-H5kzuHzxvLe-FfxHDwzywlIPpHY") val BatchCreateKeyRequest1_cborSchemaId = ByteString(-17, 32, 101, -89, 61, 101, -15, -47, 114, -1, 86, 126, 31, -103, 51, -72, 124, -15, -68, -73, -66, 21, -4, 71, 15, 12, -14, -62, 82, 15, -92, 118)</ID>
-    <ID>UndocumentedPublicProperty:BatchCreateKeyResponse0_Cbor.kt$@CborSerializableGenerated(schemaId = "iwbuVzjok2Q6MfKeINCHizGC5zY-KJNYPcJ3WvZIbp4") val BatchCreateKeyResponse0_cborSchemaId = ByteString(-117, 6, -18, 87, 56, -24, -109, 100, 58, 49, -14, -98, 32, -48, -121, -117, 49, -126, -25, 54, 62, 40, -109, 88, 61, -62, 119, 90, -10, 72, 110, -98)</ID>
-    <ID>UndocumentedPublicProperty:BatchCreateKeyResponse1_Cbor.kt$@CborSerializableGenerated(schemaId = "byOOr2-4WpT77BnYVT6_aZXoffOPkrExkfXur1D-LFE") val BatchCreateKeyResponse1_cborSchemaId = ByteString(111, 35, -114, -81, 111, -72, 90, -108, -5, -20, 25, -40, 85, 62, -65, 105, -107, -24, 125, -13, -113, -110, -79, 49, -111, -11, -18, -81, 80, -2, 44, 81)</ID>
     <ID>UndocumentedPublicProperty:Capability.kt$Capability$EXTENDED_REQUEST_SUPPORT : Capability</ID>
     <ID>UndocumentedPublicProperty:Capability.kt$Capability$HANDOVER_SESSION_ESTABLISHMENT_SUPPORT : Capability</ID>
     <ID>UndocumentedPublicProperty:Capability.kt$Capability$READER_AUTH_ALL_SUPPORT : Capability</ID>
     <ID>UndocumentedPublicProperty:CborSerializableGenerated.kt$CborSerializableGenerated$val schemaId: String</ID>
-    <ID>UndocumentedPublicProperty:CheckPassphraseRequest_Cbor.kt$@CborSerializableGenerated(schemaId = "Zw3-ZrsYrLw1wnx0QgURvV-ekDP69furLuAZCRXU5nA") val CheckPassphraseRequest_cborSchemaId = ByteString(103, 13, -2, 102, -69, 24, -84, -68, 53, -62, 124, 116, 66, 5, 17, -67, 95, -98, -112, 51, -6, -11, -5, -85, 46, -32, 25, 9, 21, -44, -26, 112)</ID>
-    <ID>UndocumentedPublicProperty:CheckPassphraseResponse_Cbor.kt$@CborSerializableGenerated(schemaId = "GANC-Sh2gff7xiWiGX91ZRc34T7rfv3L_Dggg-d2Hds") val CheckPassphraseResponse_cborSchemaId = ByteString(24, 3, 66, -7, 40, 118, -127, -9, -5, -58, 37, -94, 25, 127, 117, 101, 23, 55, -31, 62, -21, 126, -3, -53, -4, 56, 32, -125, -25, 118, 29, -37)</ID>
-    <ID>UndocumentedPublicProperty:ClientCheckImpl_Cbor.kt$@CborSerializableGenerated(schemaId = "Ch4nNnd_gKYr6y33K2SYeEgcDKEBlLgytRNr77rlQBc") val ClientCheckImpl_cborSchemaId = ByteString(10, 30, 39, 54, 119, 127, -128, -90, 43, -21, 45, -9, 43, 100, -104, 120, 72, 28, 12, -95, 1, -108, -72, 50, -75, 19, 107, -17, -70, -27, 64, 23)</ID>
-    <ID>UndocumentedPublicProperty:ClientCheckImpl_Cbor.kt$val ClientCheckImpl.Companion.cborSchemaId: ByteString get() = ClientCheckImpl_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:ClientRegistrationImpl.kt$ClientRegistrationImpl$var registrationChallenge: ByteString? = null</ID>
-    <ID>UndocumentedPublicProperty:ClientRegistrationImpl_Cbor.kt$@CborSerializableGenerated(schemaId = "-K9qiF9jpYrHx1Q9qmxdqWK4m1qj9qmmylPo7IVssf4") val ClientRegistrationImpl_cborSchemaId = ByteString(-8, -81, 106, -120, 95, 99, -91, -118, -57, -57, 84, 61, -86, 108, 93, -87, 98, -72, -101, 90, -93, -10, -87, -90, -54, 83, -24, -20, -123, 108, -79, -2)</ID>
-    <ID>UndocumentedPublicProperty:ClientRegistrationImpl_Cbor.kt$val ClientRegistrationImpl.Companion.cborSchemaId: ByteString get() = ClientRegistrationImpl_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:CloudKeyLockedException.kt$CloudKeyLockedException.Reason$USER_NOT_AUTHENTICATED</ID>
     <ID>UndocumentedPublicProperty:CloudKeyLockedException.kt$CloudKeyLockedException.Reason$WRONG_PASSPHRASE</ID>
     <ID>UndocumentedPublicProperty:CloudSecureArea.kt$CloudSecureArea$lateinit var platformSecureArea: SecureArea</ID>
@@ -705,42 +422,16 @@
     <ID>UndocumentedPublicProperty:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol.SignRequest1$val signature: EcSignature</ID>
     <ID>UndocumentedPublicProperty:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol.SignResponse0$val cloudNonce: ByteArray</ID>
     <ID>UndocumentedPublicProperty:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol.SignResponse0$val serverState: ByteArray</ID>
-    <ID>UndocumentedPublicProperty:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol.SignResponse1$val result: Int</ID>
-    <ID>UndocumentedPublicProperty:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol.SignResponse1$val signature: EcSignature?</ID>
-    <ID>UndocumentedPublicProperty:CloudSecureAreaProtocol.kt$CloudSecureAreaProtocol.SignResponse1$val waitDurationMillis: Long</ID>
     <ID>UndocumentedPublicProperty:CloudUserAuthType.kt$CloudUserAuthType$val flagValue: Long</ID>
-    <ID>UndocumentedPublicProperty:Command_Cbor.kt$@CborSerializableGenerated(schemaId = "bhHugJAKoeOFre1HBWRTAstKudjKhjKGC2p789n6kkM") val Command_cborSchemaId = ByteString(110, 17, -18, -128, -112, 10, -95, -29, -123, -83, -19, 71, 5, 100, 83, 2, -53, 74, -71, -40, -54, -122, 50, -122, 11, 106, 123, -13, -39, -6, -110, 67)</ID>
-    <ID>UndocumentedPublicProperty:Command_Cbor.kt$val Command.Companion.cborSchemaId: ByteString get() = Command_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:ConsentPromptDialogModel.kt$ConsentPromptDialogModel.ConsentPromptRequest$val CredentialQueryResult: CredentialQueryResult</ID>
-    <ID>UndocumentedPublicProperty:ConsentPromptDialogModel.kt$ConsentPromptDialogModel.ConsentPromptRequest$val onDocumentsInFocus: (documents: List&lt;Document>) -> Unit</ID>
-    <ID>UndocumentedPublicProperty:ConsentPromptDialogModel.kt$ConsentPromptDialogModel.ConsentPromptRequest$val preselectedDocuments: List&lt;Document></ID>
-    <ID>UndocumentedPublicProperty:ConsentPromptDialogModel.kt$ConsentPromptDialogModel.ConsentPromptRequest$val requester: Requester</ID>
-    <ID>UndocumentedPublicProperty:ConsentPromptDialogModel.kt$ConsentPromptDialogModel.ConsentPromptRequest$val trustMetadata: TrustMetadata?</ID>
-    <ID>UndocumentedPublicProperty:ConsentPromptDialogModel.kt$ConsentPromptDialogModel.ConsentPromptRequest$val consentData: ConsentData</ID>
-    <ID>UndocumentedPublicProperty:CreateKeyRequest0_Cbor.kt$@CborSerializableGenerated(schemaId = "Pdrsl1RRuev2jXpArnb8TuC3KyUjMq4BjwzOJXiHRZA") val CreateKeyRequest0_cborSchemaId = ByteString(61, -38, -20, -105, 84, 81, -71, -21, -10, -115, 122, 64, -82, 118, -4, 78, -32, -73, 43, 37, 35, 50, -82, 1, -113, 12, -50, 37, 120, -121, 69, -112)</ID>
-    <ID>UndocumentedPublicProperty:CreateKeyRequest1_Cbor.kt$@CborSerializableGenerated(schemaId = "vUOyalNVflOPP7A2GsJcRWadIvCKB9HrmcwkJK8lcg8") val CreateKeyRequest1_cborSchemaId = ByteString(-67, 67, -78, 106, 83, 85, 126, 83, -113, 63, -80, 54, 26, -62, 92, 69, 102, -99, 34, -16, -118, 7, -47, -21, -103, -52, 36, 36, -81, 37, 114, 15)</ID>
-    <ID>UndocumentedPublicProperty:CreateKeyResponse0_Cbor.kt$@CborSerializableGenerated(schemaId = "iwbuVzjok2Q6MfKeINCHizGC5zY-KJNYPcJ3WvZIbp4") val CreateKeyResponse0_cborSchemaId = ByteString(-117, 6, -18, 87, 56, -24, -109, 100, 58, 49, -14, -98, 32, -48, -121, -117, 49, -126, -25, 54, 62, 40, -109, 88, 61, -62, 119, 90, -10, 72, 110, -98)</ID>
-    <ID>UndocumentedPublicProperty:CreateKeyResponse1_Cbor.kt$@CborSerializableGenerated(schemaId = "itGCmPumhhHKjmt3lWMkoJsdyhvkFhMbbMRccnv0gnw") val CreateKeyResponse1_cborSchemaId = ByteString(-118, -47, -126, -104, -5, -90, -122, 17, -54, -114, 107, 119, -107, 99, 36, -96, -101, 29, -54, 27, -28, 22, 19, 27, 108, -60, 92, 114, 123, -12, -126, 124)</ID>
     <ID>UndocumentedPublicProperty:Credential.kt$Credential$@Volatile var replacementForIdentifier: String? = null private set</ID>
     <ID>UndocumentedPublicProperty:Credential.kt$Credential$val identifier: String get() = _identifier!!</ID>
-    <ID>UndocumentedPublicProperty:CredentialCertification_Cbor.kt$@CborSerializableGenerated(schemaId = "Gfauv70eZYppLle868jyaWZ8Cq50skmOBxVZWaqevwk") val CredentialCertification_cborSchemaId = ByteString(25, -10, -82, -65, -67, 30, 101, -118, 105, 46, 87, -68, -21, -56, -14, 105, 102, 124, 10, -82, 116, -78, 73, -114, 7, 21, 89, 89, -86, -98, -65, 9)</ID>
-    <ID>UndocumentedPublicProperty:CredentialCertification_Cbor.kt$val CredentialCertification.Companion.cborSchemaId: ByteString get() = CredentialCertification_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:CredentialFormat.kt$CredentialFormat$abstract val formatId: String</ID>
     <ID>UndocumentedPublicProperty:CredentialFormat.kt$CredentialFormat.Mdoc$val docType: String</ID>
     <ID>UndocumentedPublicProperty:CredentialFormat.kt$CredentialFormat.SdJwt$val vct: String</ID>
-    <ID>UndocumentedPublicProperty:CredentialFormat_Cbor.kt$@CborSerializableGenerated(schemaId = "T82ahvqn8bGuXFYIU6Qzg6Hk0nWUTIcnnGh3-dmi52w") val CredentialFormat_cborSchemaId = ByteString(79, -51, -102, -122, -6, -89, -15, -79, -82, 92, 86, 8, 83, -92, 51, -125, -95, -28, -46, 117, -108, 76, -121, 39, -100, 104, 119, -7, -39, -94, -25, 108)</ID>
-    <ID>UndocumentedPublicProperty:CredentialFormat_Cbor.kt$val CredentialFormat.Companion.cborSchemaId: ByteString get() = CredentialFormat_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:CredentialKeyAttestation.kt$CredentialKeyAttestation$val credentialId: String</ID>
     <ID>UndocumentedPublicProperty:CredentialKeyAttestation.kt$CredentialKeyAttestation$val keyAttestation: KeyAttestation</ID>
-    <ID>UndocumentedPublicProperty:CredentialKeyAttestation_Cbor.kt$@CborSerializableGenerated(schemaId = "TD5DcxPXeKSITxGH_j3cj0yCP8W1URwZcfMPrKhhPu4") val CredentialKeyAttestation_cborSchemaId = ByteString(76, 62, 67, 115, 19, -41, 120, -92, -120, 79, 17, -121, -2, 61, -36, -113, 76, -126, 63, -59, -75, 81, 28, 25, 113, -13, 15, -84, -88, 97, 62, -18)</ID>
-    <ID>UndocumentedPublicProperty:CredentialKeyAttestation_Cbor.kt$val CredentialKeyAttestation.Companion.cborSchemaId: ByteString get() = CredentialKeyAttestation_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:DcqlCredentialQuery.kt$DcqlCredentialQuery$val meta: JsonObject</ID>
     <ID>UndocumentedPublicProperty:DeviceAssertion.kt$DeviceAssertion$val assertion: Assertion get() = Assertion.fromCbor(assertionData.toByteArray())</ID>
-    <ID>UndocumentedPublicProperty:DeviceAssertion_Cbor.kt$@CborSerializableGenerated(schemaId = "PJ3yQ3jTsN-SSVtrq0VbveG102BDxxXnK65SXPGtguw") val DeviceAssertion_cborSchemaId = ByteString(60, -99, -14, 67, 120, -45, -80, -33, -110, 73, 91, 107, -85, 69, 91, -67, -31, -75, -45, 96, 67, -57, 21, -25, 43, -82, 82, 92, -15, -83, -126, -20)</ID>
-    <ID>UndocumentedPublicProperty:DeviceAssertion_Cbor.kt$val DeviceAssertion.Companion.cborSchemaId: ByteString get() = DeviceAssertion_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestationAndroid.kt$DeviceAttestationAndroid$val certificateChain: X509CertChain</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestationAndroid_Cbor.kt$@CborSerializableGenerated(schemaId = "q0ZiWqM2i7anBI3hnAJMbtYUOXTx9mTdrDvFUYMI-Vw") val DeviceAttestationAndroid_cborSchemaId = ByteString(-85, 70, 98, 90, -93, 54, -117, -74, -89, 4, -115, -31, -100, 2, 76, 110, -42, 20, 57, 116, -15, -10, 100, -35, -84, 59, -59, 81, -125, 8, -7, 92)</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos$val blob: ByteString</ID>
     <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos.Companion$val APPLE_ROOT_CERTIFICATE = X509Cert.fromPem(""" -----BEGIN CERTIFICATE----- MIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw JAYDVQQDDB1BcHBsZSBBcHAgQXR0ZXN0YXRpb24gUm9vdCBDQTETMBEGA1UECgwK QXBwbGUgSW5jLjETMBEGA1UECAwKQ2FsaWZvcm5pYTAeFw0yMDAzMTgxODMyNTNa Fw00NTAzMTUwMDAwMDBaMFIxJjAkBgNVBAMMHUFwcGxlIEFwcCBBdHRlc3RhdGlv biBSb290IENBMRMwEQYDVQQKDApBcHBsZSBJbmMuMRMwEQYDVQQIDApDYWxpZm9y bmlhMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAERTHhmLW07ATaFQIEVwTtT4dyctdh NbJhFs/Ii2FdCgAHGbpphY3+d8qjuDngIN3WVhQUBHAoMeQ/cLiP1sOUtgjqK9au Yen1mMEvRq9Sk3Jm5X8U62H+xTD3FE9TgS41o0IwQDAPBgNVHRMBAf8EBTADAQH/ MB0GA1UdDgQWBBSskRBTM72+aEH/pwyp5frq5eWKoTAOBgNVHQ8BAf8EBAMCAQYw CgYIKoZIzj0EAwMDaAAwZQIwQgFGnByvsiVbpTKwSga0kP0e8EeDS4+sQmTvb7vn 53O5+FRXgeLhpJ06ysC5PrOyAjEAp5U4xDgEgllF7En3VcE3iexZZtKeYnpqtijV oyFraWVIyd/dganmrduC1bmTBGwD -----END CERTIFICATE----- """.trimIndent())</ID>
     <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos.Companion$val debugAaguid = "appattestdevelop".encodeToByteString()</ID>
     <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos.Companion$val releaseAaguid = ByteStringBuilder().apply { append("appattest".encodeToByteArray()) repeat(7) { append(0.toByte()) } }.toByteString()</ID>
@@ -749,26 +440,12 @@
     <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos.ParsedAuthData$val keyIdentifier: ByteString</ID>
     <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos.ParsedAuthData$val publicKey: EcPublicKey</ID>
     <ID>UndocumentedPublicProperty:DeviceAttestationIos.kt$DeviceAttestationIos.ParsedAuthData$val signCount: Int</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestationIos_Cbor.kt$@CborSerializableGenerated(schemaId = "83NDXMO9flC5Ae0Tjd7Ezy6vjmTwTCTtDhW4FKD_9zw") val DeviceAttestationIos_cborSchemaId = ByteString(-13, 115, 67, 92, -61, -67, 126, 80, -71, 1, -19, 19, -115, -34, -60, -49, 46, -81, -114, 100, -16, 76, 36, -19, 14, 21, -72, 20, -96, -1, -9, 60)</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestationIos_Cbor.kt$val DeviceAttestationIos.Companion.cborSchemaId: ByteString get() = DeviceAttestationIos_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestationJvm_Cbor.kt$@CborSerializableGenerated(schemaId = "Ch4nNnd_gKYr6y33K2SYeEgcDKEBlLgytRNr77rlQBc") val DeviceAttestationJvm_cborSchemaId = ByteString(10, 30, 39, 54, 119, 127, -128, -90, 43, -21, 45, -9, 43, 100, -104, 120, 72, 28, 12, -95, 1, -108, -72, 50, -75, 19, 107, -17, -70, -27, 64, 23)</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestation_Cbor.kt$@CborSerializableGenerated(schemaId = "K_K_egPTUzumE_YjjDlyckIjRzS0pTrxu-e7pB1XuAw") val DeviceAttestation_cborSchemaId = ByteString(43, -14, -65, 122, 3, -45, 83, 59, -90, 19, -10, 35, -116, 57, 114, 114, 66, 35, 71, 52, -76, -91, 58, -15, -69, -25, -69, -92, 29, 87, -72, 12)</ID>
-    <ID>UndocumentedPublicProperty:DeviceAttestation_Cbor.kt$val DeviceAttestation.Companion.cborSchemaId: ByteString get() = DeviceAttestation_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:Display.kt$Display$val text: String</ID>
     <ID>UndocumentedPublicProperty:Document.kt$Document$val created: Instant get() = data.created</ID>
-    <ID>UndocumentedPublicProperty:Document.kt$Document.Companion$val defaultTableSpec = object: StorageTableSpec( name = "Documents", supportPartitions = false, supportExpiration = false, schemaVersion = 1 ) { override suspend fun schemaUpgrade(oldTable: BaseStorageTable) { var version = oldTable.spec.schemaVersion // Keep all version upgrades basically forever, so that we can upgrade even from // the oldest used schema. if (version == 0L) { version = upgradeSchema0To1(oldTable) } // Add future schema version upgrades here if (version != schemaVersion) { throw IllegalStateException("Unexpected schema version $version") } } private suspend fun upgradeSchema0To1(table: BaseStorageTable): Long { val customFn = customSchema0_97_0_MigrationFn Logger.i(TAG, "Upgrading Documents table schema version from 0 to 1...") if (customFn != null) { Logger.i(TAG, "Using custom migration function") for (documentId in table.enumerate()) { val data = table.get(documentId) if (data == null) { Logger.e(TAG, "Error reading document '$documentId'") table.delete(documentId) // just in case } else { table.update( key = documentId, data = customFn.invoke(documentId, data) ) } } } else { val now = Clock.System.now() for (documentId in table.enumerate()) { // We want to be very defensive here val data = table.get(documentId) val newData = if (data == null) { Logger.e(TAG, "Error reading document '$documentId'") // keep the document as not provisioned; this will have to be handled by // the app (e.g. consult credentials, delete document, // update metadata from the server, etc.) DocumentData(provisioned = false, created = now) } else { try { // This corresponds to default DocumentMetadata serialization in schema // version 0. Apps might have used their own serialization, in that case // we will be out of luck here. val existing = SchemaV0DocumentData.fromCbor(data.toByteArray()) DocumentData( provisioned = existing.provisioned, created = now, displayName = existing.displayName, typeDisplayName = existing.typeDisplayName, cardArt = existing.cardArt, issuerLogo = existing.issuerLogo, authorizationData = existing.authorizationData, metadata = existing.other ) } catch (err: Exception) { Logger.e(TAG, "Error parsing document '$documentId'", err) // keep the document as not provisioned; this will have to be handled by // the app (e.g. consult credentials, delete document, // update metadata from the server, etc.) Keep existing data in other. DocumentData(provisioned = false, created = now, metadata = data) } } try { table.update(documentId, ByteString(newData.toCbor())) } catch (err: Exception) { Logger.e(TAG, "Error writing document '$documentId'", err) table.delete(documentId) } } } Logger.i(TAG, "Upgraded Documents table schema version from 0 to 1") return 1L } }</ID>
-    <ID>UndocumentedPublicProperty:Document.kt$Document.Companion$var customSchema0_97_0_MigrationFn: ((documentId: String, data: ByteString) -> ByteString)? = null</ID>
     <ID>UndocumentedPublicProperty:Document.kt$Document.UsableCredentialResult$val numCredentials: Int</ID>
     <ID>UndocumentedPublicProperty:Document.kt$Document.UsableCredentialResult$val numCredentialsAvailable: Int</ID>
     <ID>UndocumentedPublicProperty:DocumentAttributeType.kt$DocumentAttributeType.IntegerOptions$val options: List&lt;IntegerOption></ID>
     <ID>UndocumentedPublicProperty:DocumentAttributeType.kt$DocumentAttributeType.StringOptions$val options: List&lt;StringOption></ID>
     <ID>UndocumentedPublicProperty:DocumentEvent.kt$DocumentEvent$val documentId: String</ID>
-    <ID>UndocumentedPublicProperty:E2EERequest_Cbor.kt$@CborSerializableGenerated(schemaId = "ch2ewuTIZe31E20Pflywl7lL0Feb_72WvjjD1ihZQcY") val E2EERequest_cborSchemaId = ByteString(114, 29, -98, -62, -28, -56, 101, -19, -11, 19, 109, 15, 126, 92, -80, -105, -71, 75, -48, 87, -101, -1, -67, -106, -66, 56, -61, -42, 40, 89, 65, -58)</ID>
-    <ID>UndocumentedPublicProperty:E2EEResponse_Cbor.kt$@CborSerializableGenerated(schemaId = "vrOGh37UWZw1bczXrhdC_JHd6hmmBMI5TaEaghxjIa0") val E2EEResponse_cborSchemaId = ByteString(-66, -77, -122, -121, 126, -44, 89, -100, 53, 109, -52, -41, -82, 23, 66, -4, -111, -35, -22, 25, -90, 4, -62, 57, 77, -95, 26, -126, 28, 99, 33, -83)</ID>
-    <ID>UndocumentedPublicProperty:E2EESetupRequest0_Cbor.kt$@CborSerializableGenerated(schemaId = "yBUTES0VNHtWaQ6CfHQV22jygu0H_1ari3O3Wj1IdtM") val E2EESetupRequest0_cborSchemaId = ByteString(-56, 21, 19, 17, 45, 21, 52, 123, 86, 105, 14, -126, 124, 116, 21, -37, 104, -14, -126, -19, 7, -1, 86, -85, -117, 115, -73, 90, 61, 72, 118, -45)</ID>
-    <ID>UndocumentedPublicProperty:E2EESetupRequest1_Cbor.kt$@CborSerializableGenerated(schemaId = "1FXMUnsnchFc2Uly2c550lvI4YpILYzjIVwDc0d1-X8") val E2EESetupRequest1_cborSchemaId = ByteString(-44, 85, -52, 82, 123, 39, 114, 17, 92, -39, 73, 114, -39, -50, 121, -46, 91, -56, -31, -118, 72, 45, -116, -29, 33, 92, 3, 115, 71, 117, -7, 127)</ID>
-    <ID>UndocumentedPublicProperty:E2EESetupResponse0_Cbor.kt$@CborSerializableGenerated(schemaId = "6B0qTgiorSNU5c8qsdxD8Zx3zqgpFKce3_z6qL0q3yg") val E2EESetupResponse0_cborSchemaId = ByteString(-24, 29, 42, 78, 8, -88, -83, 35, 84, -27, -49, 42, -79, -36, 67, -15, -100, 119, -50, -88, 41, 20, -89, 30, -33, -4, -6, -88, -67, 42, -33, 40)</ID>
-    <ID>UndocumentedPublicProperty:E2EESetupResponse1_Cbor.kt$@CborSerializableGenerated(schemaId = "yoA8HtJ-b0Cqnyo3vz9_rpg2ciL1hjEIvj5T_d_Xg-w") val E2EESetupResponse1_cborSchemaId = ByteString(-54, -128, 60, 30, -46, 126, 111, 64, -86, -97, 42, 55, -65, 63, 127, -82, -104, 54, 114, 34, -11, -122, 49, 8, -66, 62, 83, -3, -33, -41, -125, -20)</ID>
     <ID>UndocumentedPublicProperty:EcCurve.kt$EcCurve$val defaultKeyAgreementAlgorithm: Algorithm get() = when (this) { P256 -> Algorithm.ECDH_P256 P384 -> Algorithm.ECDH_P384 P521 -> Algorithm.ECDH_P521 BRAINPOOLP256R1 -> Algorithm.ECDH_BRAINPOOLP256R1 BRAINPOOLP320R1 -> Algorithm.ECDH_BRAINPOOLP320R1 BRAINPOOLP384R1 -> Algorithm.ECDH_BRAINPOOLP384R1 BRAINPOOLP512R1 -> Algorithm.ECDH_BRAINPOOLP512R1 ED25519 -> Algorithm.UNSET X25519 -> Algorithm.ECDH_X25519 ED448 -> Algorithm.UNSET X448 -> Algorithm.ECDH_X448 }</ID>
     <ID>UndocumentedPublicProperty:EngagementGenerator.kt$EngagementGenerator.Companion$const val ENGAGEMENT_VERSION_1_0 = "1.0"</ID>
     <ID>UndocumentedPublicProperty:EngagementGenerator.kt$EngagementGenerator.Companion$const val ENGAGEMENT_VERSION_1_1 = "1.1"</ID>
@@ -776,30 +453,11 @@
     <ID>UndocumentedPublicProperty:EphemeralStorageItem.kt$EphemeralStorageItem$val partitionId: String?</ID>
     <ID>UndocumentedPublicProperty:EphemeralStorageItem.kt$EphemeralStorageItem$var expiration: Instant = Instant.DISTANT_FUTURE</ID>
     <ID>UndocumentedPublicProperty:EphemeralStorageItem.kt$EphemeralStorageItem$var value: ByteString = EphemeralStorageTable.EMPTY</ID>
-    <ID>UndocumentedPublicProperty:EphemeralStorageItem_Cbor.kt$@CborSerializableGenerated(schemaId = "L1XVJk-_QdS9bVCE7mSolzAi8c90jO7-ulFKm8v4A2U") val EphemeralStorageItem_cborSchemaId = ByteString(47, 85, -43, 38, 79, -65, 65, -44, -67, 109, 80, -124, -18, 100, -88, -105, 48, 34, -15, -49, 116, -116, -18, -2, -70, 81, 74, -101, -53, -8, 3, 101)</ID>
-    <ID>UndocumentedPublicProperty:EphemeralStorageItem_Cbor.kt$val EphemeralStorageItem.Companion.cborSchemaId: ByteString get() = EphemeralStorageItem_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:ExternalNfcReaderStore.kt$ExternalNfcReaderStore$val _readers = MutableStateFlow&lt;List&lt;ExternalNfcReader>>(emptyList())</ID>
-    <ID>UndocumentedPublicProperty:ExternalNfcReaderUsb_Cbor.kt$@CborSerializableGenerated(schemaId = "KV5PHofOG0r4MNDIiw4JJIGYdVZrwDWAMhqdUUywr6s") val ExternalNfcReaderUsb_cborSchemaId = ByteString(41, 94, 79, 30, -121, -50, 27, 74, -8, 48, -48, -56, -117, 14, 9, 36, -127, -104, 117, 86, 107, -64, 53, -128, 50, 26, -99, 81, 76, -80, -81, -85)</ID>
-    <ID>UndocumentedPublicProperty:ExternalNfcReader_Cbor.kt$@CborSerializableGenerated(schemaId = "s3GDntEvEoukl--Rz48L0A-y22XfEVsOHCyIYA_BCcg") val ExternalNfcReader_cborSchemaId = ByteString(-77, 113, -125, -98, -47, 47, 18, -117, -92, -105, -17, -111, -49, -113, 11, -48, 15, -78, -37, 101, -33, 17, 91, 14, 28, 44, -120, 96, 15, -63, 9, -56)</ID>
-    <ID>UndocumentedPublicProperty:ExternalNfcReader_Cbor.kt$val ExternalNfcReader.Companion.cborSchemaId: ByteString get() = ExternalNfcReader_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:GoogleAccount_Cbor.kt$@CborSerializableGenerated(schemaId = "7VrvNoArF_EU_LofYHBhcQnVb1kTsWs2zV22kx_K6Rc") val GoogleAccount_cborSchemaId = ByteString(-19, 90, -17, 54, -128, 43, 23, -15, 20, -4, -70, 31, 96, 112, 97, 113, 9, -43, 111, 89, 19, -79, 107, 54, -51, 93, -74, -109, 31, -54, -23, 23)</ID>
-    <ID>UndocumentedPublicProperty:GoogleAccount_Cbor.kt$val GoogleAccount.Companion.cborSchemaId: ByteString get() = GoogleAccount_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:HandoverRequestRecord.kt$HandoverRequestRecord$val embeddedMessage: NdefMessage</ID>
     <ID>UndocumentedPublicProperty:HandoverRequestRecord.kt$HandoverRequestRecord$val version: Int</ID>
     <ID>UndocumentedPublicProperty:HandoverSelectRecord.kt$HandoverSelectRecord$val embeddedMessage: NdefMessage</ID>
     <ID>UndocumentedPublicProperty:HandoverSelectRecord.kt$HandoverSelectRecord$val version: Int</ID>
-    <ID>UndocumentedPublicProperty:InvalidRequestException_Cbor.kt$@CborSerializableGenerated(schemaId = "zfb1Q2R8JiYE3FeHUk3cqqon3BgLKBhEaRLJVRQxj84") val InvalidRequestException_cborSchemaId = ByteString(-51, -10, -11, 67, 100, 124, 38, 38, 4, -36, 87, -121, 82, 77, -36, -86, -86, 39, -36, 24, 11, 40, 24, 68, 105, 18, -55, 85, 20, 49, -113, -50)</ID>
-    <ID>UndocumentedPublicProperty:InvalidRequestException_Cbor.kt$val InvalidRequestException.Companion.cborSchemaId: ByteString get() = InvalidRequestException_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:IssuerSignedItem.kt$IssuerSignedItem$val dataElementIdentifier: String</ID>
-    <ID>UndocumentedPublicProperty:IssuerSignedItem.kt$IssuerSignedItem$val dataElementValue: DataItem</ID>
-    <ID>UndocumentedPublicProperty:IssuerSignedItem.kt$IssuerSignedItem$val digestId: Long</ID>
-    <ID>UndocumentedPublicProperty:IssuerSignedItem.kt$IssuerSignedItem$val random: ByteString</ID>
-    <ID>UndocumentedPublicProperty:KeyAgreementRequest0_Cbor.kt$@CborSerializableGenerated(schemaId = "cqBtY1V66Uegwxx3x58OnoewBEH2VtqNWc_73MtiJ5Q") val KeyAgreementRequest0_cborSchemaId = ByteString(114, -96, 109, 99, 85, 122, -23, 71, -96, -61, 28, 119, -57, -97, 14, -98, -121, -80, 4, 65, -10, 86, -38, -115, 89, -49, -5, -36, -53, 98, 39, -108)</ID>
-    <ID>UndocumentedPublicProperty:KeyAgreementRequest1_Cbor.kt$@CborSerializableGenerated(schemaId = "5GX0OyQPmzi2rVZcvlQpJSRKguSuRdyq9-VeX-C0crc") val KeyAgreementRequest1_cborSchemaId = ByteString(-28, 101, -12, 59, 36, 15, -101, 56, -74, -83, 86, 92, -66, 84, 41, 37, 36, 74, -126, -28, -82, 69, -36, -86, -9, -27, 94, 95, -32, -76, 114, -73)</ID>
-    <ID>UndocumentedPublicProperty:KeyAgreementResponse0_Cbor.kt$@CborSerializableGenerated(schemaId = "6B0qTgiorSNU5c8qsdxD8Zx3zqgpFKce3_z6qL0q3yg") val KeyAgreementResponse0_cborSchemaId = ByteString(-24, 29, 42, 78, 8, -88, -83, 35, 84, -27, -49, 42, -79, -36, 67, -15, -100, 119, -50, -88, 41, 20, -89, 30, -33, -4, -6, -88, -67, 42, -33, 40)</ID>
-    <ID>UndocumentedPublicProperty:KeyAgreementResponse1_Cbor.kt$@CborSerializableGenerated(schemaId = "LVMhgt1NaNhJwhW_HB9PeV9bNUZyk76jNbBz6NX4vis") val KeyAgreementResponse1_cborSchemaId = ByteString(45, 83, 33, -126, -35, 77, 104, -40, 73, -62, 21, -65, 28, 31, 79, 121, 95, 91, 53, 70, 114, -109, -66, -93, 53, -80, 115, -24, -43, -8, -66, 43)</ID>
-    <ID>UndocumentedPublicProperty:KeyAttestation_Cbor.kt$@CborSerializableGenerated(schemaId = "pXxDexjeWsLv0XoNIOqoKcMKtpYiVwb6ePdfGvuqQaE") val KeyAttestation_cborSchemaId = ByteString(-91, 124, 67, 123, 24, -34, 90, -62, -17, -47, 122, 13, 32, -22, -88, 41, -61, 10, -74, -106, 34, 87, 6, -6, 120, -9, 95, 26, -5, -86, 65, -95)</ID>
-    <ID>UndocumentedPublicProperty:KeyAttestation_Cbor.kt$val KeyAttestation.Companion.cborSchemaId: ByteString get() = KeyAttestation_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:KeyBindingInfo.kt$KeyBindingInfo.Attestation$val attestations: List&lt;CredentialKeyAttestation></ID>
     <ID>UndocumentedPublicProperty:KeyBindingInfo.kt$KeyBindingInfo.OpenidProofOfPossession$val jwtList: List&lt;String></ID>
     <ID>UndocumentedPublicProperty:KeyBindingType.kt$KeyBindingType.Attestation$val algorithm: Algorithm</ID>
@@ -808,16 +466,8 @@
     <ID>UndocumentedPublicProperty:KeyBindingType.kt$KeyBindingType.OpenidProofOfPossession$val clientId: String</ID>
     <ID>UndocumentedPublicProperty:KeyBoundSdJwtVcCredential.kt$KeyBoundSdJwtVcCredential.Companion$const val CREDENTIAL_TYPE: String = "KeyBoundSdJwtVcCredential"</ID>
     <ID>UndocumentedPublicProperty:KeylessSdJwtVcCredential.kt$KeylessSdJwtVcCredential.Companion$const val CREDENTIAL_TYPE: String = "KeylessSdJwtVcCredential"</ID>
-    <ID>UndocumentedPublicProperty:Logger.kt$Logger$var isDebugEnabled = true // TODO: make false by default</ID>
-    <ID>UndocumentedPublicProperty:Logger.kt$Logger.LogPrinter.Level$DEBUG</ID>
-    <ID>UndocumentedPublicProperty:Logger.kt$Logger.LogPrinter.Level$ERROR</ID>
-    <ID>UndocumentedPublicProperty:Logger.kt$Logger.LogPrinter.Level$INFO</ID>
-    <ID>UndocumentedPublicProperty:Logger.kt$Logger.LogPrinter.Level$WARNING</ID>
     <ID>UndocumentedPublicProperty:MajorType.kt$MajorType$val type: Int</ID>
     <ID>UndocumentedPublicProperty:MdocCredential.kt$MdocCredential.Companion$const val CREDENTIAL_TYPE: String = "MdocCredential"</ID>
-    <ID>UndocumentedPublicProperty:Mdoc_Cbor.kt$@CborSerializableGenerated(schemaId = "hy_H1TIavSwL6INhsCz7hxaDTDWGe5KbGplPtnRTavg") val Mdoc_cborSchemaId = ByteString(-121, 47, -57, -43, 50, 26, -67, 44, 11, -24, -125, 97, -80, 44, -5, -121, 22, -125, 76, 53, -122, 123, -110, -101, 26, -103, 79, -74, 116, 83, 106, -8)</ID>
-    <ID>UndocumentedPublicProperty:MultipazExtension_Cbor.kt$@CborSerializableGenerated(schemaId = "YegmW_UH9FcfUKeuIGUvQrR09IPU7lbWQsZtU51wCUI") val MultipazExtension_cborSchemaId = ByteString(97, -24, 38, 91, -11, 7, -12, 87, 31, 80, -89, -82, 32, 101, 47, 66, -76, 116, -12, -125, -44, -18, 86, -42, 66, -58, 109, 83, -99, 112, 9, 66)</ID>
-    <ID>UndocumentedPublicProperty:MultipazExtension_Cbor.kt$val MultipazExtension.Companion.cborSchemaId: ByteString get() = MultipazExtension_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:NdefRecord.kt$NdefRecord.Tnf$val value: Int</ID>
     <ID>UndocumentedPublicProperty:NfcTransportMdoc.kt$NfcTransportMdoc.NfcError$val status: Int</ID>
     <ID>UndocumentedPublicProperty:OpenID4VP.kt$OpenID4VP.ResponseMode$DC_API</ID>
@@ -836,20 +486,11 @@
     <ID>UndocumentedPublicProperty:PassphraseConstraints.kt$PassphraseConstraints.Companion$val PIN_FOUR_DIGITS_OR_LONGER = PassphraseConstraints(4, Int.MAX_VALUE, true)</ID>
     <ID>UndocumentedPublicProperty:PassphraseConstraints.kt$PassphraseConstraints.Companion$val PIN_SIX_DIGITS = PassphraseConstraints(6, 6, true)</ID>
     <ID>UndocumentedPublicProperty:PassphraseConstraints.kt$PassphraseConstraints.Companion$val PIN_SIX_DIGITS_OR_LONGER = PassphraseConstraints(6, Int.MAX_VALUE, true)</ID>
-    <ID>UndocumentedPublicProperty:PassphraseConstraints_Cbor.kt$@CborSerializableGenerated(schemaId = "uvM3E3bDjLlMMDv9rQeipnZxlfnqpkbh401zi6v-nAk") val PassphraseConstraints_cborSchemaId = ByteString(-70, -13, 55, 19, 118, -61, -116, -71, 76, 48, 59, -3, -83, 7, -94, -90, 118, 113, -107, -7, -22, -90, 70, -31, -29, 77, 115, -117, -85, -2, -100, 9)</ID>
-    <ID>UndocumentedPublicProperty:PassphraseConstraints_Cbor.kt$val PassphraseConstraints.Companion.cborSchemaId: ByteString get() = PassphraseConstraints_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:PassphraseEvaluation.kt$PassphraseEvaluation.TryAgainAttemptsRemain$val remainingAttempts: Int</ID>
-    <ID>UndocumentedPublicProperty:PresentmentModel.kt$PresentmentModel.State.Reset$val documentChooserData: DocumentChooserData?</ID>
     <ID>UndocumentedPublicProperty:PromptModel.kt$PromptModel$val toHumanReadable: ConvertToHumanReadableFn = builder.toHumanReadable</ID>
     <ID>UndocumentedPublicProperty:PromptModel.kt$PromptModel.Builder$val toHumanReadable: ConvertToHumanReadableFn</ID>
     <ID>UndocumentedPublicProperty:ProvisioningModel.kt$ProvisioningModel$val isActive: Boolean get() = job?.isActive ?: false</ID>
     <ID>UndocumentedPublicProperty:ProvisioningModel.kt$ProvisioningModel.Error$val err: Throwable</ID>
-    <ID>UndocumentedPublicProperty:RegisterRequest0_Cbor.kt$@CborSerializableGenerated(schemaId = "O1jifze8Nly__MFoMgIexBP6qmhcsRXu9BD0FyRLxlo") val RegisterRequest0_cborSchemaId = ByteString(59, 88, -30, 127, 55, -68, 54, 92, -65, -4, -63, 104, 50, 2, 30, -60, 19, -6, -86, 104, 92, -79, 21, -18, -12, 16, -12, 23, 36, 75, -58, 90)</ID>
-    <ID>UndocumentedPublicProperty:RegisterRequest1_Cbor.kt$@CborSerializableGenerated(schemaId = "0rUky9x2sTr05oi7e5Ezh-ee8EMvs6DzWt9LjZVq-MM") val RegisterRequest1_cborSchemaId = ByteString(-46, -75, 36, -53, -36, 118, -79, 58, -12, -26, -120, -69, 123, -111, 51, -121, -25, -98, -16, 67, 47, -77, -96, -13, 90, -33, 75, -115, -107, 106, -8, -61)</ID>
-    <ID>UndocumentedPublicProperty:RegisterResponse0_Cbor.kt$@CborSerializableGenerated(schemaId = "H-A3pxn1BvmtJKZzFbVr0Ne6k7K8h1NKibL89DRL_lQ") val RegisterResponse0_cborSchemaId = ByteString(31, -32, 55, -89, 25, -11, 6, -7, -83, 36, -90, 115, 21, -75, 107, -48, -41, -70, -109, -78, -68, -121, 83, 74, -119, -78, -4, -12, 52, 75, -2, 84)</ID>
-    <ID>UndocumentedPublicProperty:RegisterResponse1_Cbor.kt$@CborSerializableGenerated(schemaId = "1PEa9kPn8etwXpgkXt3MzcUPghSVKPMPFjf64SJCujg") val RegisterResponse1_cborSchemaId = ByteString(-44, -15, 26, -10, 67, -25, -15, -21, 112, 94, -104, 36, 94, -35, -52, -51, -59, 15, -126, 20, -107, 40, -13, 15, 22, 55, -6, -31, 34, 66, -70, 56)</ID>
-    <ID>UndocumentedPublicProperty:RegisterStage2Request0_Cbor.kt$@CborSerializableGenerated(schemaId = "Zw3-ZrsYrLw1wnx0QgURvV-ekDP69furLuAZCRXU5nA") val RegisterStage2Request0_cborSchemaId = ByteString(103, 13, -2, 102, -69, 24, -84, -68, 53, -62, 124, 116, 66, 5, 17, -67, 95, -98, -112, 51, -6, -11, -5, -85, 46, -32, 25, 9, 21, -44, -26, 112)</ID>
-    <ID>UndocumentedPublicProperty:RegisterStage2Response0_Cbor.kt$@CborSerializableGenerated(schemaId = "Ir_vKKAttmgLo7b0lu0Eo2fhfnZBV879p3lBGmBE9dU") val RegisterStage2Response0_cborSchemaId = ByteString(34, -65, -17, 40, -96, 45, -74, 104, 11, -93, -74, -12, -106, -19, 4, -93, 103, -31, 126, 118, 65, 87, -50, -3, -89, 121, 65, 26, 96, 68, -11, -43)</ID>
     <ID>UndocumentedPublicProperty:RevocationStatus.kt$RevocationStatus.IdentifierList$val certificate: X509Cert?</ID>
     <ID>UndocumentedPublicProperty:RevocationStatus.kt$RevocationStatus.IdentifierList$val id: ByteString</ID>
     <ID>UndocumentedPublicProperty:RevocationStatus.kt$RevocationStatus.IdentifierList$val uri: String</ID>
@@ -861,10 +502,7 @@
     <ID>UndocumentedPublicProperty:RpcAuthClientSession.kt$RpcAuthClientSession$var nonce: ByteString = EMPTY_NONCE internal set</ID>
     <ID>UndocumentedPublicProperty:RpcAuthClientSession.kt$RpcAuthClientSession.Companion$val EMPTY_NONCE = ByteString()</ID>
     <ID>UndocumentedPublicProperty:RpcAuthException.kt$RpcAuthException$val rpcAuthError: RpcAuthError</ID>
-    <ID>UndocumentedPublicProperty:RpcAuthException_Cbor.kt$@CborSerializableGenerated(schemaId = "Eft1lVgdH-Qsjk5LriTMRXDVR-P0eSa1K4nxk01mzzo") val RpcAuthException_cborSchemaId = ByteString(17, -5, 117, -107, 88, 29, 31, -28, 44, -114, 78, 75, -82, 36, -52, 69, 112, -43, 71, -29, -12, 121, 38, -75, 43, -119, -15, -109, 77, 102, -49, 58)</ID>
-    <ID>UndocumentedPublicProperty:RpcAuthException_Cbor.kt$val RpcAuthException.Companion.cborSchemaId: ByteString get() = RpcAuthException_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:RpcAuthInspectorAssertion.kt$RpcAuthInspectorAssertion.Companion$val rpcClientTableSpec = StorageTableSpec( name = "RpcClientAttestations", supportPartitions = false, supportExpiration = false )</ID>
-    <ID>UndocumentedPublicProperty:RpcAuthInspectorSignature.kt$RpcAuthInspectorSignature$val keyLookup: suspend (String) -> EcPublicKey</ID>
     <ID>UndocumentedPublicProperty:RpcAuthNonceException.kt$RpcAuthNonceException$val nonce: ByteString</ID>
     <ID>UndocumentedPublicProperty:RpcDispatcher.kt$RpcDispatcher$val exceptionMap: RpcExceptionMap</ID>
     <ID>UndocumentedPublicProperty:RpcDispatcherLocal.kt$RpcDispatcherLocal$val environment: BackendEnvironment</ID>
@@ -885,24 +523,13 @@
     <ID>UndocumentedPublicProperty:RpcStub.kt$RpcStub$val rpcEndpoint: String</ID>
     <ID>UndocumentedPublicProperty:RpcStub.kt$RpcStub$val rpcNotifier: RpcNotifier</ID>
     <ID>UndocumentedPublicProperty:SdJwt.kt$SdJwt$val revocationStatus: RevocationStatus? by lazy { jwtBody["status"]?.let { RevocationStatus.fromJson(it) } }</ID>
-    <ID>UndocumentedPublicProperty:SdJwt_Cbor.kt$@CborSerializableGenerated(schemaId = "18BVQnHw4jWVmlmKss2V4WkcATT9Fs7PSqMrw8h-Bx0") val SdJwt_cborSchemaId = ByteString(-41, -64, 85, 66, 113, -16, -30, 53, -107, -102, 89, -118, -78, -51, -107, -31, 105, 28, 1, 52, -3, 22, -50, -49, 74, -93, 43, -61, -56, 126, 7, 29)</ID>
-    <ID>UndocumentedPublicProperty:SecretCodeRequest_Cbor.kt$@CborSerializableGenerated(schemaId = "Hz0FSvcFI49eKrzgM3bPU9Ii1Zs08v3_d0Ia6QU6VjI") val SecretCodeRequest_cborSchemaId = ByteString(31, 61, 5, 74, -9, 5, 35, -113, 94, 42, -68, -32, 51, 118, -49, 83, -46, 34, -43, -101, 52, -14, -3, -1, 119, 66, 26, -23, 5, 58, 86, 50)</ID>
-    <ID>UndocumentedPublicProperty:SecureAreaConfigurationAndroidKeystore_Cbor.kt$@CborSerializableGenerated(schemaId = "1kPAV3LK9-rVJothdbOZYlax9kRen6N0e7hmnDZSPkc") val SecureAreaConfigurationAndroidKeystore_cborSchemaId = ByteString(-42, 67, -64, 87, 114, -54, -9, -22, -43, 38, -117, 97, 117, -77, -103, 98, 86, -79, -10, 68, 94, -97, -93, 116, 123, -72, 102, -100, 54, 82, 62, 71)</ID>
     <ID>UndocumentedPublicProperty:SecureAreaConfigurationCloud.kt$SecureAreaConfigurationCloud$val useStrongBox: Boolean</ID>
-    <ID>UndocumentedPublicProperty:SecureAreaConfigurationCloud_Cbor.kt$@CborSerializableGenerated(schemaId = "S7IhCaHK0Zum-AH_U6lGoCPOvllIdp-TkcSOBUls138") val SecureAreaConfigurationCloud_cborSchemaId = ByteString(75, -78, 33, 9, -95, -54, -47, -101, -90, -8, 1, -1, 83, -87, 70, -96, 35, -50, -66, 89, 72, 118, -97, -109, -111, -60, -114, 5, 73, 108, -41, 127)</ID>
     <ID>UndocumentedPublicProperty:SecureAreaConfigurationSoftware.kt$SecureAreaConfigurationSoftware$val passphrase: String? = null</ID>
     <ID>UndocumentedPublicProperty:SecureAreaConfigurationSoftware.kt$SecureAreaConfigurationSoftware$val passphraseConstraints: PassphraseConstraints = PassphraseConstraints.NONE</ID>
-    <ID>UndocumentedPublicProperty:SecureAreaConfigurationSoftware_Cbor.kt$@CborSerializableGenerated(schemaId = "FqOfD8Rqop7BVPgU7rNlMgXq3aZO5ExRrS1LalXuwzQ") val SecureAreaConfigurationSoftware_cborSchemaId = ByteString(22, -93, -97, 15, -60, 106, -94, -98, -63, 84, -8, 20, -18, -77, 101, 50, 5, -22, -35, -90, 78, -28, 76, 81, -83, 45, 75, 106, 85, -18, -61, 52)</ID>
-    <ID>UndocumentedPublicProperty:SecureAreaConfiguration_Cbor.kt$@CborSerializableGenerated(schemaId = "LYmvyqJlNSKqCSl87RyilXLmV4eu_iMTEXK1W0kgct8") val SecureAreaConfiguration_cborSchemaId = ByteString(45, -119, -81, -54, -94, 101, 53, 34, -86, 9, 41, 124, -19, 28, -94, -107, 114, -26, 87, -121, -82, -2, 35, 19, 17, 114, -75, 91, 73, 32, 114, -33)</ID>
-    <ID>UndocumentedPublicProperty:SecureAreaConfiguration_Cbor.kt$val SecureAreaConfiguration.Companion.cborSchemaId: ByteString get() = SecureAreaConfiguration_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:SecureAreaRepository.kt$SecureAreaRepository.Builder$val byIdentifier = mutableMapOf&lt;String, SecureArea>()</ID>
     <ID>UndocumentedPublicProperty:SecureAreaRepository.kt$SecureAreaRepository.Builder$val factories = mutableMapOf&lt;String, suspend (String) -> SecureArea?>()</ID>
     <ID>UndocumentedPublicProperty:SecureAreaRepository.kt$SecureAreaRepository.Builder$val providers = mutableListOf&lt;SecureAreaProvider&lt;*>>()</ID>
     <ID>UndocumentedPublicProperty:ServiceSelectRecord.kt$ServiceSelectRecord$val serviceName: String</ID>
-    <ID>UndocumentedPublicProperty:SignRequest0_Cbor.kt$@CborSerializableGenerated(schemaId = "k4wGfJ-74W_7kQ5WJk0Q1PQH92bvh_waDpmYxjhL7-4") val SignRequest0_cborSchemaId = ByteString(-109, -116, 6, 124, -97, -69, -31, 111, -5, -111, 14, 86, 38, 77, 16, -44, -12, 7, -9, 102, -17, -121, -4, 26, 14, -103, -104, -58, 56, 75, -17, -18)</ID>
-    <ID>UndocumentedPublicProperty:SignRequest1_Cbor.kt$@CborSerializableGenerated(schemaId = "5GX0OyQPmzi2rVZcvlQpJSRKguSuRdyq9-VeX-C0crc") val SignRequest1_cborSchemaId = ByteString(-28, 101, -12, 59, 36, 15, -101, 56, -74, -83, 86, 92, -66, 84, 41, 37, 36, 74, -126, -28, -82, 69, -36, -86, -9, -27, 94, 95, -32, -76, 114, -73)</ID>
-    <ID>UndocumentedPublicProperty:SignResponse0_Cbor.kt$@CborSerializableGenerated(schemaId = "6B0qTgiorSNU5c8qsdxD8Zx3zqgpFKce3_z6qL0q3yg") val SignResponse0_cborSchemaId = ByteString(-24, 29, 42, 78, 8, -88, -83, 35, 84, -27, -49, 42, -79, -36, 67, -15, -100, 119, -50, -88, 41, 20, -89, 30, -33, -4, -6, -88, -67, 42, -33, 40)</ID>
-    <ID>UndocumentedPublicProperty:SignResponse1_Cbor.kt$@CborSerializableGenerated(schemaId = "ur5ex5c2lgTlQsggQMn6OeeY3O-IuvTT911p_XoBoPI") val SignResponse1_cborSchemaId = ByteString(-70, -66, 94, -57, -105, 54, -106, 4, -27, 66, -56, 32, 64, -55, -6, 57, -25, -104, -36, -17, -120, -70, -12, -45, -9, 93, 105, -3, 122, 1, -96, -14)</ID>
     <ID>UndocumentedPublicProperty:SignedRical.kt$SignedRical$val rical: Rical</ID>
     <ID>UndocumentedPublicProperty:SignedRical.kt$SignedRical$val ricalProviderCertificateChain: X509CertChain</ID>
     <ID>UndocumentedPublicProperty:SoftwareCreateKeySettings.kt$SoftwareCreateKeySettings$val passphrase: String?</ID>
@@ -928,13 +555,6 @@
     <ID>UndocumentedPublicProperty:SqlStatementMaker.kt$SqlStatementMaker$val updateWithExpirationStatement = """ UPDATE $tableName SET data = ?, expiration = ? WHERE (id = ? $partitionCondition $expirationCondition) $returning """.trimIndent()</ID>
     <ID>UndocumentedPublicProperty:SqlStatementMaker.kt$SqlStatementMaker$val useReturningClause: Boolean</ID>
     <ID>UndocumentedPublicProperty:TnepStatusRecord.kt$TnepStatusRecord$val status: Int</ID>
-    <ID>UndocumentedPublicProperty:TrustEntryRical_Cbor.kt$@CborSerializableGenerated(schemaId = "wMpap1g4kXkCQV7_bj_XX_ExI3qGOHb6K64nWPcTVmg") val TrustEntryRical_cborSchemaId = ByteString(-64, -54, 90, -89, 88, 56, -111, 121, 2, 65, 94, -1, 110, 63, -41, 95, -15, 49, 35, 122, -122, 56, 118, -6, 43, -82, 39, 88, -9, 19, 86, 104)</ID>
-    <ID>UndocumentedPublicProperty:TrustEntryVical_Cbor.kt$@CborSerializableGenerated(schemaId = "1AOF1TW4735VZnXFLvR36hQi3D5fgMMTVmKtBKaE6rE") val TrustEntryVical_cborSchemaId = ByteString(-44, 3, -123, -43, 53, -72, -17, 126, 85, 102, 117, -59, 46, -12, 119, -22, 20, 34, -36, 62, 95, -128, -61, 19, 86, 98, -83, 4, -90, -124, -22, -79)</ID>
-    <ID>UndocumentedPublicProperty:TrustEntryX509Cert_Cbor.kt$@CborSerializableGenerated(schemaId = "Lkly58FPSi-edU5_EglsKebYY4RhCmDP5VlxmHsK_h8") val TrustEntryX509Cert_cborSchemaId = ByteString(46, 73, 114, -25, -63, 79, 74, 47, -98, 117, 78, 127, 18, 9, 108, 41, -26, -40, 99, -124, 97, 10, 96, -49, -27, 89, 113, -104, 123, 10, -2, 31)</ID>
-    <ID>UndocumentedPublicProperty:TrustEntry_Cbor.kt$@CborSerializableGenerated(schemaId = "f5kC4KTaSMQE4rsrDKlucD1ZFYqPFSspXLHHb2ht-6s") val TrustEntry_cborSchemaId = ByteString(127, -103, 2, -32, -92, -38, 72, -60, 4, -30, -69, 43, 12, -87, 110, 112, 61, 89, 21, -118, -113, 21, 43, 41, 92, -79, -57, 111, 104, 109, -5, -85)</ID>
-    <ID>UndocumentedPublicProperty:TrustEntry_Cbor.kt$val TrustEntry.Companion.cborSchemaId: ByteString get() = TrustEntry_cborSchemaId</ID>
-    <ID>UndocumentedPublicProperty:TrustMetadata_Cbor.kt$@CborSerializableGenerated(schemaId = "Yn5hs7Xkf9ibDL2CHv2Ilt0kU_MUoVWwHI2Vc4G5vUM") val TrustMetadata_cborSchemaId = ByteString(98, 126, 97, -77, -75, -28, 127, -40, -101, 12, -67, -126, 30, -3, -120, -106, -35, 36, 83, -13, 20, -95, 85, -80, 28, -115, -107, 115, -127, -71, -67, 67)</ID>
-    <ID>UndocumentedPublicProperty:TrustMetadata_Cbor.kt$val TrustMetadata.Companion.cborSchemaId: ByteString get() = TrustMetadata_cborSchemaId</ID>
     <ID>UndocumentedPublicProperty:UUID.kt$UUID$val leastSignificantBits: ULong</ID>
     <ID>UndocumentedPublicProperty:UUID.kt$UUID$val mostSignificantBits: ULong</ID>
     <ID>UndocumentedPublicProperty:WebTokenCheck.kt$WebTokenCheck$ATH : WebTokenCheck</ID>

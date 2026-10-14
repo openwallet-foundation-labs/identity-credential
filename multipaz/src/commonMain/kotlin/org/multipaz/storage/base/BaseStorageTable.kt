@@ -9,12 +9,22 @@ abstract class BaseStorageTable(val spec: StorageTableSpec): StorageTable {
     /** Reclaim storage that is taken up by the expired entries. */
     abstract suspend fun purgeExpired()
 
+    /**
+     * Verifies that [expiration] is supported by this table.
+     *
+     * @throws IllegalArgumentException if expiration is not supported.
+     */
     protected fun checkExpiration(expiration: Instant) {
         if (!this.spec.supportExpiration && expiration < Instant.DISTANT_FUTURE) {
             throw IllegalArgumentException("Expiration is not supported")
         }
     }
 
+    /**
+     * Verifies that [partitionId] conforms to this table's partitioning configuration.
+     *
+     * @throws IllegalArgumentException if the partition ID is missing, unsupported, or too long.
+     */
     protected fun checkPartition(partitionId: String?) {
         if (this.spec.supportPartitions) {
             if (partitionId == null) {
@@ -30,6 +40,11 @@ abstract class BaseStorageTable(val spec: StorageTableSpec): StorageTable {
         }
     }
 
+    /**
+     * Verifies that [key] is non-empty and does not exceed the maximum key length.
+     *
+     * @throws IllegalArgumentException if the key is empty or too long.
+     */
     protected fun checkKey(key: String) {
         if (key.isEmpty()) {
             throw IllegalArgumentException("Empty key is not allowed")
@@ -39,12 +54,20 @@ abstract class BaseStorageTable(val spec: StorageTableSpec): StorageTable {
         }
     }
 
+    /**
+     * Verifies that [limit] is non-negative.
+     *
+     * @throws IllegalArgumentException if the limit is negative.
+     */
     protected fun checkLimit(limit: Int) {
         if (limit < 0) {
             throw IllegalArgumentException("Negative limit: $limit")
         }
     }
 
+    /**
+     * Returns a human-readable description of a record identified by [key] and [partitionId].
+     */
     protected fun recordDescription(key: String, partitionId: String?): String {
         return if (spec.supportPartitions) {
             "partitionId='$partitionId' key='$key' (table '${spec.name}')"

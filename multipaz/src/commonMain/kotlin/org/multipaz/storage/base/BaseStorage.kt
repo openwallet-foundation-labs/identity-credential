@@ -111,6 +111,12 @@ abstract class BaseStorage(val clock: Clock): Storage {
         }
     }
 
+    /**
+     * Creates a table that implements [tableSpec].
+     *
+     * @param tableSpec specification of the table to create.
+     * @return the created table.
+     */
     protected abstract suspend fun createTable(tableSpec: StorageTableSpec): BaseStorageTable
 
     object SchemaTableSpec: StorageTableSpec(
