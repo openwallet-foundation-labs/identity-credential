@@ -2,6 +2,9 @@ package org.multipaz.compose.mdoc
 
 import android.content.Context
 import android.os.Bundle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlin.concurrent.Volatile
 
 /**
  * Interface for NFC APDU services orchestrated by [CombinedNfcService].
@@ -13,6 +16,17 @@ abstract class NfcApduService(
     protected val applicationContext: Context,
     private val sendResponse: (ByteArray) -> Unit
 ) {
+    companion object {
+        // Shared across all NfcApduService subclasses (MdocNdefService and MdocNfcV2Service)
+        // so that a subsequent NFC tap on either service (or across recreated HostApduService
+        // instances) can cancel and join any previous active proximity transaction.
+        @Volatile
+        internal var transactionJob: Job? = null
+    }
+
+    internal class TransactionSupersededException :
+        CancellationException("Transaction superseded by a new NFC tap")
+
     /**
      * Called when [CombinedNfcService] is created by the OS.
      */

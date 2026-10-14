@@ -9,6 +9,15 @@ with the following changes
   CamelCasing for example it's `UiTest`, not `UITest`, `IsoMdocType`, not `ISOMDocType`,
   and so on.
 
+- Avoid fully-qualified names in code; import classes, functions, and extension properties
+  instead (e.g. `delay(...)` rather than `kotlinx.coroutines.delay(...)`). Never use star
+  imports (`import package.*`).
+
+- Always use `kotlin.time.Duration` and its extension properties (`10.milliseconds`,
+  `5.seconds`, etc.) instead of raw numeric time values (such as `Long` milliseconds). In
+  particular, call `delay(10.milliseconds)` and `withTimeout(5.seconds)` rather than
+  `delay(10)` or `withTimeout(5000)`.
+
 ## Exception Handling
 
 - **Never catch `Throwable`:** `Throwable` is the root of the hierarchy and includes fatal

@@ -33,16 +33,34 @@ suspend fun List<MdocConnectionMethod>.advertise(
     options: MdocTransportOptions
 ): List<MdocTransport> {
     val transports = mutableListOf<MdocTransport>()
-    for (connectionMethod in this) {
-        val transport = transportFactory.createTransport(
-            connectionMethod,
-            role,
-            options
-        )
-        transport.advertise()
-        transports.add(transport)
+    try {
+        for (connectionMethod in this) {
+            val transport = transportFactory.createTransport(
+                connectionMethod,
+                role,
+                options
+            )
+            transports.add(transport)
+            transport.advertise()
+        }
+        return transports
+    } catch (error: Exception) {
+        withContext(NonCancellable) {
+            for (transport in transports) {
+                try {
+                    transport.close()
+                } catch (closeError: Exception) {
+                    if (closeError is CancellationException) throw closeError
+                    Logger.e(
+                        TAG,
+                        "Caught exception while closing connection ${transport.connectionMethod}",
+                        closeError
+                    )
+                }
+            }
+        }
+        throw error
     }
-    return transports
 }
 
 /**

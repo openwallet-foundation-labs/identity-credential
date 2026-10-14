@@ -127,6 +127,11 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
             state,
             continuation,
         )
+        continuation.invokeOnCancellation {
+            if (waitFor?.continuation === continuation) {
+                waitFor = null
+            }
+        }
     }
 
     private fun resumeWait() {

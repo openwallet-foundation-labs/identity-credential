@@ -172,7 +172,7 @@ class MdocNfcEngagementHelper(
                     bsb.append(initialNdefMessagePayload)
                     selectedFilePayload = bsb.toByteString()
                     negotiatedHandoverState = NegotiatedHandoverState.EXPECT_SERVICE_SELECT
-                } else {
+                } else if (!raisedHandoverComplete) {
                     val encodedDeviceEngagement = Cbor.encode(
                         buildDeviceEngagement(eDeviceKey = eDeviceKey) {
                             capabilities.forEach { (capability, value) ->

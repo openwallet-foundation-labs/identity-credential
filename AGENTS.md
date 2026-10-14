@@ -40,7 +40,8 @@ You should also be familiar with the project's [README.md](README.md) and [CODIN
 
 ## 4. Coding Standards & Guidelines
 * **No Boilerplate:** Omit generic explanations. Show me the code.
-* **Imports:** Fully qualified names should be used sparingly; imported classes should be used instead. Star imports (e.g., `import package.*`) must never be used.
+* **Imports:** Fully qualified names should be used sparingly; imported classes, functions, and extension properties should be used instead (e.g., `delay(...)` rather than `kotlinx.coroutines.delay(...)`). Star imports (e.g., `import package.*`) must never be used.
+* **Durations:** Always use `kotlin.time.Duration` and its extension properties (`10.milliseconds`, `5.seconds`, etc.) instead of raw numeric time values (such as `Long` milliseconds), e.g., `delay(10.milliseconds)` and `withTimeout(5.seconds)` rather than `delay(10)` or `withTimeout(5000)`.
 * **Security First:** Never hardcode secrets. Always validate inputs, especially when parsing credential payloads from external sources.
 * **Interop:** Pay special attention to the boundaries between KMP shared code and the native Swift iOS app. Ensure data types serialize and bridge cleanly without memory leaks.
 * **Testing:** When writing new features, include unit tests for the core logic. Mock external identity providers when testing validation flows.

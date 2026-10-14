@@ -96,13 +96,13 @@ internal class BleTransportPeripheralMdocReader(
 
     override suspend fun open(eSenderKey: EcPublicKey) {
         var timeScanningStarted: Instant? = null
-        mutex.withLock {
-            check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
-            _state.value = State.SCANNING
-        }
         try {
             coroutineScope {
-                currentJob = coroutineContext[Job]
+                mutex.withLock {
+                    check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
+                    _state.value = State.SCANNING
+                    currentJob = coroutineContext[Job]
+                }
                 centralManager.waitForPowerOn()
                 timeScanningStarted = Clock.System.now()
                 centralManager.waitForPeripheralWithUuid(uuid)
@@ -131,6 +131,13 @@ internal class BleTransportPeripheralMdocReader(
         } catch (error: Exception) {
             val unwrapped = error.unwrapCancellationException()
             if (unwrapped is CancellationException) {
+                withContext(NonCancellable) {
+                    mutex.withLock {
+                        if (_state.value != State.FAILED && _state.value != State.CLOSED) {
+                            closeWithoutDelay()
+                        }
+                    }
+                }
                 throw unwrapped
             } else {
                 mutex.withLock { failTransport(unwrapped) }
@@ -162,15 +169,15 @@ internal class BleTransportPeripheralMdocReader(
     }
 
     override suspend fun sendMessage(message: ByteArray) {
-        mutex.withLock {
-            check(_state.value == State.CONNECTED) { "Expected state CONNECTED, got ${_state.value}" }
-            if (message.isEmpty() && centralManager.usingL2cap) {
-                throw MdocTransportTerminationException("Transport-specific termination not available with L2CAP")
-            }
-        }
         try {
             coroutineScope {
-                currentJob = coroutineContext[Job]
+                mutex.withLock {
+                    check(_state.value == State.CONNECTED) { "Expected state CONNECTED, got ${_state.value}" }
+                    if (message.isEmpty() && centralManager.usingL2cap) {
+                        throw MdocTransportTerminationException("Transport-specific termination not available with L2CAP")
+                    }
+                    currentJob = coroutineContext[Job]
+                }
                 if (message.isEmpty()) {
                     centralManager.writeToStateCharacteristic(BleTransportConstants.STATE_CHARACTERISTIC_END)
                 } else {
@@ -207,14 +214,15 @@ internal class BleTransportPeripheralMdocReader(
     }
 
     override suspend fun close() = withContext(NonCancellable) {
-        currentJob?.cancel("close() was called")
+        val job = mutex.withLock { currentJob }
+        job?.cancel("close() was called")
+        job?.join()
         transportScope.cancel("Transport closed")
         mutex.withLock {
             if (_state.value == State.FAILED || _state.value == State.CLOSED) {
                 return@withContext
             }
-            centralManager.close()
-            _state.value = State.CLOSED
+            closeWithoutDelay()
         }
     }
 }

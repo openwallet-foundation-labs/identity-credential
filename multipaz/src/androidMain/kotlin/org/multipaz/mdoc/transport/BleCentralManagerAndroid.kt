@@ -498,22 +498,25 @@ internal class BleCentralManagerAndroid : BleCentralManager {
         //
         var retryCount = 0
         while (true) {
-            val rc = withTimeoutOrNull(10.seconds) {
-                suspendCancellableCoroutine<Boolean> { continuation ->
-                    setWaitCondition(WaitState.PERIPHERAL_DISCOVERED, continuation)
-                    val filter = ScanFilter.Builder()
-                        .setServiceUuid(ParcelUuid(uuid.toJavaUuid()))
-                        .build()
-                    val settings = ScanSettings.Builder()
-                        .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                        .build()
-                    bluetoothManager.adapter.bluetoothLeScanner
-                        .startScan(listOf(filter), settings, scanCallback)
+            val rc = try {
+                withTimeoutOrNull(10.seconds) {
+                    suspendCancellableCoroutine<Boolean> { continuation ->
+                        setWaitCondition(WaitState.PERIPHERAL_DISCOVERED, continuation)
+                        val filter = ScanFilter.Builder()
+                            .setServiceUuid(ParcelUuid(uuid.toJavaUuid()))
+                            .build()
+                        val settings = ScanSettings.Builder()
+                            .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                            .build()
+                        bluetoothManager.adapter.bluetoothLeScanner
+                            .startScan(listOf(filter), settings, scanCallback)
+                    }
+                    true
                 }
-                true
+            } finally {
+                bluetoothManager.adapter.bluetoothLeScanner?.stopScan(scanCallback)
             }
-            bluetoothManager.adapter.bluetoothLeScanner.stopScan(scanCallback)
             if (rc != null) {
                 break
             }

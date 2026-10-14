@@ -33,6 +33,8 @@ kotlin {
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        unitTestVariant.sourceSetTree.set(KotlinSourceSetTree.unitTest)
 
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -144,6 +146,12 @@ kotlin {
                 implementation(libs.jj2000)
             }
         }
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
     }
 }
 
@@ -154,6 +162,10 @@ android {
     defaultConfig {
         minSdk = 29
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
     compileOptions {
