@@ -78,22 +78,23 @@ suspend fun Iso18013Presentment(
     onSendingResponse: () -> Unit = {},
     onDeviceRequest: (deviceRequest: DeviceRequest) -> Unit = {},
 ) {
-    // Wait until state changes to CONNECTED, FAILED, or CLOSED
-    transport.state.first {
-        it == MdocTransport.State.CONNECTED ||
-                it == MdocTransport.State.FAILED ||
-                it == MdocTransport.State.CLOSED
-    }
-    if (transport.state.value != MdocTransport.State.CONNECTED) {
-        throw IllegalStateException("Expected state CONNECTED but found ${transport.state.value}")
-    }
-    val initialParams = engagementParams.value
-    Logger.dCbor(TAG, "Handover", initialParams.handover)
-    Logger.dCbor(TAG, "DeviceEngagement", initialParams.deviceEngagement)
     var numRequestsServed = 0
-    var sendSessionTermination = true
+    var sendSessionTermination = false
     var sessionEncryption: SessionEncryption? = null
     try {
+        // Wait until state changes to CONNECTED, FAILED, or CLOSED
+        transport.state.first {
+            it == MdocTransport.State.CONNECTED ||
+                    it == MdocTransport.State.FAILED ||
+                    it == MdocTransport.State.CLOSED
+        }
+        if (transport.state.value != MdocTransport.State.CONNECTED) {
+            throw IllegalStateException("Expected state CONNECTED but found ${transport.state.value}")
+        }
+        sendSessionTermination = true
+        val initialParams = engagementParams.value
+        Logger.dCbor(TAG, "Handover", initialParams.handover)
+        Logger.dCbor(TAG, "DeviceEngagement", initialParams.deviceEngagement)
         var activeEReaderKey: EReaderKey? = null
         var activeDeviceRequest: DeviceRequest? = null
         var cachedSelection: CredentialSelection? = null
