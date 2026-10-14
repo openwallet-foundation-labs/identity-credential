@@ -191,6 +191,7 @@ class NfcTransportMdoc(
 
     override suspend fun close() {
         mutex.withLock {
+            instances.remove(this)
             if (_state.value == State.FAILED || _state.value == State.CLOSED) {
                 return
             }
