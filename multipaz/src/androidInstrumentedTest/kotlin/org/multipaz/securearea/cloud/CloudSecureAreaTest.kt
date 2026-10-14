@@ -46,6 +46,7 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.certext.MultipazExtension
 import org.multipaz.certext.fromCbor
 import org.multipaz.crypto.AsymmetricKey
+import org.multipaz.crypto.SecretKey
 import org.multipaz.crypto.buildX509Cert
 import org.multipaz.crypto.checkSignature
 import org.multipaz.device.AndroidKeystoreSecurityLevel
@@ -107,7 +108,7 @@ class CloudSecureAreaTest {
 
         public override suspend fun initialize() {
             super.initialize()
-            val enclaveBoundKey = Random.nextBytes(32)
+            val enclaveBoundKey = SecretKey(Random.nextBytes(32))
 
             val attestationRootSubject = "CN=Cloud Secure Area Attestation Root"
             val attestationKeySubject = "CN=Cloud Secure Area Attestation"
@@ -152,32 +153,6 @@ class CloudSecureAreaTest {
                 certChain = attestationKeyCertChain
             )
 
-            val cloudBindingKeySubject = "CN=Cloud Secure Area Cloud Binding Key Attestation Root"
-            val cloudBindingKeyValidFrom = Clock.System.now()
-            val cloudBindingKeyValidUntil = cloudBindingKeyValidFrom + 365.days*5
-            val cloudBindingKeyAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
-            val cloudBindingKeyAttestationCertificates = X509CertChain(
-                listOf(
-                    X509Cert.Builder(
-                        publicKey = cloudBindingKeyAttestationKey.publicKey,
-                        signingKey = attestationSigningKey,
-                        serialNumber = ASN1Integer(1L),
-                        subject = X500Name.fromName(cloudBindingKeySubject),
-                        issuer = X500Name.fromName(cloudBindingKeySubject),
-                        validFrom = cloudBindingKeyValidFrom,
-                        validUntil = cloudBindingKeyValidUntil
-                    )
-                        .includeSubjectKeyIdentifier()
-                        .setKeyUsage(setOf(X509KeyUsage.KEY_CERT_SIGN))
-                        .setBasicConstraints(true, 1)
-                        .build(),
-                )
-            )
-            val cloudBindingKeyAttestationSigningKey = AsymmetricKey.X509CertifiedExplicit(
-                privateKey = cloudBindingKeyAttestationKey,
-                certChain = cloudBindingKeyAttestationCertificates
-            )
-
             val digestOfSignatures: MutableList<ByteArray> = ArrayList()
             if (packageToAllow != null) {
                 try {
@@ -196,8 +171,6 @@ class CloudSecureAreaTest {
             server = CloudSecureAreaServer(
                 serverSecureAreaBoundKey = enclaveBoundKey,
                 attestationKey = attestationSigningKey,
-                cloudRootAttestationKey = cloudBindingKeyAttestationSigningKey,
-                e2eeKeyLimitSeconds = 10 * 60,
                 iosReleaseBuild = false,
                 iosAppIdentifiers = listOf(),
                 androidGmsAttestation = false,
@@ -219,10 +192,10 @@ class CloudSecureAreaTest {
         }
 
         override suspend fun communicateLowlevel(
-            endpointUri: String,
-            requestData: ByteArray
-        ): Pair<Int, ByteArray> {
-            return server.handleCommand(requestData, endpointUri)
+            relativeUrl: String,
+            requestData: ByteString
+        ): ByteString {
+            return server.httpHandler.post(relativeUrl, requestData)
         }
 
         override suspend fun delayForBruteforceMitigation(duration: Duration) {
@@ -610,18 +583,18 @@ class CloudSecureAreaTest {
             PassphraseConstraints.NONE) { true }
 
         // NOTE: [CloudSecureArea] doesn't provide API to change the passphrase but an
-        // attacker could conceivable just try to re-run stage 2 of the registration
-        // process with a new passphrase and hope that we're gullible enough to take it.
+        // attacker could conceivable just try to re-run the registration RPC with a new
+        // passphrase and hope that we're gullible enough to take it.
         //
         // Check that this doesn't work.
         //
         try {
-            val spRequest0 = CloudSecureAreaProtocol.RegisterStage2Request0("New Passphrase")
-            CloudSecureAreaProtocol.Command.fromCbor(csa.communicateE2EE(spRequest0.toCbor()))
-                    as CloudSecureAreaProtocol.RegisterStage2Response0
+            csa.withRpcStub { stub ->
+                stub.register("New Passphrase")
+            }
             Assert.fail("Expected exception")
-        } catch (e: CloudException) {
-            Assert.assertEquals("Excepted status code 200 or 400, got 403", e.message)
+        } catch (_: CloudException) {
+            // Expected path.
         }
     }
 
