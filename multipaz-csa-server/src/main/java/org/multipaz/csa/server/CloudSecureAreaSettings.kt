@@ -30,9 +30,6 @@ class CloudSecureAreaSettings(private val conf: Configuration) {
     val androidRequireKeystoreSecurityLevel: String?
         get() = getString("android_require_keystore_security_level")
 
-    val cloudSecureAreaRekeyingIntervalSeconds: Int
-        get() = getInt("cloud_secure_area_rekeying_interval_seconds", 300)
-
     val cloudSecureAreaLockoutNumFailedAttempts: Int
         get() = getInt("cloud_secure_area_lockout_num_failed_attempts", 3)
 

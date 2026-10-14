@@ -1,16 +1,11 @@
 package org.multipaz.csa.server
 
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
-import io.ktor.server.request.host
-import io.ktor.server.request.receive
-import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
-import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -21,13 +16,15 @@ import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.asn1.ASN1
 import org.multipaz.device.AndroidKeystoreSecurityLevel
-import org.multipaz.server.common.ServerEnvironment
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Configuration
 import org.multipaz.securearea.cloud.CloudSecureAreaServer
 import org.multipaz.securearea.cloud.SimplePassphraseFailureEnforcer
+import org.multipaz.server.common.ServerEnvironment
 import org.multipaz.server.request.certificateAuthority
 import org.multipaz.server.request.push
+import org.multipaz.server.request.rpc
+import org.multipaz.storage.Storage
 import org.multipaz.util.Logger
 import java.security.Security
 import kotlin.time.Duration.Companion.seconds
@@ -45,6 +42,11 @@ fun Application.configureRouting(serverEnvironment: Deferred<ServerEnvironment>)
     val cloudSecureArea = lazy {
         createCloudSecureArea(serverEnvironment, keyMaterial.value)
     }
+    val httpHandler = lazy {
+        CoroutineScope(Dispatchers.Default).async {
+            cloudSecureArea.value.await().httpHandler
+        }
+    }
     CoroutineScope(Dispatchers.IO).launch {
         withContext(serverEnvironment.await()) {
             keyMaterial.value.await()
@@ -54,9 +56,7 @@ fun Application.configureRouting(serverEnvironment: Deferred<ServerEnvironment>)
     routing {
         push(serverEnvironment)
         certificateAuthority()
-        post("/") {
-            handlePost(call, cloudSecureArea.value.await())
-        }
+        rpc("", httpHandler.value)
         get("/") {
             handleGet(call, keyMaterial.value.await())
         }
@@ -90,13 +90,6 @@ private suspend fun handleGet(
         sb.append(ASN1.print(ASN1.decode(certificate.tbsCertificate)!!))
         sb.append("</pre>")
     }
-    sb.append("<h2>Cloud Binding Key Attestation Root</h2>")
-    for (certificate in keyMaterial.cloudBindingKey.certChain.certificates) {
-        sb.append("<h3>Certificate</h3>")
-        sb.append("<pre>")
-        sb.append(ASN1.print(ASN1.decode(certificate.tbsCertificate)!!))
-        sb.append("</pre>")
-    }
     sb.append(
         """
     </body>
@@ -109,19 +102,6 @@ private suspend fun handleGet(
     )
 }
 
-private suspend fun handlePost(
-    call: ApplicationCall,
-    cloudSecureArea: CloudSecureAreaServer
-) {
-    val request = call.receive<ByteArray>()
-    val remoteHost = call.request.host()
-    val (status, body) = cloudSecureArea.handleCommand(request, remoteHost)
-    call.respondBytes(
-        status = HttpStatusCode(status, ""),
-        contentType = ContentType.Application.Cbor
-    ) { body }
-}
-
 private fun createCloudSecureArea(
     backendEnvironmentDeferred: Deferred<BackendEnvironment>,
     keyMaterialDeferred: Deferred<KeyMaterial>
@@ -130,10 +110,8 @@ private fun createCloudSecureArea(
     val keyMaterial = keyMaterialDeferred.await()
     val settings = CloudSecureAreaSettings(backendEnvironment.getInterface(Configuration::class)!!)
     CloudSecureAreaServer(
-        serverSecureAreaBoundKey = keyMaterial.serverSecureAreaBoundKey.toByteArray(),
+        serverSecureAreaBoundKey = keyMaterial.serverSecureAreaBoundKey,
         attestationKey = keyMaterial.attestationKey,
-        cloudRootAttestationKey = keyMaterial.cloudBindingKey,
-        e2eeKeyLimitSeconds = settings.cloudSecureAreaRekeyingIntervalSeconds,
         iosReleaseBuild = settings.iosReleaseBuild,
         iosAppIdentifiers = settings.iosAppIdentifiers,
         androidGmsAttestation = settings.androidRequireGmsAttestation,
@@ -154,6 +132,7 @@ private fun createCloudSecureArea(
             settings.cloudSecureAreaLockoutNumFailedAttempts,
             settings.cloudSecureAreaLockoutDurationSeconds.seconds
         ),
+        storage = backendEnvironment.getInterface(Storage::class)!!,
     )
 }
 

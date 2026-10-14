@@ -1,21 +1,21 @@
 package org.multipaz.securearea.cloud
 
 import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /**
  * A simple non-distributed and non-persistent [PassphraseFailureEnforcer].
  *
  * The policy implemented is that the client is locked out if N failed passphrase attempts
- * has been recorded in the last M seconds.
+ * have been recorded in the last M seconds.
  *
- * Assuming the passphrase is a 7-digit numeric PIN, this means that no more than N
- * PIN guesses can be done in M seconds. For N=3 and M=60 seconds, this translates
- * into a maximum of three guesses per minute meaning the probability to guess the PIN
+ * Assuming the passphrase is a 7-digit numeric PIN, this means that a sustained rate of no
+ * more than N PIN guesses can be done every M seconds. For N=3 and M=60 seconds, this translates
+ * into a sustained rate of three guesses per minute meaning the probability to guess the PIN
  * in one minute is 3 in 10 million. The time to try all 10 million combinations is just
- * over 6 years and 4 months.
+ * over 6 years and 4 months (with an expected average time of about 3 years and 2 months).
  *
  * The data is kept in memory only and not persisted so this is not appropriate to
  * use in a production environment.
@@ -30,6 +30,7 @@ class SimplePassphraseFailureEnforcer(
     private val clockFunction: () -> Instant = { Clock.System.now() }
 ): PassphraseFailureEnforcer {
 
+    private val lock = Any()
     private val attemptsByClient = mutableMapOf<String, MutableList<Instant>>()
 
     private fun purgeOldAttempts(now: Instant) {
@@ -46,32 +47,30 @@ class SimplePassphraseFailureEnforcer(
         }
     }
 
-    override fun recordFailedPassphraseAttempt(clientId: String) {
+    override fun recordFailedPassphraseAttempt(clientId: String) = synchronized(lock) {
         val now = clockFunction()
         purgeOldAttempts(now)
         val attempts = attemptsByClient.getOrPut(clientId) { mutableListOf() }
         attempts.add(now)
+        Unit
     }
 
-    override fun isLockedOut(clientId: String): Duration? {
+    override fun isLockedOut(clientId: String): Duration? = synchronized(lock) {
         val now = clockFunction()
         purgeOldAttempts(now)
-        val attempts = attemptsByClient.get(clientId)
-        if (attempts == null) {
-            return null
-        }
+        val attempts = attemptsByClient[clientId] ?: return null
         if (attempts.size < lockoutNumFailedAttempts) {
             return null
         }
-        // Because clockFunction() is assumed to be monotonic, we are guaranteed that
-        // the most distant attempt is the first element in the list.
-        val mostDistantAttempt = attempts.first()
+        // Because clockFunction() is assumed to be monotonic, attempts are in chronological
+        // order. For the active failure count to drop below lockoutNumFailedAttempts, the
+        // attempt at index (attempts.size - lockoutNumFailedAttempts) must expire.
+        val blockingAttempt = attempts[attempts.size - lockoutNumFailedAttempts]
 
         // This invariant holds because purgeOldAttempts() would have removed this attempt if
-        // it were before cutoffPoint
+        // it were at or before cutoffPoint.
         val cutoffPoint = now.minus(lockoutDuration)
-        check(mostDistantAttempt > cutoffPoint)
-        val timeUntilNextAttempt = mostDistantAttempt - cutoffPoint
-        return timeUntilNextAttempt
+        check(blockingAttempt > cutoffPoint)
+        return blockingAttempt - cutoffPoint
     }
 }
