@@ -41,7 +41,7 @@ import platform.CoreFoundation.CFDataCreate
 import platform.CoreFoundation.CFRelease
 import platform.CoreFoundation.kCFAllocatorDefault
 import platform.CoreGraphics.CGAffineTransformConcat
-import platform.CoreGraphics.CGAffineTransformMakeRotation
+import platform.CoreGraphics.CGAffineTransformMake
 import platform.CoreGraphics.CGAffineTransformMakeScale
 import platform.CoreGraphics.CGAffineTransformMakeTranslation
 import platform.CoreGraphics.CGBitmapContextCreate
@@ -70,8 +70,6 @@ import platform.ImageIO.CGImageSourceCreateWithData
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.hypot
 import kotlin.math.max
 
 private const val TAG = "IosFaceDetector"
@@ -381,32 +379,26 @@ internal class IosFaceDetector(
     ) {
         CGContextSaveGState(bitmapContext)
         try {
-            val leftEye = face.leftEye
-            val rightEye = face.rightEye
-
-            val eyeDistance = hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y)
-            if (eyeDistance > 1.0) {
-                val cx = (leftEye.x + rightEye.x) / 2.0
-                val cy = (leftEye.y + rightEye.y) / 2.0
-                val eyeAngleRad = atan2(leftEye.y - rightEye.y, leftEye.x - rightEye.x)
-
-                val faceCropFactor = 3.2
-                val faceVerticalOffsetFactor = 0.13
-                val cropSize = eyeDistance * faceCropFactor
-                val verticalOffset = eyeDistance * faceVerticalOffsetFactor
-                val scale = targetSize.toDouble() / cropSize
-
-                val srcEyeCenterY = imgH - cy
-                val dstEyeCenterY = targetSize / 2.0 + verticalOffset * scale
-
-                val t1 = CGAffineTransformMakeTranslation(-cx, -srcEyeCenterY)
-                val t2 = CGAffineTransformMakeRotation(eyeAngleRad)
-                val t3 = CGAffineTransformMakeScale(scale, scale)
-                val t4 = CGAffineTransformMakeTranslation(targetSize / 2.0, dstEyeCenterY)
-
-                val transform = CGAffineTransformConcat(
-                    CGAffineTransformConcat(CGAffineTransformConcat(t1, t2), t3),
-                    t4
+            val alignment = computeFaceAlignmentTransform(
+                rightEye = face.rightEye,
+                leftEye = face.leftEye,
+                noseTip = face.noseTip,
+                mouthCenter = face.mouthCenter,
+                targetSize = targetSize
+            )
+            if (alignment != null) {
+                val dstH = targetSize.toDouble()
+                // Convert top-down pixel coordinates (x, y) -> (x', y') into CoreGraphics
+                // bottom-up coordinates (x_cg = x, y_cg = imgH - y) -> (x'_cg = x', y'_cg = dstH - y'):
+                //   x'_cg =  a * x_cg + b * y_cg + (tx - b * imgH)
+                //   y'_cg = -b * x_cg + a * y_cg + (dstH - ty - a * imgH)
+                val transform = CGAffineTransformMake(
+                    a = alignment.a,
+                    b = -alignment.b,
+                    c = alignment.b,
+                    d = alignment.a,
+                    tx = alignment.tx - alignment.b * imgH,
+                    ty = dstH - alignment.ty - alignment.a * imgH
                 )
                 CGContextConcatCTM(bitmapContext, transform)
                 CGContextDrawImage(bitmapContext, CGRectMake(0.0, 0.0, imgW, imgH), sourceImage)

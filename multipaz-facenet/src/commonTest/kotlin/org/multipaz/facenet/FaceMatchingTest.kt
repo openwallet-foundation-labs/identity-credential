@@ -214,7 +214,7 @@ class FaceMatchingTest {
         val similarity = matcher.matchPortraits(q1, q2)
         assertTrue(
             similarity >= FaceNetModelConfig.MOBILE_FACENET.matchThreshold,
-            "Direct matchPortraits similarity ($similarity) should be >= 0.70"
+            "Direct matchPortraits similarity ($similarity) should be >= ${FaceNetModelConfig.MOBILE_FACENET.matchThreshold}"
         )
     }
 
