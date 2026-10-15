@@ -13,12 +13,15 @@ import kotlinx.io.bytestring.ByteString
  * [Status.SUCCESS]. When populated, each image is the uncropped full camera frame encoded in JPEG
  * format at the resolution of the camera stream in upright portrait orientation. For all other
  * statuses, this property is empty.
+ * @property backgroundColor optional background color for the liveness screen. When `null`, the UI
+ *   reverts to the default theme background color.
  */
 data class FaceMatcherLivenessPromptState(
     val message: String? = null,
     val status: Status = Status.IN_PROGRESS,
     val overlay: OverlayFrame? = null,
-    val capturedImages: Map<FacePose, ByteString> = emptyMap()
+    val capturedImages: Map<FacePose, ByteString> = emptyMap(),
+    val backgroundColor: Color? = null
 ) {
     /** Overall status of the face liveness verification session. */
     enum class Status {

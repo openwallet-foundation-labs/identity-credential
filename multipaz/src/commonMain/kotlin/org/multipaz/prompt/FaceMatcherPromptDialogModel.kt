@@ -16,9 +16,11 @@ class FaceMatcherPromptDialogModel : PromptDialogModel<FaceMatcherPromptDialogMo
      *
      * @property faceMatcherSession active [FaceMatcherSession] driving verification.
      * @property reason the [Reason] for face matching.
+     * @property requireConfirmation set to `true` to require explicit user confirmation after matching succeeds.
      */
     data class FaceMatcherRequest(
         val faceMatcherSession: FaceMatcherSession,
-        val reason: Reason = FaceMatchingReason
+        val reason: Reason = FaceMatchingReason,
+        val requireConfirmation: Boolean = false
     )
 }

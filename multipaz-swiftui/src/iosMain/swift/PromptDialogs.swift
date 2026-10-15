@@ -22,5 +22,9 @@ public struct PromptDialogs: View {
             model: promptModel.getFaceMatcherDialogModel(),
             toHumanReadable: toHumanReadable
         )
+        FaceMatcherLivenessPromptDialog(
+            model: promptModel.getFaceMatcherLivenessDialogModel(),
+            toHumanReadable: toHumanReadable
+        )
     }
 }

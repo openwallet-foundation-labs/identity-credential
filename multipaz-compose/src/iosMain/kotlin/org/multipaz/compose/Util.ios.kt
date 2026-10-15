@@ -2,6 +2,9 @@ package org.multipaz.compose
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisallowComposableCalls
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
@@ -30,6 +33,7 @@ import platform.CoreGraphics.CGSizeMake
 import platform.UIKit.UIGraphicsImageRenderer
 import platform.UIKit.UIGraphicsImageRendererFormat
 import platform.UIKit.UIImage
+import platform.UIKit.UIScreen
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.PI
 
@@ -173,5 +177,33 @@ actual fun OverlayFrame.toImageBitmap(): ImageBitmap {
     }
     return ImageBitmap(width, height)
 }
+
+@Composable
+internal actual fun ScreenBrightnessEffect(brightness: Float?) {
+    val initialBrightness = remember { UIScreen.mainScreen.brightness }
+
+    LaunchedEffect(brightness) {
+        UIScreen.mainScreen.brightness = brightness?.coerceIn(0.0f, 1.0f)?.toDouble() ?: initialBrightness
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            UIScreen.mainScreen.brightness = initialBrightness
+        }
+    }
+}
+
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+internal actual fun fullScreenDialogProperties(): androidx.compose.ui.window.DialogProperties =
+    androidx.compose.ui.window.DialogProperties(
+        usePlatformDefaultWidth = false,
+        usePlatformInsets = false
+    )
+
+@Composable
+internal actual fun FullScreenDialogEffect() {
+}
+
+
 
 

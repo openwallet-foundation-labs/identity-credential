@@ -68,7 +68,7 @@ internal actual fun renderOverlay(
     // 1. Black background border around the vertical rounded rectangle
     if (ringSegments.isNotEmpty()) {
         strokePaint.color = android.graphics.Color.BLACK
-        strokePaint.strokeWidth = 10f * dpToPx
+        strokePaint.strokeWidth = 12f * dpToPx
         val bgPath = Path()
         val fullSamples = outline.sampleSegment(0f, outline.totalLength, numSamples = 72)
         if (fullSamples.isNotEmpty()) {

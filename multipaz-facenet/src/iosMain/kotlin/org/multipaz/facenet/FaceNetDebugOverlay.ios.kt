@@ -108,7 +108,7 @@ internal actual fun renderOverlay(
             // 1. Black background border around the vertical rounded rectangle
             if (ringSegments.isNotEmpty()) {
                 CGContextSetRGBStrokeColor(context, 0.0, 0.0, 0.0, 1.0)
-                CGContextSetLineWidth(context, 10.0 * dpToPx)
+                CGContextSetLineWidth(context, 12.0 * dpToPx)
                 val fullSamples = outline.sampleSegment(0f, outline.totalLength, numSamples = 72)
                 if (fullSamples.isNotEmpty()) {
                     CGContextBeginPath(context)

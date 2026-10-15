@@ -58,7 +58,7 @@ internal actual fun renderOverlay(
         // 1. Black background border around the vertical rounded rectangle
         if (ringSegments.isNotEmpty()) {
             g.color = Color.BLACK
-            g.stroke = BasicStroke(10f * dpToPx, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+            g.stroke = BasicStroke(12f * dpToPx, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
             val bgPath = Path2D.Float()
             val fullSamples = outline.sampleSegment(0f, outline.totalLength, numSamples = 72)
             if (fullSamples.isNotEmpty()) {

@@ -161,21 +161,26 @@ struct FakeIssuerApprovalScreen: View {
 
                 VStack(spacing: 12) {
                     Button {
-                        viewModel.pendingToastMessage = "Portrait approved and sent to issuer"
                         popBackToFaceMatcherPromptScreen()
                     } label: {
-                        Text("Approve and Send to Issuer")
+                        Text("Exit")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(entries.isEmpty)
 
-                    Button("Cancel") {
-                        viewModel.pendingToastMessage = "Provisioning cancelled"
-                        popBackToFaceMatcherPromptScreen()
+                    Button {
+                        guard let frontPortrait = capturedImages[.front] else { return }
+                        Task {
+                            await saveFaceMatcherReferencePortrait(storage: viewModel.storage, portrait: frontPortrait)
+                            viewModel.pendingToastMessage = "Reference portrait updated from FRONT capture"
+                            popBackToFaceMatcherPromptScreen()
+                        }
+                    } label: {
+                        Text("Exit and set FRONT as Reference Portrait")
+                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity)
+                    .disabled(capturedImages[.front] == nil)
                 }
                 .padding(.top, 8)
             }

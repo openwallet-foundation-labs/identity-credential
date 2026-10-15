@@ -3,6 +3,7 @@ package org.multipaz.prompt
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.document.Document
 import org.multipaz.facematch.FaceMatcher
+import org.multipaz.facematch.FacePose
 import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.ConsentData
 import org.multipaz.prompt.PassphrasePromptDialogModel.PassphraseRequest
@@ -19,6 +20,9 @@ fun PromptModel.getConsentPromptDialogModel() = getDialogModel(ConsentPromptDial
 
 /** Gets the [FaceMatcherPromptDialogModel] from this [PromptModel]. */
 fun PromptModel.getFaceMatcherDialogModel() = getDialogModel(FaceMatcherPromptDialogModel.DialogType)
+
+/** Gets the [FaceMatcherLivenessPromptDialogModel] from this [PromptModel]. */
+fun PromptModel.getFaceMatcherLivenessDialogModel() = getDialogModel(FaceMatcherLivenessPromptDialogModel.DialogType)
 
 /**
  * Prompts user for authentication through a passphrase.
@@ -108,6 +112,7 @@ suspend fun PromptModel.requestConsent(
  * @param matcher the [FaceMatcher] to use for face verification.
  * @param referencePortrait the reference portrait image bytes.
  * @param reason the [Reason] describing why face matching is being requested. Defaults to [FaceMatchingReason].
+ * @param requireConfirmation set to `true` to require explicit user confirmation after matching succeeds.
  * @return `true` if face match succeeded, `false` if dismissed, failed, or cancelled.
  * @throws PromptModelNotAvailableException if `coroutineContext` does not have [PromptModel].
  * @throws PromptUiNotAvailableException if the UI layer hasn't bound any UI for [PromptModel].
@@ -121,7 +126,8 @@ suspend fun PromptModel.requestConsent(
 suspend fun PromptModel.showFaceMatcherPrompt(
     matcher: FaceMatcher,
     referencePortrait: ByteString,
-    reason: Reason = FaceMatchingReason
+    reason: Reason = FaceMatchingReason,
+    requireConfirmation: Boolean = false
 ): Boolean {
     val dialogModel = getFaceMatcherDialogModel()
     val faceMatcherSession = matcher.createSession(referencePortrait)
@@ -129,11 +135,58 @@ suspend fun PromptModel.showFaceMatcherPrompt(
         dialogModel.displayPrompt(
             FaceMatcherPromptDialogModel.FaceMatcherRequest(
                 faceMatcherSession = faceMatcherSession,
-                reason = reason
+                reason = reason,
+                requireConfirmation = requireConfirmation
             )
         )
     } catch (e: PromptDismissedException) {
         false
+    } finally {
+        faceMatcherSession.cancel()
     }
 }
 
+/**
+ * Prompts user to verify liveness and capture portrait photos for the specified [poses] using [matcher].
+ *
+ * @param matcher the [FaceMatcher] to use for liveness verification and portrait capture.
+ * @param poses ordered list of [FacePose]s to capture during the session. Defaults to `[FacePose.FRONT]`.
+ * @param reason the [Reason] describing why face liveness verification is being requested. Defaults to [FaceLivenessReason].
+ * @param requireConfirmation set to `true` to require explicit user confirmation after liveness verification succeeds.
+ * @return a map of captured portrait image bytes keyed by [FacePose] if liveness verification succeeded,
+ *   or `null` if dismissed, failed, or cancelled.
+ * @throws IllegalArgumentException if [poses] is empty.
+ * @throws UnsupportedOperationException if [matcher] does not support liveness detection.
+ * @throws PromptModelNotAvailableException if `coroutineContext` does not have [PromptModel].
+ * @throws PromptUiNotAvailableException if the UI layer hasn't bound any UI for [PromptModel].
+ */
+@Throws(
+    CancellationException::class,
+    IllegalArgumentException::class,
+    IllegalStateException::class,
+    UnsupportedOperationException::class,
+    PromptModelNotAvailableException::class,
+    PromptUiNotAvailableException::class
+)
+suspend fun PromptModel.showFaceMatcherLivenessPrompt(
+    matcher: FaceMatcher,
+    poses: List<FacePose> = listOf(FacePose.FRONT),
+    reason: Reason = FaceLivenessReason,
+    requireConfirmation: Boolean = false
+): Map<FacePose, ByteString>? {
+    val dialogModel = getFaceMatcherLivenessDialogModel()
+    val faceMatcherLivenessSession = matcher.createLivenessSession(poses)
+    return try {
+        dialogModel.displayPrompt(
+            FaceMatcherLivenessPromptDialogModel.FaceMatcherLivenessRequest(
+                faceMatcherLivenessSession = faceMatcherLivenessSession,
+                reason = reason,
+                requireConfirmation = requireConfirmation
+            )
+        )
+    } catch (e: PromptDismissedException) {
+        null
+    } finally {
+        faceMatcherLivenessSession.cancel()
+    }
+}

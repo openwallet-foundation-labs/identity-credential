@@ -50,16 +50,19 @@ abstract class FaceMatcherSession(
      * @param message instructional or status message displayed to the user, or `null`.
      * @param status overall verification status.
      * @param overlay optional bitmap overlay to draw on top of the camera video stream, or `null`.
+     * @param backgroundColor optional background color for the prompt screen, or `null` for default.
      */
     protected fun updateState(
         message: String? = _state.value.message,
         status: FaceMatcherPromptState.Status = _state.value.status,
-        overlay: OverlayFrame? = _state.value.overlay
+        overlay: OverlayFrame? = _state.value.overlay,
+        backgroundColor: Color? = _state.value.backgroundColor
     ) {
         _state.value = FaceMatcherPromptState(
             message = message,
             status = status,
-            overlay = overlay
+            overlay = overlay,
+            backgroundColor = backgroundColor
         )
     }
 }

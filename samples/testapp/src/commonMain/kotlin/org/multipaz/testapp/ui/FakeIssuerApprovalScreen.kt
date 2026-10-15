@@ -54,14 +54,14 @@ import org.multipaz.facematch.FacePose
  * to send the verified captured portraits to the issuer.
  *
  * @param capturedImages map from [FacePose] to captured portrait image bytes.
- * @param onApprove invoked when the user approves sending the portraits to the issuer.
- * @param onCancel invoked when the user cancels or rejects sending the portraits.
+ * @param onExit invoked when the user exits the screen.
+ * @param onExitAndSetFrontAsReference invoked when the user exits and sets the captured [FacePose.FRONT] portrait as the reference portrait.
  */
 @Composable
 fun FakeIssuerApprovalScreen(
     capturedImages: Map<FacePose, ByteString>,
-    onApprove: () -> Unit,
-    onCancel: () -> Unit
+    onExit: () -> Unit,
+    onExitAndSetFrontAsReference: (ByteString) -> Unit
 ) {
     val entries = remember(capturedImages) { capturedImages.entries.toList() }
     val decodedBitmaps: List<Pair<FacePose, ImageBitmap?>> = remember(entries) {
@@ -282,23 +282,28 @@ fun FakeIssuerApprovalScreen(
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
+            val frontPortrait = capturedImages[FacePose.FRONT]
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = onApprove,
-                    enabled = capturedImages.isNotEmpty(),
+                    onClick = onExit,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Approve and Send to Issuer")
+                    Text("Exit")
                 }
 
                 OutlinedButton(
-                    onClick = onCancel,
+                    onClick = {
+                        if (frontPortrait != null) {
+                            onExitAndSetFrontAsReference(frontPortrait)
+                        }
+                    },
+                    enabled = frontPortrait != null,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Cancel")
+                    Text("Exit and set FRONT as Reference Portrait")
                 }
             }
         }
@@ -324,3 +329,12 @@ private fun IssuerDetailRow(label: String, value: String) {
         )
     }
 }
+
+internal fun FacePose.displayLabel(): String = when (this) {
+    FacePose.FRONT -> "Front"
+    FacePose.LOOK_LEFT -> "Look Left"
+    FacePose.LOOK_RIGHT -> "Look Right"
+    FacePose.LOOK_UP -> "Look Up"
+    FacePose.LOOK_DOWN -> "Look Down"
+}
+

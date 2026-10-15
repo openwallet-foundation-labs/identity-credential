@@ -23,7 +23,7 @@ func getFaceMatcherReferencePortrait(storage: Storage) async -> ByteString? {
 }
 
 /// Saves the reference portrait to persistent storage.
-private func saveFaceMatcherReferencePortrait(storage: Storage, portrait: ByteString) async {
+func saveFaceMatcherReferencePortrait(storage: Storage, portrait: ByteString) async {
     do {
         let table = try await storage.getTable(spec: FACE_MATCHER_STORAGE_TABLE_SPEC)
         let existing = try await table.get(key: FACE_MATCHER_KEY_REFERENCE_PORTRAIT, partitionId: nil)
@@ -78,6 +78,8 @@ struct FaceMatcherPromptScreen: View {
     @State private var toastMessage: String? = nil
     @State private var selectedMatcherDisplayName: String = ""
     @State private var selectedLivenessMatcherDisplayName: String = ""
+    @State private var requireConfirmationFace: Bool = false
+    @State private var requireConfirmationLiveness: Bool = false
     @State private var posesText: String = allPoses.map(\.poseToken).joined(separator: " ")
     @State private var detectedFaceCrop: ByteString? = nil
     @State private var isExtractingCrop: Bool = false
@@ -421,6 +423,22 @@ struct FaceMatcherPromptScreen: View {
             }
 
             Button {
+                requireConfirmationFace.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: requireConfirmationFace ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(requireConfirmationFace ? Color.accentColor : Color.secondary)
+                        .font(.system(size: 20))
+                    Text("Require confirmation")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
                 verifyFace()
             } label: {
                 HStack {
@@ -520,9 +538,24 @@ struct FaceMatcherPromptScreen: View {
             }
 
             Button {
+                requireConfirmationLiveness.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: requireConfirmationLiveness ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(requireConfirmationLiveness ? Color.accentColor : Color.secondary)
+                        .font(.system(size: 20))
+                    Text("Require confirmation")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
                 guard let parsedPoses else { return }
-                let matcher = viewModel.faceMatcherRepository?.all.first(where: { $0.displayName == selectedLivenessMatcherDisplayName })
-                viewModel.path.append(.faceLivenessCaptureScreen(matcherName: matcher?.name, poses: parsedPoses))
+                verifyLiveness(poses: parsedPoses)
             } label: {
                 Text("Check liveness and capture portrait image")
                     .fontWeight(.semibold)
@@ -722,7 +755,8 @@ struct FaceMatcherPromptScreen: View {
             do {
                 let matched = try await viewModel.promptModel.showFaceMatcherPrompt(
                     matcher: matcher,
-                    referencePortrait: portrait
+                    referencePortrait: portrait,
+                    requireConfirmation: requireConfirmationFace
                 )
                 if matched.boolValue {
                     showToast("Face matched successfully!")
@@ -731,6 +765,34 @@ struct FaceMatcherPromptScreen: View {
                 }
             } catch {
                 showToast("Face verification dismissed or failed")
+            }
+        }
+    }
+
+    private func verifyLiveness(poses: [FacePose]) {
+        isVerifying = true
+        let matcher = viewModel.faceMatcherRepository?.all.first(where: { $0.displayName == selectedLivenessMatcherDisplayName })
+            ?? viewModel.faceMatcherRepository?.defaultMatcher
+        guard let matcher else {
+            isVerifying = false
+            showToast("No face matcher available")
+            return
+        }
+        Task {
+            defer { isVerifying = false }
+            do {
+                let capturedImages = try await viewModel.promptModel.showFaceMatcherLivenessPrompt(
+                    matcher: matcher,
+                    poses: poses,
+                    requireConfirmation: requireConfirmationLiveness
+                )
+                if let capturedImages, !capturedImages.isEmpty {
+                    viewModel.path.append(.fakeIssuerApprovalScreen(capturedImages: capturedImages))
+                } else {
+                    showToast("Liveness verification failed or canceled")
+                }
+            } catch {
+                showToast("Liveness verification dismissed or failed")
             }
         }
     }
@@ -746,6 +808,41 @@ struct FaceMatcherPromptScreen: View {
                     toastMessage = nil
                 }
             }
+        }
+    }
+}
+
+extension FacePose {
+    var poseToken: String {
+        switch self {
+        case .front: return "FRONT"
+        case .lookLeft: return "LOOK_LEFT"
+        case .lookRight: return "LOOK_RIGHT"
+        case .lookUp: return "LOOK_UP"
+        case .lookDown: return "LOOK_DOWN"
+        default: return "\(self)"
+        }
+    }
+
+    static func fromToken(_ token: String) -> FacePose? {
+        switch token.uppercased() {
+        case "FRONT": return .front
+        case "LOOK_LEFT": return .lookLeft
+        case "LOOK_RIGHT": return .lookRight
+        case "LOOK_UP": return .lookUp
+        case "LOOK_DOWN": return .lookDown
+        default: return nil
+        }
+    }
+
+    var displayLabel: String {
+        switch self {
+        case .front: return "Front"
+        case .lookLeft: return "Look Left"
+        case .lookRight: return "Look Right"
+        case .lookUp: return "Look Up"
+        case .lookDown: return "Look Down"
+        default: return "\(self)"
         }
     }
 }

@@ -238,6 +238,7 @@ class PromptModelTest {
         collectFaceMatcherDialogState { request ->
             assertNotNull(request.faceMatcherSession)
             assertEquals(FaceMatchingReason, request.reason)
+            assertFalse(request.requireConfirmation)
             true
         }
 
@@ -255,13 +256,15 @@ class PromptModelTest {
         val customReason = Reason.HumanReadable("Custom Title", "Custom Subtitle", false)
         collectFaceMatcherDialogState { request ->
             assertEquals(customReason, request.reason)
+            assertTrue(request.requireConfirmation)
             true
         }
 
         val result = promptModel.showFaceMatcherPrompt(
             matcher = testMatcher,
             referencePortrait = testPortrait,
-            reason = customReason
+            reason = customReason,
+            requireConfirmation = true
         )
         assertTrue(result)
     }
@@ -288,6 +291,72 @@ class PromptModelTest {
             unconfiguredModel.showFaceMatcherPrompt(
                 matcher = TestFaceMatcher(),
                 referencePortrait = ByteString(byteArrayOf(1, 2, 3, 4))
+            )
+        }
+    }
+
+    @Test
+    fun faceMatcherLivenessPromptSuccess() = runTest {
+        val testPortrait = ByteString(byteArrayOf(1, 2, 3, 4))
+        val testMatcher = TestFaceMatcher()
+        val expectedMap = mapOf(FacePose.FRONT to testPortrait)
+        collectFaceMatcherLivenessDialogState { request ->
+            assertNotNull(request.faceMatcherLivenessSession)
+            assertEquals(listOf(FacePose.FRONT), request.faceMatcherLivenessSession.poses)
+            assertEquals(FaceLivenessReason, request.reason)
+            assertFalse(request.requireConfirmation)
+            expectedMap
+        }
+
+        val result = promptModel.showFaceMatcherLivenessPrompt(
+            matcher = testMatcher
+        )
+        assertEquals(expectedMap, result)
+    }
+
+    @Test
+    fun faceMatcherLivenessPromptCustomPosesAndReason() = runTest {
+        val frontPortrait = ByteString(byteArrayOf(1, 2))
+        val leftPortrait = ByteString(byteArrayOf(3, 4))
+        val testMatcher = TestFaceMatcher()
+        val customPoses = listOf(FacePose.FRONT, FacePose.LOOK_LEFT)
+        val customReason = Reason.HumanReadable("Custom Liveness", "Follow instructions", false)
+        val expectedMap = mapOf(FacePose.FRONT to frontPortrait, FacePose.LOOK_LEFT to leftPortrait)
+        collectFaceMatcherLivenessDialogState { request ->
+            assertEquals(customPoses, request.faceMatcherLivenessSession.poses)
+            assertEquals(customReason, request.reason)
+            assertTrue(request.requireConfirmation)
+            expectedMap
+        }
+
+        val result = promptModel.showFaceMatcherLivenessPrompt(
+            matcher = testMatcher,
+            poses = customPoses,
+            reason = customReason,
+            requireConfirmation = true
+        )
+        assertEquals(expectedMap, result)
+    }
+
+    @Test
+    fun faceMatcherLivenessPromptDismissed() = runTest {
+        val testMatcher = TestFaceMatcher()
+        collectFaceMatcherLivenessDialogState {
+            throw PromptDismissedException()
+        }
+
+        val result = promptModel.showFaceMatcherLivenessPrompt(
+            matcher = testMatcher
+        )
+        assertNull(result)
+    }
+
+    @Test
+    fun faceMatcherLivenessPromptNoDialogRegistered() = runTest {
+        val unconfiguredModel = TestPromptModel.Builder().build()
+        assertFailsWith<IllegalStateException> {
+            unconfiguredModel.showFaceMatcherLivenessPrompt(
+                matcher = TestFaceMatcher()
             )
         }
     }
@@ -337,6 +406,39 @@ class PromptModelTest {
             var pendingResultChannel: SendChannel<Boolean>? = null
             try {
                 val dialogModel = promptModel.getDialogModel(FaceMatcherPromptDialogModel.DialogType)
+                dialogModel.dialogState.collect { state ->
+                    if (dialogState.isNotEmpty() || state !is PromptDialogModel.NoDialogState) {
+                        dialogState.add(state)
+                    }
+                    pendingResultChannel = null
+                    if (state is PromptDialogModel.DialogShownState) {
+                        try {
+                            val result = mockInput(state.parameters)
+                            state.resultChannel.send(result)
+                        } catch (e: PromptDismissedException) {
+                            state.resultChannel.close(e)
+                        }
+                    }
+                }
+            } catch (err: CancellationException) {
+                pendingResultChannel?.close(PromptDismissedException())
+                throw err
+            } catch (err: Exception) {
+                fail("Unexpected error", err)
+            }
+        }
+        return dialogState
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun TestScope.collectFaceMatcherLivenessDialogState(
+        mockInput: suspend (request: FaceMatcherLivenessPromptDialogModel.FaceMatcherLivenessRequest) -> Map<FacePose, ByteString>
+    ): MutableList<PromptDialogModel.DialogState<FaceMatcherLivenessPromptDialogModel.FaceMatcherLivenessRequest, Map<FacePose, ByteString>>> {
+        val dialogState = mutableListOf<PromptDialogModel.DialogState<FaceMatcherLivenessPromptDialogModel.FaceMatcherLivenessRequest, Map<FacePose, ByteString>>>()
+        mockUiJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            var pendingResultChannel: SendChannel<Map<FacePose, ByteString>>? = null
+            try {
+                val dialogModel = promptModel.getDialogModel(FaceMatcherLivenessPromptDialogModel.DialogType)
                 dialogModel.dialogState.collect { state ->
                     if (dialogState.isNotEmpty() || state !is PromptDialogModel.NoDialogState) {
                         dialogState.add(state)

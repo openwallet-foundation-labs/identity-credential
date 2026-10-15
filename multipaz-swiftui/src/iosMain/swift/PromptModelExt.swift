@@ -38,12 +38,27 @@ extension PromptModel {
 
     public func showFaceMatcherPrompt(
         matcher: any FaceMatcher,
-        referencePortrait: ByteString
+        referencePortrait: ByteString,
+        requireConfirmation: Bool = false
     ) async throws -> KotlinBoolean {
         return try await self.showFaceMatcherPrompt(
             matcher: matcher,
             referencePortrait: referencePortrait,
-            reason: FaceMatchingReason.shared
+            reason: FaceMatchingReason.shared,
+            requireConfirmation: requireConfirmation
+        )
+    }
+
+    public func showFaceMatcherLivenessPrompt(
+        matcher: any FaceMatcher,
+        poses: [FacePose] = [FacePose.front],
+        requireConfirmation: Bool = false
+    ) async throws -> [FacePose: ByteString]? {
+        return try await self.showFaceMatcherLivenessPrompt(
+            matcher: matcher,
+            poses: poses,
+            reason: FaceLivenessReason.shared,
+            requireConfirmation: requireConfirmation
         )
     }
 }

@@ -1,20 +1,37 @@
 package org.multipaz.compose
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager.NameNotFoundException
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
+import android.view.Window
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisallowComposableCalls
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.camera.CameraFrame
@@ -279,4 +296,119 @@ actual fun OverlayFrame.toImageBitmap(): ImageBitmap {
     }
     return ImageBitmap(width, height)
 }
+
+private tailrec fun Context.findActivityWindow(): Window? = when (this) {
+    is Activity -> window
+    is ContextWrapper -> baseContext.findActivityWindow()
+    else -> null
+}
+
+@Composable
+internal actual fun ScreenBrightnessEffect(brightness: Float?) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val activityWindow = remember(context) { context.findActivityWindow() }
+    val dialogWindow = remember(view) { (view.parent as? DialogWindowProvider)?.window }
+
+    val initialActivityBrightness = remember(activityWindow) {
+        activityWindow?.attributes?.screenBrightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+    }
+    val initialDialogBrightness = remember(dialogWindow) {
+        dialogWindow?.attributes?.screenBrightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+    }
+
+    LaunchedEffect(brightness, activityWindow, dialogWindow) {
+        val target = brightness?.coerceIn(0.0f, 1.0f)
+        activityWindow?.let { win ->
+            win.attributes = win.attributes.apply {
+                screenBrightness = target ?: initialActivityBrightness
+            }
+        }
+        dialogWindow?.let { win ->
+            win.attributes = win.attributes.apply {
+                screenBrightness = target ?: initialDialogBrightness
+            }
+        }
+    }
+
+    DisposableEffect(activityWindow, dialogWindow) {
+        onDispose {
+            activityWindow?.let { win ->
+                win.attributes = win.attributes.apply {
+                    screenBrightness = initialActivityBrightness
+                }
+            }
+            dialogWindow?.let { win ->
+                win.attributes = win.attributes.apply {
+                    screenBrightness = initialDialogBrightness
+                }
+            }
+        }
+    }
+}
+
+internal actual fun fullScreenDialogProperties(): DialogProperties = DialogProperties(
+    usePlatformDefaultWidth = false,
+    decorFitsSystemWindows = false
+)
+
+@Composable
+internal actual fun FullScreenDialogEffect() {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val activityWindow = remember(context) { context.findActivityWindow() }
+    val dialogWindow = remember(view) { (view.parent as? DialogWindowProvider)?.window }
+
+    SideEffect {
+        dialogWindow?.let { win ->
+            WindowCompat.setDecorFitsSystemWindows(win, false)
+            win.setLayout(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+            win.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+            win.setWindowAnimations(0)
+            win.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            @Suppress("DEPRECATION")
+            win.statusBarColor = android.graphics.Color.TRANSPARENT
+            @Suppress("DEPRECATION")
+            win.navigationBarColor = android.graphics.Color.TRANSPARENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                win.isNavigationBarContrastEnforced = false
+                @Suppress("DEPRECATION")
+                win.isStatusBarContrastEnforced = false
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                win.attributes = win.attributes.apply {
+                    layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    } else {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                }
+            }
+            val controller = WindowCompat.getInsetsController(win, view)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        activityWindow?.let { win ->
+            val controller = WindowCompat.getInsetsController(win, win.decorView)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    DisposableEffect(activityWindow) {
+        onDispose {
+            activityWindow?.let { win ->
+                val controller = WindowCompat.getInsetsController(win, win.decorView)
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+}
+
+
 

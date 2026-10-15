@@ -130,8 +130,8 @@ import org.multipaz.testapp.ui.CertificateScreen
 import org.multipaz.testapp.ui.CertificateViewerExamplesScreen
 import org.multipaz.testapp.ui.ConsentPromptScreen
 import org.multipaz.testapp.ui.FaceMatcherPromptScreen
-import org.multipaz.testapp.ui.FaceLivenessCaptureComposableScreen
 import org.multipaz.testapp.ui.FakeIssuerApprovalScreen
+import org.multipaz.testapp.ui.saveFaceMatcherReferencePortrait
 import org.multipaz.facenet.testdata.FaceTestData
 import org.multipaz.testapp.ui.CredentialClaimsViewerScreen
 import org.multipaz.testapp.ui.CredentialViewerScreen
@@ -1590,38 +1590,9 @@ class App private constructor (val promptModel: PromptModel) {
                             faceMatcherRepository = faceMatcherRepository,
                             showToast = { message -> showToast(message) },
                             storage = TestAppConfiguration.storage,
-                            onNavigateToLivenessCaptureComposable = { matcher, poses ->
-                                navController.navigate(
-                                    FaceLivenessCaptureComposableDestination(
-                                        matcherName = matcher?.name,
-                                        poses = poses.joinToString(" ") { it.name }
-                                    )
-                                )
-                            }
-                        )
-                    }
-                }
-                composable<FaceLivenessCaptureComposableDestination> { backStackEntry ->
-                    val destination = backStackEntry.toRoute<FaceLivenessCaptureComposableDestination>()
-                    val matcher = destination.matcherName?.let { faceMatcherRepository?.lookup(it) }
-                        ?: faceMatcherRepository?.defaultMatcher
-                    val poses = destination.poses
-                        .trim()
-                        .split(Regex("\\s+"))
-                        .mapNotNull { token ->
-                            FacePose.entries.find { it.name.equals(token, ignoreCase = true) }
-                        }
-                        .ifEmpty { listOf(FacePose.FRONT) }
-                    WithAppBar(navController, "Check Liveness (Composable)") {
-                        FaceLivenessCaptureComposableScreen(
-                            faceMatcher = matcher,
-                            poses = poses,
                             onPortraitsCaptured = { portraits ->
                                 capturedPortraitsForApproval.value = portraits
                                 navController.navigate(FakeIssuerApprovalDestination)
-                            },
-                            onCancel = {
-                                navController.popBackStack()
                             }
                         )
                     }
@@ -1630,15 +1601,24 @@ class App private constructor (val promptModel: PromptModel) {
                     WithAppBar(navController, "Approve Portrait for Issuer") {
                         FakeIssuerApprovalScreen(
                             capturedImages = capturedPortraitsForApproval.value,
-                            onApprove = {
-                                showToast("Portrait approved and sent to issuer")
+                            onExit = {
                                 capturedPortraitsForApproval.value = emptyMap()
                                 navController.popBackStack<FaceMatcherPromptDestination>(inclusive = false)
                             },
-                            onCancel = {
-                                showToast("Provisioning cancelled")
-                                capturedPortraitsForApproval.value = emptyMap()
-                                navController.popBackStack<FaceMatcherPromptDestination>(inclusive = false)
+                            onExitAndSetFrontAsReference = { frontPortrait ->
+                                coroutineScope.launch {
+                                    try {
+                                        saveFaceMatcherReferencePortrait(
+                                            storage = TestAppConfiguration.storage,
+                                            bytes = frontPortrait
+                                        )
+                                        showToast("Reference portrait updated from FRONT capture")
+                                    } catch (e: Throwable) {
+                                        showToast("Failed to save reference portrait: ${e.message}")
+                                    }
+                                    capturedPortraitsForApproval.value = emptyMap()
+                                    navController.popBackStack<FaceMatcherPromptDestination>(inclusive = false)
+                                }
                             }
                         )
                     }
