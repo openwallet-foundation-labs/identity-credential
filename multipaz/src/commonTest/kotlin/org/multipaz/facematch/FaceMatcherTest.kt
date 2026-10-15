@@ -106,5 +106,25 @@ class FaceMatcherTest {
             override suspend fun feedFrame(frame: CameraFrame) {}
         }
         assertEquals(sampleBytes, session.referencePortrait)
+        assertNull(session.state.value.backgroundColor)
+    }
+
+    @Test
+    fun testColorAndDisplayProperties() {
+        assertEquals(0xFFFFFFFF.toInt(), Color.WHITE.toArgb())
+        assertEquals(0xFF000000.toInt(), Color.BLACK.toArgb())
+        assertEquals(0xFFFF0000.toInt(), Color.RED.toArgb())
+        assertEquals(Color.WHITE, Color.fromArgb(0xFFFFFFFF.toInt()))
+        assertEquals(Color.BLACK, Color.fromArgb(0xFF000000.toInt()))
+
+        assertFailsWith<IllegalArgumentException> {
+            Color(red = 1.5f, green = 0f, blue = 0f)
+        }
+
+        val stateWithColor = FaceMatcherPromptState(
+            backgroundColor = Color.WHITE
+        )
+        assertEquals(Color.WHITE, stateWithColor.backgroundColor)
     }
 }
+

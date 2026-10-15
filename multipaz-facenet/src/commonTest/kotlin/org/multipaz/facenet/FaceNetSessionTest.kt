@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.facenet.testdata.FaceTestData
 import org.multipaz.facematch.CameraFrame
+import org.multipaz.facematch.Color
 import org.multipaz.facematch.FaceMatcherLivenessPromptState
 import org.multipaz.facematch.FaceMatcherPromptState
 import org.multipaz.facematch.FacePose
@@ -125,6 +126,7 @@ class FaceNetSessionTest {
 
         assertEquals("Position your face and look at the camera", session.state.value.message)
         assertEquals(FaceMatcherPromptState.Status.IN_PROGRESS, session.state.value.status)
+        assertEquals(Color.WHITE, session.state.value.backgroundColor)
         assertEquals(RingSegment.NUM_SEGMENTS, session.ringSegments.size)
         assertTrue(session.ringSegments.all { it.color == RingSegment.COLOR_DARK_GRAY })
     }
@@ -411,6 +413,7 @@ class FaceNetSessionTest {
         )
 
         assertEquals("Position your face and look at the camera", session.state.value.message)
+        assertNull(session.state.value.backgroundColor)
 
         // Frame 1 with live straight face: consecutiveMatchFrames = 1
         session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = 0f, roll = 0f))

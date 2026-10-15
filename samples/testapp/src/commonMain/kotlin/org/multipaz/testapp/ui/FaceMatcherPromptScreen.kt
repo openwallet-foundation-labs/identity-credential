@@ -25,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +69,7 @@ import org.multipaz.facenet.testdata.FaceSamplePortrait
 import org.multipaz.facenet.testdata.FaceTestData
 import org.multipaz.prompt.PromptDismissedException
 import org.multipaz.prompt.PromptModel
+import org.multipaz.prompt.showFaceMatcherLivenessPrompt
 import org.multipaz.prompt.showFaceMatcherPrompt
 import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
@@ -119,7 +121,7 @@ fun FaceMatcherPromptScreen(
     showToast: (message: String) -> Unit,
     faceMatcherRepository: FaceMatcherRepository? = null,
     storage: Storage = TestAppConfiguration.storage,
-    onNavigateToLivenessCaptureComposable: (matcher: FaceMatcher?, poses: List<FacePose>) -> Unit = { _, _ -> }
+    onPortraitsCaptured: (Map<FacePose, ByteString>) -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
     var referencePortrait by remember { mutableStateOf<ByteString?>(null) }
@@ -129,6 +131,8 @@ fun FaceMatcherPromptScreen(
     val matchers = faceMatcherRepository?.all ?: emptyList()
     var selectedMatcher by remember { mutableStateOf<FaceMatcher?>(faceMatcherRepository?.defaultMatcher) }
     var selectedLivenessMatcher by remember { mutableStateOf<FaceMatcher?>(faceMatcherRepository?.defaultMatcher) }
+    var requireConfirmationFace by remember { mutableStateOf(false) }
+    var requireConfirmationLiveness by remember { mutableStateOf(false) }
     var posesText by remember {
         mutableStateOf(defaultLivenessPoses.joinToString(" ") { it.name })
     }
@@ -174,7 +178,7 @@ fun FaceMatcherPromptScreen(
                     try {
                         val raw = files.first()
                         val normalized = normalizePortrait(raw)
-                        savePortrait(storage, normalized)
+                        saveFaceMatcherReferencePortrait(storage, normalized)
                         referencePortrait = normalized
                         showToast("Reference portrait selected from gallery")
                     } catch (e: Throwable) {
@@ -212,7 +216,7 @@ fun FaceMatcherPromptScreen(
                 coroutineScope.launch {
                     try {
                         val normalized = normalizePortrait(capturedBytes)
-                        savePortrait(storage, normalized)
+                        saveFaceMatcherReferencePortrait(storage, normalized)
                         referencePortrait = normalized
                         showCameraCaptureDialog = false
                         showToast("Reference portrait captured from camera")
@@ -231,7 +235,7 @@ fun FaceMatcherPromptScreen(
             onPortraitSelected = { selected ->
                 coroutineScope.launch {
                     try {
-                        savePortrait(storage, selected.data)
+                        saveFaceMatcherReferencePortrait(storage, selected.data)
                         referencePortrait = selected.data
                         showSamplePortraitPicker = false
                         showToast("Selected ${selected.displayName}")
@@ -489,7 +493,7 @@ fun FaceMatcherPromptScreen(
                                             val currentBitmap = decodeImage(portraitBytes.toByteArray())
                                             val rotated = rotateImageBitmap(currentBitmap, 90f)
                                             val newBytes = encodeImageToPng(rotated)
-                                            savePortrait(storage, newBytes)
+                                            saveFaceMatcherReferencePortrait(storage, newBytes)
                                             referencePortrait = newBytes
                                             showToast("Portrait rotated 90° clockwise")
                                         } catch (e: Throwable) {
@@ -617,6 +621,22 @@ fun FaceMatcherPromptScreen(
                         )
                     }
 
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { requireConfirmationFace = !requireConfirmationFace },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = requireConfirmationFace,
+                            onCheckedChange = { requireConfirmationFace = it }
+                        )
+                        Text(
+                            text = "Require confirmation",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
                     Button(
                         onClick = {
                             val portrait = referencePortrait ?: return@Button
@@ -626,7 +646,8 @@ fun FaceMatcherPromptScreen(
                                         ?: throw IllegalStateException("No face matcher available")
                                     val matched = promptModel.showFaceMatcherPrompt(
                                         matcher = matcherToUse,
-                                        referencePortrait = portrait
+                                        referencePortrait = portrait,
+                                        requireConfirmation = requireConfirmationFace
                                     )
                                     if (matched) {
                                         showToast("Face matched successfully!")
@@ -736,11 +757,47 @@ fun FaceMatcherPromptScreen(
                         }
                     }
 
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { requireConfirmationLiveness = !requireConfirmationLiveness },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = requireConfirmationLiveness,
+                            onCheckedChange = { requireConfirmationLiveness = it }
+                        )
+                        Text(
+                            text = "Require confirmation",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
                     Button(
                         onClick = {
                             val poses = parsedPoses ?: return@Button
-                            val matcherToUse = selectedLivenessMatcher ?: faceMatcherRepository?.defaultMatcher
-                            onNavigateToLivenessCaptureComposable(matcherToUse, poses)
+                            coroutineScope.launch {
+                                try {
+                                    val matcherToUse = selectedLivenessMatcher ?: faceMatcherRepository?.defaultMatcher
+                                        ?: throw IllegalStateException("No face matcher available")
+                                    val portraits = promptModel.showFaceMatcherLivenessPrompt(
+                                        matcher = matcherToUse,
+                                        poses = poses,
+                                        requireConfirmation = requireConfirmationLiveness
+                                    )
+                                    if (portraits != null) {
+                                        onPortraitsCaptured(portraits)
+                                    } else {
+                                        showToast("Liveness verification failed or dismissed")
+                                    }
+                                } catch (e: PromptDismissedException) {
+                                    showToast("Liveness verification cancelled")
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Throwable) {
+                                    showToast("Error: ${e.message}")
+                                }
+                            }
                         },
                         enabled = parsedPoses != null,
                         modifier = Modifier.fillMaxWidth()
@@ -771,7 +828,10 @@ private fun parseLivenessPosesString(input: String): Result<List<FacePose>> {
     return Result.success(poses)
 }
 
-private suspend fun savePortrait(storage: Storage, bytes: ByteString) {
+internal suspend fun saveFaceMatcherReferencePortrait(
+    storage: Storage = TestAppConfiguration.storage,
+    bytes: ByteString
+) {
     val normalized = normalizePortrait(bytes)
     val table: StorageTable = storage.getTable(FACE_MATCHER_STORAGE_TABLE_SPEC)
     try {

@@ -66,6 +66,21 @@ public func defaultToHumanReadable(
             requireConfirmation: false
         )
     }
+    if reason is FaceLivenessReason {
+        return ReasonHumanReadable(
+            title: NSLocalizedString(
+                "face_matcher_liveness_prompt_default_title",
+                value: "Verify liveness",
+                comment: "Title for face liveness prompt"
+            ),
+            subtitle: NSLocalizedString(
+                "face_matcher_liveness_prompt_default_subtitle",
+                value: "Look at the camera and follow the instructions",
+                comment: "Subtitle for face liveness prompt"
+            ),
+            requireConfirmation: false
+        )
+    }
     return ReasonHumanReadable(
         title: NSLocalizedString(
             "key_unlock_default_title",

@@ -56,18 +56,21 @@ abstract class FaceMatcherLivenessSession(
      * @param overlay optional bitmap overlay to draw on top of the camera video stream, or `null`.
      * @param capturedImages map of captured portrait photo bytes keyed by [FacePose] when [status] is
      * [FaceMatcherLivenessPromptState.Status.SUCCESS], or empty.
+     * @param backgroundColor optional background color for the liveness screen, or `null` for default.
      */
     protected fun updateState(
         message: String? = _state.value.message,
         status: FaceMatcherLivenessPromptState.Status = _state.value.status,
         overlay: OverlayFrame? = _state.value.overlay,
-        capturedImages: Map<FacePose, ByteString> = _state.value.capturedImages
+        capturedImages: Map<FacePose, ByteString> = _state.value.capturedImages,
+        backgroundColor: Color? = _state.value.backgroundColor
     ) {
         _state.value = FaceMatcherLivenessPromptState(
             message = message,
             status = status,
             overlay = overlay,
-            capturedImages = if (status == FaceMatcherLivenessPromptState.Status.SUCCESS) capturedImages else emptyMap()
+            capturedImages = if (status == FaceMatcherLivenessPromptState.Status.SUCCESS) capturedImages else emptyMap(),
+            backgroundColor = backgroundColor
         )
     }
 }

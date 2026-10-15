@@ -167,3 +167,31 @@ expect fun rememberUiBoundCoroutineScope(
  */
 expect fun OverlayFrame.toImageBitmap(): ImageBitmap
 
+/**
+ * Converts a [org.multipaz.facematch.Color] into a Compose [androidx.compose.ui.graphics.Color].
+ */
+fun org.multipaz.facematch.Color.toComposeColor(): androidx.compose.ui.graphics.Color =
+    androidx.compose.ui.graphics.Color(red = red, green = green, blue = blue, alpha = alpha)
+
+/**
+ * Side-effect composable that overrides the screen brightness while in composition, restoring
+ * the previous brightness when leaving composition.
+ *
+ * @param brightness desired brightness in `[0.0f, 1.0f]`, or `null` to restore the default brightness.
+ */
+@Composable
+internal expect fun ScreenBrightnessEffect(brightness: Float? = 1.0f)
+
+/**
+ * Returns platform-appropriate [androidx.compose.ui.window.DialogProperties] for an edge-to-edge full-screen dialog.
+ */
+internal expect fun fullScreenDialogProperties(): androidx.compose.ui.window.DialogProperties
+
+/**
+ * Side-effect composable that configures the enclosing [androidx.compose.ui.window.Dialog] window to fill the entire
+ * screen edge-to-edge, hiding system bars where supported.
+ */
+@Composable
+internal expect fun FullScreenDialogEffect()
+
+

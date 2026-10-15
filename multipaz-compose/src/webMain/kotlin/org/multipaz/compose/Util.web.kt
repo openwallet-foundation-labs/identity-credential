@@ -64,3 +64,20 @@ actual fun OverlayFrame.toImageBitmap(): ImageBitmap {
     return (platformHandle as? ImageBitmap) ?: ImageBitmap(width, height)
 }
 
+@Composable
+internal actual fun ScreenBrightnessEffect(brightness: Float?) {
+}
+
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+internal actual fun fullScreenDialogProperties(): androidx.compose.ui.window.DialogProperties =
+    androidx.compose.ui.window.DialogProperties(
+        usePlatformDefaultWidth = false,
+        usePlatformInsets = false
+    )
+
+@Composable
+internal actual fun FullScreenDialogEffect() {
+}
+
+
+

@@ -92,12 +92,6 @@ data object ConsentPromptDestination: Destination()
 data object FaceMatcherPromptDestination: Destination()
 
 @Serializable
-data class FaceLivenessCaptureComposableDestination(
-    val matcherName: String? = null,
-    val poses: String = "LOOK_LEFT LOOK_RIGHT LOOK_UP LOOK_DOWN FRONT"
-): Destination()
-
-@Serializable
 data object FakeIssuerApprovalDestination: Destination()
 
 @Serializable

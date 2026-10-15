@@ -8,6 +8,7 @@ import kotlin.time.Clock
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.facematch.CameraFrame
+import org.multipaz.facematch.Color
 import org.multipaz.facematch.FaceMatcherPromptState
 import org.multipaz.facematch.FaceMatcherSession
 import org.multipaz.facematch.OverlayFrame
@@ -83,7 +84,8 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
     init {
         updateState(
             message = "Position your face and look at the camera",
-            status = FaceMatcherPromptState.Status.IN_PROGRESS
+            status = FaceMatcherPromptState.Status.IN_PROGRESS,
+            backgroundColor = Color.WHITE
         )
     }
 
