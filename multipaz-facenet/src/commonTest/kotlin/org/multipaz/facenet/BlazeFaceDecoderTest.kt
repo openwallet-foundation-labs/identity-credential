@@ -92,4 +92,53 @@ class BlazeFaceDecoderTest {
         assertEquals(140.0, bb.centerX, 0.001)
         assertEquals(210.0, bb.centerY, 0.001)
     }
+
+    @Test
+    fun testFaceAlignmentTransform() {
+        val targetSize = 112
+        val s = targetSize.toDouble()
+        val canonicalRightEye = FacePoint2D(0.341916 * s, 0.461574 * s)
+        val canonicalLeftEye = FacePoint2D(0.656534 * s, 0.459834 * s)
+        val canonicalNose = FacePoint2D(0.500225 * s, 0.640505 * s)
+        val canonicalMouth = FacePoint2D(0.501246 * s, 0.823971 * s)
+
+        // 1. Identity transform when landmarks are already at canonical coordinates
+        val idTransform = computeFaceAlignmentTransform(
+            rightEye = canonicalRightEye,
+            leftEye = canonicalLeftEye,
+            noseTip = canonicalNose,
+            mouthCenter = canonicalMouth,
+            targetSize = targetSize
+        )
+        kotlin.test.assertNotNull(idTransform)
+        assertEquals(1.0, idTransform.a, 1e-4)
+        assertEquals(0.0, idTransform.b, 1e-4)
+        assertEquals(0.0, idTransform.tx, 1e-4)
+        assertEquals(0.0, idTransform.ty, 1e-4)
+
+        // 2. Scaled (2x) and translated (+50, +80) source landmarks
+        fun toSource(p: FacePoint2D) = FacePoint2D(p.x * 2.0 + 50.0, p.y * 2.0 + 80.0)
+        val transform = computeFaceAlignmentTransform(
+            rightEye = toSource(canonicalRightEye),
+            leftEye = toSource(canonicalLeftEye),
+            noseTip = toSource(canonicalNose),
+            mouthCenter = toSource(canonicalMouth),
+            targetSize = targetSize
+        )
+        kotlin.test.assertNotNull(transform)
+        assertEquals(0.5, transform.a, 1e-4)
+        assertEquals(0.0, transform.b, 1e-4)
+        assertEquals(-25.0, transform.tx, 1e-4)
+        assertEquals(-40.0, transform.ty, 1e-4)
+
+        // 3. Degenerate (collapsed) landmarks return null
+        val degenerate = computeFaceAlignmentTransform(
+            rightEye = FacePoint2D(10.0, 10.0),
+            leftEye = FacePoint2D(10.0, 10.0),
+            noseTip = FacePoint2D(10.0, 10.0),
+            mouthCenter = FacePoint2D(10.0, 10.0),
+            targetSize = targetSize
+        )
+        kotlin.test.assertNull(degenerate)
+    }
 }

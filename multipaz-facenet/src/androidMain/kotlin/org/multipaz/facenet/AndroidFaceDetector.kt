@@ -14,8 +14,6 @@ import org.multipaz.util.Logger
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.atan2
-import kotlin.math.hypot
 import kotlin.math.max
 
 private const val TAG = "AndroidFaceDetector"
@@ -217,28 +215,22 @@ internal class AndroidFaceDetector(
     }
 
     fun extractFaceCrop(sourceBitmap: Bitmap, face: AndroidDetectedFace, targetSize: Int): Bitmap {
-        val leftEye = face.leftEye
-        val rightEye = face.rightEye
-
-        val eyeDistance = hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y)
-        if (eyeDistance > 1.0) {
-            val cx = (leftEye.x + rightEye.x) / 2.0
-            val cy = (leftEye.y + rightEye.y) / 2.0
-            val eyeAngleRad = atan2(leftEye.y - rightEye.y, leftEye.x - rightEye.x)
-            val eyeAngleDeg = Math.toDegrees(eyeAngleRad).toFloat()
-
-            val faceCropFactor = 3.2
-            val faceVerticalOffsetFactor = 0.13
-            val cropWidth = eyeDistance * faceCropFactor
-            val cropHeight = eyeDistance * faceCropFactor
-            val verticalOffset = eyeDistance * faceVerticalOffsetFactor
-
-            val scale = targetSize.toFloat() / cropWidth.toFloat()
+        val alignment = computeFaceAlignmentTransform(
+            rightEye = face.rightEye,
+            leftEye = face.leftEye,
+            noseTip = face.noseTip,
+            mouthCenter = face.mouthCenter,
+            targetSize = targetSize
+        )
+        if (alignment != null) {
             val matrix = Matrix().apply {
-                postTranslate(-cx.toFloat(), -cy.toFloat())
-                postRotate(-eyeAngleDeg)
-                postTranslate(cropWidth.toFloat() / 2f, cropHeight.toFloat() / 2f - verticalOffset.toFloat())
-                postScale(scale, scale)
+                setValues(
+                    floatArrayOf(
+                        alignment.a.toFloat(), -alignment.b.toFloat(), alignment.tx.toFloat(),
+                        alignment.b.toFloat(), alignment.a.toFloat(), alignment.ty.toFloat(),
+                        0f, 0f, 1f
+                    )
+                )
             }
 
             val cropped = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)

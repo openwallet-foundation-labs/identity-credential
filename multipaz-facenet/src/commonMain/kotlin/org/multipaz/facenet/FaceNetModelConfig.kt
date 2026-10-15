@@ -15,7 +15,7 @@ data class FaceNetModelConfig(
     val imageSquareSize: Int? = null,
     val embeddingDim: Int? = null,
     val normalization: NormalizationMethod = NormalizationMethod.SCALE_ZERO_TO_ONE,
-    val matchThreshold: Float = 0.70f
+    val matchThreshold: Float = 0.63f
 ) {
     companion object {
         /** Standard MobileFaceNet model configuration (112x112 input, 128-d output, [0, 1] scaling). */
@@ -23,7 +23,7 @@ data class FaceNetModelConfig(
             imageSquareSize = 112,
             embeddingDim = 128,
             normalization = NormalizationMethod.SCALE_ZERO_TO_ONE,
-            matchThreshold = 0.70f
+            matchThreshold = 0.63f
         )
 
         /** Inferred configuration: image dimension and embedding size are read directly from model tensors. */

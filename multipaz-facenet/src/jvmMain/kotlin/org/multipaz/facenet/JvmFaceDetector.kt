@@ -13,8 +13,6 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
-import kotlin.math.atan2
-import kotlin.math.hypot
 
 private const val TAG = "JvmFaceDetector"
 
@@ -220,9 +218,13 @@ internal class JvmFaceDetector(
         val imgH = sourceImage.height.toDouble()
         if (imgW <= 0.0 || imgH <= 0.0) return null
 
-        val leftEye = face.leftEye
-        val rightEye = face.rightEye
-        val eyeDistance = hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y)
+        val alignment = computeFaceAlignmentTransform(
+            rightEye = face.rightEye,
+            leftEye = face.leftEye,
+            noseTip = face.noseTip,
+            mouthCenter = face.mouthCenter,
+            targetSize = targetSize
+        )
 
         val cropImage = BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB)
         val g2d = cropImage.createGraphics()
@@ -231,23 +233,15 @@ internal class JvmFaceDetector(
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
 
         try {
-            if (eyeDistance > 1.0) {
-                val cx = (leftEye.x + rightEye.x) / 2.0
-                val cy = (leftEye.y + rightEye.y) / 2.0
-                val eyeAngleRad = atan2(leftEye.y - rightEye.y, leftEye.x - rightEye.x)
-
-                val faceCropFactor = 3.2
-                val faceVerticalOffsetFactor = 0.13
-                val cropSize = eyeDistance * faceCropFactor
-                val verticalOffset = eyeDistance * faceVerticalOffsetFactor
-                val scale = targetSize.toDouble() / cropSize
-
-                val at = AffineTransform()
-                at.translate(targetSize / 2.0, targetSize / 2.0 - verticalOffset * scale)
-                at.rotate(-eyeAngleRad)
-                at.scale(scale, scale)
-                at.translate(-cx, -cy)
-
+            if (alignment != null) {
+                val at = AffineTransform(
+                    alignment.a,
+                    alignment.b,
+                    -alignment.b,
+                    alignment.a,
+                    alignment.tx,
+                    alignment.ty
+                )
                 g2d.transform(at)
                 g2d.drawImage(sourceImage, 0, 0, null)
             } else {

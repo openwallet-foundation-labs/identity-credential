@@ -217,7 +217,7 @@ class FaceNetSessionTest {
         var currentTime = 1000L
         val session = TestFaceNetSession(clock = { currentTime })
 
-        // Similarity = 0.55f (below 0.70 threshold)
+        // Similarity = 0.55f (below 0.63 threshold)
         // Cosine with reference: create vector with known dot product
         val v = FaceTestData.QUALCOMM_DEMO_1_GOLDEN_EMBEDDING
         // Create an embedding that yields ~0.55 similarity
