@@ -15,6 +15,6 @@ enum Destination: Hashable {
     case certificateExamplesScreen
     case verticalCardListScreen(focusedDocumentId: String?, animateListTransitions: Bool = false)
     case floatingItemListScreen
-    case faceLivenessCaptureScreen(matcherName: String? = nil)
-    case fakeIssuerApprovalScreen(portraitBytes: ByteString)
+    case faceLivenessCaptureScreen(matcherName: String? = nil, poses: [FacePose])
+    case fakeIssuerApprovalScreen(capturedImages: [FacePose: ByteString])
 }

@@ -106,6 +106,7 @@ import org.multipaz.presentment.uriSchemePresentment
 import org.multipaz.facenet.FaceNetFaceMatcher
 import org.multipaz.facenet.FaceNetModelConfig
 import org.multipaz.facematch.FaceMatcherRepository
+import org.multipaz.facematch.FacePose
 import org.multipaz.prompt.PromptModel
 import org.multipaz.prompt.promptModelRequestConsent
 import org.multipaz.prompt.promptModelSilentConsent
@@ -1144,7 +1145,7 @@ class App private constructor (val promptModel: PromptModel) {
                 clientPreferences = CompletableDeferred(provisioningSupport.getOpenID4VCIClientPreferences()),
                 backend = CompletableDeferred(provisioningSupport.getOpenID4VCIBackend())
             )
-            val capturedPortraitForApproval = remember { mutableStateOf<ByteString?>(null) }
+            val capturedPortraitsForApproval = remember { mutableStateOf<Map<FacePose, ByteString>>(emptyMap()) }
             NavHost(
                 navController = navController,
                 startDestination = StartDestination,
@@ -1589,9 +1590,12 @@ class App private constructor (val promptModel: PromptModel) {
                             faceMatcherRepository = faceMatcherRepository,
                             showToast = { message -> showToast(message) },
                             storage = TestAppConfiguration.storage,
-                            onNavigateToLivenessCaptureComposable = { matcher ->
+                            onNavigateToLivenessCaptureComposable = { matcher, poses ->
                                 navController.navigate(
-                                    FaceLivenessCaptureComposableDestination(matcher?.name)
+                                    FaceLivenessCaptureComposableDestination(
+                                        matcherName = matcher?.name,
+                                        poses = poses.joinToString(" ") { it.name }
+                                    )
                                 )
                             }
                         )
@@ -1601,11 +1605,19 @@ class App private constructor (val promptModel: PromptModel) {
                     val destination = backStackEntry.toRoute<FaceLivenessCaptureComposableDestination>()
                     val matcher = destination.matcherName?.let { faceMatcherRepository?.lookup(it) }
                         ?: faceMatcherRepository?.defaultMatcher
+                    val poses = destination.poses
+                        .trim()
+                        .split(Regex("\\s+"))
+                        .mapNotNull { token ->
+                            FacePose.entries.find { it.name.equals(token, ignoreCase = true) }
+                        }
+                        .ifEmpty { listOf(FacePose.FRONT) }
                     WithAppBar(navController, "Check Liveness (Composable)") {
                         FaceLivenessCaptureComposableScreen(
                             faceMatcher = matcher,
-                            onPortraitCaptured = { portrait ->
-                                capturedPortraitForApproval.value = portrait
+                            poses = poses,
+                            onPortraitsCaptured = { portraits ->
+                                capturedPortraitsForApproval.value = portraits
                                 navController.navigate(FakeIssuerApprovalDestination)
                             },
                             onCancel = {
@@ -1617,15 +1629,15 @@ class App private constructor (val promptModel: PromptModel) {
                 composable<FakeIssuerApprovalDestination> { backStackEntry ->
                     WithAppBar(navController, "Approve Portrait for Issuer") {
                         FakeIssuerApprovalScreen(
-                            portraitBytes = capturedPortraitForApproval.value,
+                            capturedImages = capturedPortraitsForApproval.value,
                             onApprove = {
                                 showToast("Portrait approved and sent to issuer")
-                                capturedPortraitForApproval.value = null
+                                capturedPortraitsForApproval.value = emptyMap()
                                 navController.popBackStack<FaceMatcherPromptDestination>(inclusive = false)
                             },
                             onCancel = {
                                 showToast("Provisioning cancelled")
-                                capturedPortraitForApproval.value = null
+                                capturedPortraitsForApproval.value = emptyMap()
                                 navController.popBackStack<FaceMatcherPromptDestination>(inclusive = false)
                             }
                         )

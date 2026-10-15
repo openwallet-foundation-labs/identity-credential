@@ -19,31 +19,40 @@ class FaceMatcherTest {
 
         val defaultLivenessState = FaceMatcherLivenessPromptState()
         assertEquals(FaceMatcherLivenessPromptState.Status.IN_PROGRESS, defaultLivenessState.status)
-        assertNull(defaultLivenessState.capturedImage)
+        assertEquals(emptyMap(), defaultLivenessState.capturedImages)
 
-        val dummyImage = kotlinx.io.bytestring.ByteString(byteArrayOf(1, 2, 3))
+        val dummyImage = ByteString(byteArrayOf(1, 2, 3))
+        val dummyMap = mapOf(FacePose.FRONT to dummyImage)
         val livenessSuccessState = FaceMatcherLivenessPromptState(
             status = FaceMatcherLivenessPromptState.Status.SUCCESS,
-            capturedImage = dummyImage
+            capturedImages = dummyMap
         )
         assertEquals(FaceMatcherLivenessPromptState.Status.SUCCESS, livenessSuccessState.status)
-        assertEquals(dummyImage, livenessSuccessState.capturedImage)
+        assertEquals(dummyMap, livenessSuccessState.capturedImages)
 
-        // Test FaceMatcherLivenessSession enforces capturedImage null unless SUCCESS
+        // Test FaceMatcherLivenessSession default poses and empty poses rejection
         val testSession = object : FaceMatcherLivenessSession() {
             override suspend fun feedFrame(frame: CameraFrame) {}
-            fun testUpdate(status: FaceMatcherLivenessPromptState.Status, image: kotlinx.io.bytestring.ByteString?) {
-                updateState(status = status, capturedImage = image)
+            fun testUpdate(status: FaceMatcherLivenessPromptState.Status, images: Map<FacePose, ByteString>) {
+                updateState(status = status, capturedImages = images)
             }
         }
-        testSession.testUpdate(FaceMatcherLivenessPromptState.Status.IN_PROGRESS, dummyImage)
-        assertNull(testSession.state.value.capturedImage)
+        assertEquals(listOf(FacePose.FRONT), testSession.poses)
+        assertFailsWith<IllegalArgumentException> {
+            object : FaceMatcherLivenessSession(poses = emptyList()) {
+                override suspend fun feedFrame(frame: CameraFrame) {}
+            }
+        }
 
-        testSession.testUpdate(FaceMatcherLivenessPromptState.Status.SUCCESS, dummyImage)
-        assertEquals(dummyImage, testSession.state.value.capturedImage)
+        // Test FaceMatcherLivenessSession enforces capturedImages empty unless SUCCESS
+        testSession.testUpdate(FaceMatcherLivenessPromptState.Status.IN_PROGRESS, dummyMap)
+        assertEquals(emptyMap(), testSession.state.value.capturedImages)
 
-        testSession.testUpdate(FaceMatcherLivenessPromptState.Status.FAILED, dummyImage)
-        assertNull(testSession.state.value.capturedImage)
+        testSession.testUpdate(FaceMatcherLivenessPromptState.Status.SUCCESS, dummyMap)
+        assertEquals(dummyMap, testSession.state.value.capturedImages)
+
+        testSession.testUpdate(FaceMatcherLivenessPromptState.Status.FAILED, dummyMap)
+        assertEquals(emptyMap(), testSession.state.value.capturedImages)
 
         val overlay = OverlayFrame(
             width = 100,

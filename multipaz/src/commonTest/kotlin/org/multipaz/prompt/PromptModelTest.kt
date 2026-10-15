@@ -7,6 +7,7 @@ import org.multipaz.facematch.CameraFrame
 import org.multipaz.facematch.FaceMatcher
 import org.multipaz.facematch.FaceMatcherLivenessSession
 import org.multipaz.facematch.FaceMatcherSession
+import org.multipaz.facematch.FacePose
 import org.multipaz.securearea.PassphraseConstraints
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,7 @@ class PromptModelTest {
         override suspend fun feedFrame(frame: CameraFrame) {}
     }
 
-    private class TestFaceMatcherLivenessSession : FaceMatcherLivenessSession() {
+    private class TestFaceMatcherLivenessSession(poses: List<FacePose>) : FaceMatcherLivenessSession(poses) {
         override suspend fun feedFrame(frame: CameraFrame) {}
     }
 
@@ -47,8 +48,8 @@ class PromptModelTest {
         override val name: String = "test"
         override fun createSession(referencePortrait: ByteString): FaceMatcherSession =
             TestFaceMatcherSession(referencePortrait)
-        override fun createLivenessSession(): FaceMatcherLivenessSession =
-            TestFaceMatcherLivenessSession()
+        override fun createLivenessSession(poses: List<FacePose>): FaceMatcherLivenessSession =
+            TestFaceMatcherLivenessSession(poses)
     }
 
     @BeforeTest

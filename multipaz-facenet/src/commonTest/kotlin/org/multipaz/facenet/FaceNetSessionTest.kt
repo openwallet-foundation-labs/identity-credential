@@ -6,6 +6,7 @@ import org.multipaz.facenet.testdata.FaceTestData
 import org.multipaz.facematch.CameraFrame
 import org.multipaz.facematch.FaceMatcherLivenessPromptState
 import org.multipaz.facematch.FaceMatcherPromptState
+import org.multipaz.facematch.FacePose
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -69,12 +70,14 @@ class FaceNetSessionTest {
 
     private class TestFaceNetLivenessSession(
         config: FaceNetModelConfig = FaceNetModelConfig.MOBILE_FACENET,
+        poses: List<FacePose> = listOf(FacePose.FRONT),
         debug: Boolean = false,
         clock: () -> Long,
         randomSeed: Long = 42L,
         enablePoseSmoothing: Boolean = false
     ) : FaceNetLivenessSessionBase<DetectedFacePose>(
         config = config,
+        poses = poses,
         debug = debug,
         matcherName = "facenet",
         matcherDisplayName = "MobileFaceNet",
@@ -415,17 +418,107 @@ class FaceNetSessionTest {
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetLivenessSessionBase.Phase.POSITIONING, session.phase)
         assertEquals("Hold still...", session.state.value.message)
-        assertNull(session.state.value.capturedImage)
+        assertTrue(session.state.value.capturedImages.isEmpty())
 
         // Frame 2 with live straight face: consecutiveMatchFrames = 2 -> captures photo and completes!
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetLivenessSessionBase.Phase.COMPLETED, session.phase)
         assertEquals(FaceMatcherLivenessPromptState.Status.SUCCESS, session.state.value.status)
         assertEquals("Portrait captured", session.state.value.message)
-        assertNotNull(session.state.value.capturedImage)
-        assertEquals(ByteString(byteArrayOf(1, 2, 3)), session.state.value.capturedImage)
+        assertEquals(
+            mapOf(FacePose.FRONT to ByteString(byteArrayOf(1, 2, 3))),
+            session.state.value.capturedImages
+        )
         assertTrue(session.ringSegments.all { it.color == RingSegment.COLOR_GREEN })
         assertNotNull(session.state.value.overlay)
+    }
+
+    @Test
+    fun testLivenessSessionWithMultiplePosesInOrder() = runTest {
+        var currentTime = 1000L
+        val requestedPoses = listOf(
+            FacePose.FRONT,
+            FacePose.LOOK_LEFT,
+            FacePose.LOOK_RIGHT,
+            FacePose.LOOK_UP,
+            FacePose.LOOK_DOWN
+        )
+        val session = TestFaceNetLivenessSession(
+            poses = requestedPoses,
+            clock = { currentTime },
+            randomSeed = 42L
+        )
+
+        assertEquals(
+            "Position your face and look at the camera (Step 1 of 5)",
+            session.state.value.message
+        )
+
+        // Step 1: FRONT (requires 2 consecutive straight + live frames)
+        val frontBytes = ByteString(byteArrayOf(10))
+        session.capturedBytes = frontBytes
+        session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = 0f, roll = 0f))
+        session.mockLivenessScore = 0.99f
+        session.feedFrame(dummyFrame)
+        assertEquals("Hold still... (Step 1 of 5)", session.state.value.message)
+        session.feedFrame(dummyFrame)
+        assertEquals(1, session.currentPoseIndex)
+        assertEquals("Turn your head left (Step 2 of 5)", session.state.value.message)
+        assertTrue(session.state.value.capturedImages.isEmpty())
+
+        // Step 2: LOOK_LEFT (yaw >= 18f for 2 consecutive frames)
+        val leftBytes = ByteString(byteArrayOf(20))
+        session.capturedBytes = leftBytes
+        session.mockFaces = listOf(MockDetectedFace(yaw = 22f, pitch = 0f, roll = 0f))
+        session.feedFrame(dummyFrame)
+        assertEquals("Hold still... (Step 2 of 5)", session.state.value.message)
+        session.feedFrame(dummyFrame)
+        assertEquals(2, session.currentPoseIndex)
+        assertEquals("Turn your head right (Step 3 of 5)", session.state.value.message)
+
+        // Step 3: LOOK_RIGHT (yaw <= -18f for 2 consecutive frames)
+        val rightBytes = ByteString(byteArrayOf(30))
+        session.capturedBytes = rightBytes
+        session.mockFaces = listOf(MockDetectedFace(yaw = -22f, pitch = 0f, roll = 0f))
+        session.feedFrame(dummyFrame)
+        assertEquals("Hold still... (Step 3 of 5)", session.state.value.message)
+        session.feedFrame(dummyFrame)
+        assertEquals(3, session.currentPoseIndex)
+        assertEquals("Tilt your head up (Step 4 of 5)", session.state.value.message)
+
+        // Step 4: LOOK_UP (pitch >= 14f for 2 consecutive frames)
+        val upBytes = ByteString(byteArrayOf(40))
+        session.capturedBytes = upBytes
+        session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = 18f, roll = 0f))
+        session.feedFrame(dummyFrame)
+        assertEquals("Hold still... (Step 4 of 5)", session.state.value.message)
+        session.feedFrame(dummyFrame)
+        assertEquals(4, session.currentPoseIndex)
+        assertEquals("Tilt your head down (Step 5 of 5)", session.state.value.message)
+
+        // Step 5: LOOK_DOWN (pitch <= -14f for 2 consecutive frames)
+        val downBytes = ByteString(byteArrayOf(50))
+        session.capturedBytes = downBytes
+        session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = -18f, roll = 0f))
+        session.feedFrame(dummyFrame)
+        assertEquals("Hold still... (Step 5 of 5)", session.state.value.message)
+        session.feedFrame(dummyFrame)
+
+        // Completed!
+        assertEquals(FaceNetLivenessSessionBase.Phase.COMPLETED, session.phase)
+        assertEquals(FaceMatcherLivenessPromptState.Status.SUCCESS, session.state.value.status)
+        assertEquals("Portrait captured", session.state.value.message)
+        assertEquals(
+            mapOf(
+                FacePose.FRONT to frontBytes,
+                FacePose.LOOK_LEFT to leftBytes,
+                FacePose.LOOK_RIGHT to rightBytes,
+                FacePose.LOOK_UP to upBytes,
+                FacePose.LOOK_DOWN to downBytes
+            ),
+            session.state.value.capturedImages
+        )
+        assertEquals(requestedPoses, session.state.value.capturedImages.keys.toList())
     }
 
     @Test
@@ -440,7 +533,7 @@ class FaceNetSessionTest {
         session.feedFrame(dummyFrame)
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetLivenessSessionBase.Phase.POSITIONING, session.phase)
-        assertNull(session.state.value.capturedImage)
+        assertTrue(session.state.value.capturedImages.isEmpty())
 
         // Advance past livenessTimeoutMs (8000ms) -> fails session
         currentTime = 10000L
@@ -571,12 +664,14 @@ class FaceNetSessionTest {
 
     @Test
     fun testCheatModeLivenessWhenDebugEnabled() = runTest {
-        val session = TestFaceNetLivenessSession(debug = true, clock = { 0L })
+        val poses = listOf(FacePose.FRONT, FacePose.LOOK_LEFT)
+        val session = TestFaceNetLivenessSession(poses = poses, debug = true, clock = { 0L })
         session.onTouchEvent(0.5f, 0.5f)
 
         assertEquals(FaceNetLivenessSessionBase.Phase.COMPLETED, session.phase)
         assertEquals(FaceMatcherLivenessPromptState.Status.SUCCESS, session.state.value.status)
-        assertNotNull(session.state.value.capturedImage)
+        assertEquals(poses.toSet(), session.state.value.capturedImages.keys)
+        assertTrue(session.state.value.capturedImages.values.all { it.size > 0 })
         assertEquals("Portrait captured", session.state.value.message)
     }
 }

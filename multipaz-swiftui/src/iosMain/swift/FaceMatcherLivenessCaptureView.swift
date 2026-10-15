@@ -9,7 +9,7 @@ import SwiftUI
  */
 public struct FaceMatcherLivenessCaptureView: View {
     public let session: FaceMatcherLivenessSession
-    public var onSuccess: (ByteString) -> Void
+    public var onSuccess: ([FacePose: ByteString]) -> Void
     public var onFailed: (() -> Void)?
 
     @State private var promptState: FaceMatcherLivenessPromptState? = nil
@@ -17,7 +17,7 @@ public struct FaceMatcherLivenessCaptureView: View {
 
     public init(
         session: FaceMatcherLivenessSession,
-        onSuccess: @escaping (ByteString) -> Void,
+        onSuccess: @escaping ([FacePose: ByteString]) -> Void,
         onFailed: (() -> Void)? = nil
     ) {
         self.session = session
@@ -94,7 +94,8 @@ public struct FaceMatcherLivenessCaptureView: View {
             for await state in session.state {
                 self.promptState = state
                 if state.status == FaceMatcherLivenessPromptState.Status.success, !hasDeliveredSuccess {
-                    if let captured = state.capturedImage {
+                    let captured = state.capturedImages
+                    if !captured.isEmpty {
                         hasDeliveredSuccess = true
                         try? await Task.sleep(nanoseconds: 1_200_000_000)
                         onSuccess(captured)

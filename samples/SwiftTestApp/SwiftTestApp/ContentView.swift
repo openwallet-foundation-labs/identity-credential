@@ -40,8 +40,9 @@ struct ContentView: View {
                 case .certificateViewerScreen(let certificates): CertificateViewerScreen(certificates: certificates)
                 case .certificateExamplesScreen: CertificateExamplesScreen()
                 case .floatingItemListScreen: FloatingItemListScreen()
-                case .faceLivenessCaptureScreen(let matcherName): FaceLivenessCaptureScreen(matcherName: matcherName)
-                case .fakeIssuerApprovalScreen(let portraitBytes): FakeIssuerApprovalScreen(portraitBytes: portraitBytes)
+                case .faceLivenessCaptureScreen(let matcherName, let poses):
+                    FaceLivenessCaptureScreen(matcherName: matcherName, poses: poses)
+                case .fakeIssuerApprovalScreen(let capturedImages): FakeIssuerApprovalScreen(capturedImages: capturedImages)
                 }
             }
             .sheet(
