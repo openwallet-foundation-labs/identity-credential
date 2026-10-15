@@ -43,3 +43,10 @@ internal actual suspend fun extractDetectedFaceCrop(
     throw UnsupportedOperationException("Face matching is not supported on this platform")
 }
 
+internal actual suspend fun computePortraitLivenessScore(
+    portrait: ByteString
+): Float {
+    throw UnsupportedOperationException("Face matching is not supported on this platform")
+}
+
+

@@ -164,6 +164,40 @@ class FaceNetFaceMatcher(
             config = config
         )
     }
+
+    /**
+     * Computes the passive presentation attack detection (PAD) score (bona fide probability in `[0.0, 1.0]`)
+     * for the detected face in [portrait] using the embedded `MiniFASNetV2` model.
+     *
+     * **Security & Threat Model Disclaimer**:
+     * This method performs **single-image physical Presentation Attack Detection (PAD)** only: it evaluates
+     * a `2.7x`-expanded crop around the face for optical recapturing artifacts (such as LCD/OLED pixel grids,
+     * moiré patterns, paper halftone texture, specular glare, and physical display/print borders) to distinguish
+     * a first-generation camera capture from a re-photographed print or screen.
+     *
+     * **It does NOT provide replay protection or freshness guarantees**:
+     * - A genuine, first-generation digital portrait photo of a real person will consistently score high
+     *   (near `1.0`) every time its bytes are passed to this function.
+     * - If called on an image uploaded over a network or injected via a virtual camera without a trusted
+     *   live camera capture pipeline, an attacker can replay a previously captured genuine portrait photo
+     *   indefinitely and pass this check.
+     * - Do not rely on this method alone to prove live user presence on an untrusted client or backend server.
+     *
+     * @param portrait encoded image bytes (e.g. JPEG, PNG, or JPEG 2000).
+     * @return the bona fide (non-recaptured) probability in `[0.0, 1.0]`.
+     * @throws IllegalArgumentException if no face is detected in [portrait] or decoding fails.
+     * @throws IllegalStateException if anti-spoofing inference fails.
+     * @throws UnsupportedOperationException if face matching is not supported on this platform.
+     */
+    @Throws(
+        IllegalArgumentException::class,
+        IllegalStateException::class,
+        UnsupportedOperationException::class,
+        CancellationException::class
+    )
+    suspend fun getPassiveLivenessScore(portrait: ByteString): Float {
+        return computePortraitLivenessScore(portrait)
+    }
 }
 
 internal expect val isFaceNetSupported: Boolean
@@ -196,3 +230,8 @@ internal expect suspend fun extractDetectedFaceCrop(
     modelBytes: ByteString,
     config: FaceNetModelConfig
 ): ByteString
+
+internal expect suspend fun computePortraitLivenessScore(
+    portrait: ByteString
+): Float
+

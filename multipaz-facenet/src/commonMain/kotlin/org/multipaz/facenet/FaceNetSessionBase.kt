@@ -19,12 +19,13 @@ private const val TAG = "FaceNetSessionBase"
  * Base class containing the shared biometric verification state machine for FaceNet.
  *
  * Implements:
- * - Two-phase verification: Positioning / Match Confirmation followed by Active Liveness Challenge.
- * - Latching prevention: requires 2 consecutive matching frames to prevent accidental triggers.
+ * - Single-phase passive verification: confirms both biometric identity match (`similarity >= matchThreshold`)
+ *   and passive anti-spoofing liveness (`livenessScore >= passiveLivenessThreshold`) while the user looks directly
+ *   at the camera, without requiring directional head-turn challenges.
+ * - Latching prevention: requires 2 consecutive matching and live frames to prevent accidental triggers.
  * - Head pose guidance: detects head pitch, yaw, and roll with contextual user guidance.
- * - Active liveness challenges: prompts random directional head turns + center gaze.
- * - Timeout handling: 8-second match timeout with formatted percentage feedback, 25-second total session timeout.
- * - Dynamic visual feedback via [OverlayFrame]: pulsing ring during positioning, progressive highlight during challenges.
+ * - Timeout handling: 8-second match timeout, 25-second total session timeout.
+ * - Dynamic visual feedback via [OverlayFrame]: pulsing ring during positioning, green highlight upon verification.
  */
 abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
     referencePortrait: ByteString,
@@ -46,8 +47,6 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
     enum class Phase {
         INITIALIZING,
         POSITIONING,
-        MATCH_CONVEYED,
-        LIVENESS_CHALLENGE,
         COMPLETED,
         FAILED
     }
@@ -65,17 +64,14 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
     protected var referenceEmbedding: FaceEmbedding? = null
     var bestSimilarity: Float = 0.0f
         protected set
+    var bestLivenessScore: Float = 0.0f
+        protected set
     private var initializationAttempted = false
 
     private var currentRingSegments: List<RingSegment> = RingSegment.defaultSegments
     internal val ringSegments: List<RingSegment>
         get() = currentRingSegments
 
-    private val pool = listOf(ChallengeDirection.LEFT, ChallengeDirection.RIGHT, ChallengeDirection.UP, ChallengeDirection.DOWN)
-    val challenges: List<ChallengeDirection> = pool.shuffled(Random(randomSeed)).take(2) + listOf(ChallengeDirection.CENTER)
-    var currentChallengeIndex = 0
-        protected set
-    private var consecutivePoseFrames = 0
     private var missedFaceFrames = 0
     private var consecutiveMatchFrames = 0
     private var straightFaceStartTime: Long? = null
@@ -83,7 +79,6 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
 
     val matchTimeoutMs = 8000L
     val sessionTimeoutMs = 25000L
-    val matchConveyDurationMs = 1200L
 
     init {
         updateState(
@@ -109,6 +104,12 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
     protected abstract suspend fun computeCameraEmbedding(frame: CameraFrame, face: TFace): FaceEmbedding?
 
     /**
+     * Computes the passive anti-spoofing liveness score (real face probability in `[0.0, 1.0]`)
+     * for [face] in [frame].
+     */
+    protected open suspend fun computeLivenessScore(frame: CameraFrame, face: TFace): Float? = 1.0f
+
+    /**
      * Releases platform resources when session is closed or cancelled.
      */
     protected abstract fun onSessionClosed()
@@ -116,7 +117,8 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
     protected open fun createOverlay(
         frame: CameraFrame,
         faces: List<TFace>,
-        currentSimilarity: Float?
+        currentSimilarity: Float?,
+        currentLivenessScore: Float? = null
     ): OverlayFrame? {
         return renderOverlay(
             frame = frame,
@@ -125,7 +127,9 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
             debug = debug,
             currentSimilarity = currentSimilarity,
             bestSimilarity = bestSimilarity,
-            matchThreshold = config.matchThreshold
+            matchThreshold = config.matchThreshold,
+            currentLivenessScore = currentLivenessScore,
+            livenessThreshold = config.passiveLivenessThreshold
         )
     }
 
@@ -188,7 +192,7 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
             currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
                 RingSegment(color = RingSegment.COLOR_RED, scale = 1.0f)
             }
-            val overlay = createOverlay(frame, emptyList(), null)
+            val overlay = createOverlay(frame, emptyList(), null, null)
             failSession(
                 message = "Face verification timed out",
                 overlay = overlay
@@ -204,25 +208,15 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
             missedFaceFrames++
             consecutiveMatchFrames = 0
             straightFaceStartTime = null
-            consecutivePoseFrames = 0
 
-            val overlay = createOverlay(frame, emptyList(), null)
+            val overlay = createOverlay(frame, emptyList(), null, null)
             if (missedFaceFrames >= 3) {
                 headPoseFilter.reset()
-                when (phase) {
-                    Phase.POSITIONING -> {
-                        updateState(
-                            message = "No face detected",
-                            overlay = overlay
-                        )
-                    }
-                    Phase.LIVENESS_CHALLENGE -> {
-                        updateState(
-                            message = "Looking for face...",
-                            overlay = overlay
-                        )
-                    }
-                    else -> {}
+                if (phase == Phase.POSITIONING) {
+                    updateState(
+                        message = "No face detected",
+                        overlay = overlay
+                    )
                 }
             } else {
                 updateState(overlay = overlay)
@@ -234,10 +228,9 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
             missedFaceFrames = 0
             consecutiveMatchFrames = 0
             straightFaceStartTime = null
-            consecutivePoseFrames = 0
             headPoseFilter.reset()
             currentRingSegments = RingSegment.defaultSegments
-            val overlay = createOverlay(frame, detectedFaces, null)
+            val overlay = createOverlay(frame, detectedFaces, null, null)
             updateState(
                 message = "Ensure only one person is in the frame",
                 overlay = overlay
@@ -269,6 +262,7 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
         val isFacingStraight = abs(yaw) < 12.0f && abs(pitch) < 12.0f && abs(roll) < 15.0f
 
         var currentSimilarity: Float? = null
+        var currentLiveness: Float? = null
 
         if (isCancelled) return
 
@@ -288,6 +282,20 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
                     Logger.w(TAG, "Failed to compute embedding from camera frame", e)
                 }
             }
+
+            try {
+                val liveness = computeLivenessScore(frame, face)
+                if (liveness != null) {
+                    currentLiveness = liveness
+                    if (liveness > bestLivenessScore) {
+                        bestLivenessScore = liveness
+                    }
+                }
+            } catch (e: Exception) {
+                if (!isCancelled) {
+                    Logger.w(TAG, "Failed to compute liveness score from camera frame", e)
+                }
+            }
         }
 
         if (isCancelled) return
@@ -305,26 +313,28 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
                     }
 
                     val isMatched = currentSimilarity != null && currentSimilarity >= config.matchThreshold
+                    val isLive = currentLiveness != null && currentLiveness >= config.passiveLivenessThreshold
 
-                    if (isMatched) {
+                    if (isMatched && isLive) {
                         consecutiveMatchFrames++
                         if (consecutiveMatchFrames >= 2) {
-                            phase = Phase.MATCH_CONVEYED
-                            phaseStartTime = now
-                            straightFaceStartTime = null
+                            phase = Phase.COMPLETED
+                            headPoseFilter.reset()
+                            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
+                                RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.2f)
+                            }
+                            val successOverlay = createOverlay(frame, faces, currentSimilarity, currentLiveness)
+                            updateState(
+                                message = "Identity verified",
+                                status = FaceMatcherPromptState.Status.SUCCESS,
+                                overlay = successOverlay
+                            )
+                            return
+                        } else {
                             currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
                                 RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.15f)
                             }
-                            val overlay = createOverlay(frame, faces, currentSimilarity)
-                            updateState(
-                                message = "Hold still...",
-                                overlay = overlay
-                            )
-                        } else {
-                            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                                RingSegment(color = pulseColor, scale = 1.0f)
-                            }
-                            val overlay = createOverlay(frame, faces, currentSimilarity)
+                            val overlay = createOverlay(frame, faces, currentSimilarity, currentLiveness)
                             updateState(
                                 message = "Hold still...",
                                 overlay = overlay
@@ -336,24 +346,33 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
                             currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
                                 RingSegment(color = RingSegment.COLOR_RED, scale = 1.0f)
                             }
-                            val overlay = createOverlay(frame, faces, currentSimilarity)
-                            if (bestSimilarity >= config.matchThreshold) {
-                                failSession(
-                                    message = "Unable to confirm match - please hold still and look directly at the camera",
-                                    overlay = overlay
-                                )
-                            } else {
-                                failSession(
-                                    message = "Face does not match reference portrait",
-                                    overlay = overlay
-                                )
+                            val overlay = createOverlay(frame, faces, currentSimilarity, currentLiveness)
+                            when {
+                                bestSimilarity >= config.matchThreshold && bestLivenessScore < config.passiveLivenessThreshold -> {
+                                    failSession(
+                                        message = "Liveness check failed - ensure you are not using a photo or screen",
+                                        overlay = overlay
+                                    )
+                                }
+                                bestSimilarity >= config.matchThreshold -> {
+                                    failSession(
+                                        message = "Unable to confirm match - please hold still and look directly at the camera",
+                                        overlay = overlay
+                                    )
+                                }
+                                else -> {
+                                    failSession(
+                                        message = "Face does not match reference portrait",
+                                        overlay = overlay
+                                    )
+                                }
                             }
                             return
                         }
                         currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
                             RingSegment(color = pulseColor, scale = 1.0f)
                         }
-                        val overlay = createOverlay(frame, faces, currentSimilarity)
+                        val overlay = createOverlay(frame, faces, currentSimilarity, currentLiveness)
                         updateState(
                             message = "Hold still and look directly at the camera...",
                             overlay = overlay
@@ -373,7 +392,7 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
                     currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
                         RingSegment(color = pulseColor, scale = 1.0f)
                     }
-                    val overlay = createOverlay(frame, faces, currentSimilarity)
+                    val overlay = createOverlay(frame, faces, currentSimilarity, currentLiveness)
                     updateState(
                         message = prompt,
                         overlay = overlay
@@ -381,99 +400,7 @@ abstract class FaceNetSessionBase<TFace : DetectedFacePose>(
                 }
             }
 
-            Phase.MATCH_CONVEYED -> {
-                val elapsed = now - phaseStartTime
-                if (elapsed >= matchConveyDurationMs) {
-                    phase = Phase.LIVENESS_CHALLENGE
-                    phaseStartTime = now
-                    currentChallengeIndex = 0
-                    consecutivePoseFrames = 0
-                    currentRingSegments = computeDirectionSegments(challenges[0], 0.0f)
-                    val overlay = createOverlay(frame, faces, currentSimilarity)
-                    showChallenge(0.0f, overlay)
-                } else {
-                    currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                        RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.15f)
-                    }
-                    val overlay = createOverlay(frame, faces, currentSimilarity)
-                    updateState(
-                        message = "Hold still...",
-                        overlay = overlay
-                    )
-                }
-            }
-
-            Phase.LIVENESS_CHALLENGE -> {
-                val direction = challenges[currentChallengeIndex]
-                val progress = computeChallengeProgress(direction, yaw, pitch)
-
-                currentRingSegments = computeDirectionSegments(direction, progress)
-                val overlay = createOverlay(frame, faces, currentSimilarity)
-
-                if (progress >= 1.0f) {
-                    consecutivePoseFrames++
-                    if (consecutivePoseFrames >= 2) {
-                        currentChallengeIndex++
-                        consecutivePoseFrames = 0
-                        if (currentChallengeIndex >= challenges.size) {
-                            finalizeVerification(frame, faces, currentSimilarity)
-                            return
-                        } else {
-                            val nextDirection = challenges[currentChallengeIndex]
-                            currentRingSegments = computeDirectionSegments(nextDirection, 0.0f)
-                            val nextOverlay = createOverlay(frame, faces, currentSimilarity)
-                            showChallenge(0.0f, nextOverlay)
-                            return
-                        }
-                    }
-                } else {
-                    consecutivePoseFrames = 0
-                }
-
-                showChallenge(progress, overlay)
-            }
-
             Phase.COMPLETED, Phase.FAILED, Phase.INITIALIZING -> {}
-        }
-    }
-
-    private fun showChallenge(progress: Float, overlay: OverlayFrame? = null) {
-        val direction = challenges[currentChallengeIndex]
-        val promptText = getChallengePromptText(direction)
-        val stepText = "Step ${currentChallengeIndex + 1} of ${challenges.size}"
-
-        updateState(
-            message = "$promptText ($stepText)",
-            overlay = overlay
-        )
-    }
-
-    private fun finalizeVerification(
-        frame: CameraFrame,
-        faces: List<TFace>,
-        currentSimilarity: Float?
-    ) {
-        if (bestSimilarity >= config.matchThreshold) {
-            phase = Phase.COMPLETED
-            headPoseFilter.reset()
-            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.2f)
-            }
-            val successOverlay = createOverlay(frame, faces, currentSimilarity)
-            updateState(
-                message = "Identity verified",
-                status = FaceMatcherPromptState.Status.SUCCESS,
-                overlay = successOverlay
-            )
-        } else {
-            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                RingSegment(color = RingSegment.COLOR_RED, scale = 1.0f)
-            }
-            val overlay = createOverlay(frame, faces, currentSimilarity)
-            failSession(
-                message = "Face does not match reference portrait",
-                overlay = overlay
-            )
         }
     }
 

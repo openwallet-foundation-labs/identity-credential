@@ -266,4 +266,40 @@ class FaceMatchingTest {
         val directSim = matcher.matchPortraits(pngBytes, jp2Bytes)
         assertTrue(directSim >= 0.98f, "Direct match between PNG and JP2 should be >= 0.98 ($directSim)")
     }
+
+    @Test
+    fun testPassiveLivenessInference() = runTest {
+        val matcher = FaceNetFaceMatcher(
+            modelBytes = FaceTestData.testModel,
+            config = FaceNetModelConfig.MOBILE_FACENET
+        )
+        if (!matcher.isSupported) {
+            println("Skipping testPassiveLivenessInference: not supported on this platform")
+            return@runTest
+        }
+
+        val q1 = FaceTestData.decodeImageByteString(FaceTestData.QUALCOMM_DEMO_1_BASE64)
+        val q2 = FaceTestData.decodeImageByteString(FaceTestData.QUALCOMM_DEMO_2_BASE64)
+        val erika = FaceTestData.decodeImageByteString(FaceTestData.ERIKA_MUSTERMANN_BASE64)
+
+        val scoreQ1 = matcher.getPassiveLivenessScore(q1)
+        val scoreQ2 = matcher.getPassiveLivenessScore(q2)
+        val scoreErika = matcher.getPassiveLivenessScore(erika)
+
+        println("MiniFASNetV2 liveness scores: qualcomm_1=$scoreQ1, qualcomm_2=$scoreQ2, erika=$scoreErika")
+
+        assertTrue(
+            scoreQ1 >= FaceNetModelConfig.MOBILE_FACENET.passiveLivenessThreshold,
+            "Qualcomm demo 1 liveness score ($scoreQ1) must be >= threshold (${FaceNetModelConfig.MOBILE_FACENET.passiveLivenessThreshold})"
+        )
+        assertTrue(
+            scoreQ2 >= FaceNetModelConfig.MOBILE_FACENET.passiveLivenessThreshold,
+            "Qualcomm demo 2 liveness score ($scoreQ2) must be >= threshold (${FaceNetModelConfig.MOBILE_FACENET.passiveLivenessThreshold})"
+        )
+        assertTrue(
+            scoreErika >= FaceNetModelConfig.MOBILE_FACENET.passiveLivenessThreshold,
+            "Erika Mustermann liveness score ($scoreErika) must be >= threshold (${FaceNetModelConfig.MOBILE_FACENET.passiveLivenessThreshold})"
+        )
+    }
 }
+

@@ -28,10 +28,12 @@ typealias AndroidDetectedFace = BlazeFaceDetection
  * alignment parity with the iOS pipeline.
  */
 internal class AndroidFaceDetector(
-    modelBytes: ByteString? = null
+    modelBytes: ByteString? = null,
+    antiSpoofModelBytes: ByteString? = null
 ) : AutoCloseable {
 
     private val interpreter: Interpreter
+    private val antiSpoofInterpreter: Interpreter
     private val lock = Any()
     @Volatile
     private var isClosed = false
@@ -40,10 +42,10 @@ internal class AndroidFaceDetector(
     private val classificatorsIndex: Int
 
     init {
+        val ctx = try { applicationContext } catch (e: Throwable) { null }
         val bytes = when {
             modelBytes != null && !modelBytes.isEmpty() -> modelBytes.toByteArray()
             else -> {
-                val ctx = try { applicationContext } catch (e: Throwable) { null }
                 tryLoadFromAssets(ctx, "face_detection_short_range.tflite")
                     ?: BlazeFaceModelData.defaultModelBytes.toByteArray()
             }
@@ -62,6 +64,20 @@ internal class AndroidFaceDetector(
 
         interpreter = Interpreter(modelByteBuffer, interpreterOptions)
 
+        val antiSpoofBytes = when {
+            antiSpoofModelBytes != null && !antiSpoofModelBytes.isEmpty() -> antiSpoofModelBytes.toByteArray()
+            else -> {
+                tryLoadFromAssets(ctx, "minifasnet_v2_80x80_fp16.tflite")
+                    ?: MiniFasNetModelData.defaultModelBytes.toByteArray()
+            }
+        }
+        val antiSpoofByteBuffer = ByteBuffer.allocateDirect(antiSpoofBytes.size).apply {
+            order(ByteOrder.nativeOrder())
+            put(antiSpoofBytes)
+            rewind()
+        }
+        antiSpoofInterpreter = Interpreter(antiSpoofByteBuffer, interpreterOptions)
+
         val out0 = interpreter.getOutputTensor(0)
         val out0Shape = out0.shape()
         val out0LastDim = if (out0Shape.isNotEmpty()) out0Shape[out0Shape.size - 1] else 16
@@ -75,7 +91,7 @@ internal class AndroidFaceDetector(
 
         Logger.d(
             TAG,
-            "BlazeFace detector initialized on Android: regressorsIndex=$regressorsIndex, " +
+            "BlazeFace + MiniFASNetV2 initialized on Android: regressorsIndex=$regressorsIndex, " +
                     "classificatorsIndex=$classificatorsIndex"
         )
     }
@@ -261,6 +277,90 @@ internal class AndroidFaceDetector(
         }
     }
 
+    fun computeLivenessScore(frame: CameraFrame, face: AndroidDetectedFace): Float? {
+        if (isClosed) return null
+        val platformHandle = frame.platformHandle
+        val (sourceBitmap, shouldRecycle) = when {
+            platformHandle is ImageProxy -> {
+                val rotationDegrees = platformHandle.imageInfo.rotationDegrees
+                val rawBitmap = platformHandle.toBitmap()
+                val bitmap = rotateBitmap(rawBitmap, rotationDegrees)
+                if (bitmap != rawBitmap) rawBitmap.recycle()
+                Pair(bitmap, true)
+            }
+            platformHandle is Bitmap -> {
+                val bitmap = rotateBitmap(platformHandle, frame.rotationDegrees)
+                Pair(bitmap, bitmap != platformHandle)
+            }
+            else -> Pair(null, false)
+        }
+
+        if (sourceBitmap == null) return null
+
+        try {
+            return computeLivenessScore(sourceBitmap, face)
+        } finally {
+            if (shouldRecycle) {
+                sourceBitmap.recycle()
+            }
+        }
+    }
+
+    fun computeLivenessScore(sourceBitmap: Bitmap, face: AndroidDetectedFace): Float? {
+        synchronized(lock) {
+            if (isClosed) return null
+            val imgW = sourceBitmap.width
+            val imgH = sourceBitmap.height
+            if (imgW <= 1 || imgH <= 1) return null
+
+            val cropBox = computeAntiSpoofCropBox(
+                boundingBox = face.boundingBox,
+                imageWidth = imgW,
+                imageHeight = imgH,
+                scale = 2.7
+            )
+            val left = cropBox.left.toInt().coerceIn(0, imgW - 1)
+            val top = cropBox.top.toInt().coerceIn(0, imgH - 1)
+            val width = cropBox.width.toInt().coerceIn(1, imgW - left)
+            val height = cropBox.height.toInt().coerceIn(1, imgH - top)
+
+            val subBitmap = Bitmap.createBitmap(sourceBitmap, left, top, width, height)
+            val scaledBitmap = if (width == 80 && height == 80) {
+                subBitmap
+            } else {
+                val scaled = Bitmap.createScaledBitmap(subBitmap, 80, 80, true)
+                if (scaled != subBitmap) {
+                    subBitmap.recycle()
+                }
+                scaled
+            }
+
+            val pixels = IntArray(80 * 80)
+            scaledBitmap.getPixels(pixels, 0, 80, 0, 0, 80, 80)
+            if (scaledBitmap != sourceBitmap) {
+                scaledBitmap.recycle()
+            }
+
+            val inputBuffer = ByteBuffer.allocateDirect(80 * 80 * 3 * Float.SIZE_BYTES).apply {
+                order(ByteOrder.nativeOrder())
+            }
+            for (p in pixels) {
+                val r = (p shr 16) and 0xFF
+                val g = (p shr 8) and 0xFF
+                val b = p and 0xFF
+                inputBuffer.putFloat(r.toFloat())
+                inputBuffer.putFloat(g.toFloat())
+                inputBuffer.putFloat(b.toFloat())
+            }
+            inputBuffer.rewind()
+
+            val outputProbabilities = Array(1) { FloatArray(3) }
+            antiSpoofInterpreter.run(inputBuffer, outputProbabilities)
+            // Class 1 is Real Face probability; Classes 0 and 2 are Spoof probabilities
+            return outputProbabilities[0][1].coerceIn(0f, 1f)
+        }
+    }
+
     internal fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
         val normDegrees = ((degrees % 360) + 360) % 360
         if (normDegrees == 0) return bitmap
@@ -276,6 +376,11 @@ internal class AndroidFaceDetector(
                 interpreter.close()
             } catch (e: Exception) {
                 Logger.w(TAG, "Error closing face detector interpreter", e)
+            }
+            try {
+                antiSpoofInterpreter.close()
+            } catch (e: Exception) {
+                Logger.w(TAG, "Error closing anti-spoof interpreter", e)
             }
         }
     }

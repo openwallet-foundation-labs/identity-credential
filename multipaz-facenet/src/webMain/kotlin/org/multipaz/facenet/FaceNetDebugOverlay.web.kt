@@ -10,5 +10,8 @@ internal actual fun renderOverlay(
     debug: Boolean,
     currentSimilarity: Float?,
     bestSimilarity: Float,
-    matchThreshold: Float
+    matchThreshold: Float,
+    currentLivenessScore: Float?,
+    livenessThreshold: Float
 ): OverlayFrame? = null
+

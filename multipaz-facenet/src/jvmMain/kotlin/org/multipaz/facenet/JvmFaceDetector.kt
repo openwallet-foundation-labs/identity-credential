@@ -23,7 +23,8 @@ private const val TAG = "JvmFaceDetector"
  * matching iOS and Android detection and alignment.
  */
 internal class JvmFaceDetector(
-    modelBytes: ByteString? = null
+    modelBytes: ByteString? = null,
+    antiSpoofModelBytes: ByteString? = null
 ) : AutoCloseable {
 
     private val lib = TfLiteCLibrary.instance
@@ -31,6 +32,10 @@ internal class JvmFaceDetector(
     private var model: Pointer? = null
     private var options: Pointer? = null
     private var interpreter: Pointer? = null
+    private var antiSpoofModelMemory: Memory? = null
+    private var antiSpoofModel: Pointer? = null
+    private var antiSpoofOptions: Pointer? = null
+    private var antiSpoofInterpreter: Pointer? = null
     private val regressorsIndex: Int
     private val classificatorsIndex: Int
     private val lock = Any()
@@ -64,6 +69,33 @@ internal class JvmFaceDetector(
         if (allocStatus != TfLiteCLibrary.KTFLITE_OK) {
             close()
             throw IllegalStateException("TfLiteInterpreterAllocateTensors failed for BlazeFace with status $allocStatus")
+        }
+
+        val fasBytes = when {
+            antiSpoofModelBytes != null && !antiSpoofModelBytes.isEmpty() -> antiSpoofModelBytes.toByteArray()
+            else -> MiniFasNetModelData.defaultModelBytes.toByteArray()
+        }
+        val fasMem = Memory(fasBytes.size.toLong())
+        fasMem.write(0, fasBytes, 0, fasBytes.size)
+        antiSpoofModelMemory = fasMem
+
+        val localFasModel = lib.TfLiteModelCreate(fasMem, fasBytes.size.toLong())
+            ?: throw IllegalStateException("Failed to parse MiniFASNetV2 model from bytes.")
+        antiSpoofModel = localFasModel
+
+        val localFasOptions = lib.TfLiteInterpreterOptionsCreate()
+            ?: throw IllegalStateException("Failed to create TfLiteInterpreterOptions for MiniFASNetV2.")
+        antiSpoofOptions = localFasOptions
+        lib.TfLiteInterpreterOptionsSetNumThreads(localFasOptions, 4)
+
+        val localFasInterpreter = lib.TfLiteInterpreterCreate(localFasModel, localFasOptions)
+            ?: throw IllegalStateException("Failed to create TfLiteInterpreter for MiniFASNetV2.")
+        antiSpoofInterpreter = localFasInterpreter
+
+        val fasAllocStatus = lib.TfLiteInterpreterAllocateTensors(localFasInterpreter)
+        if (fasAllocStatus != TfLiteCLibrary.KTFLITE_OK) {
+            close()
+            throw IllegalStateException("TfLiteInterpreterAllocateTensors failed for MiniFASNetV2 with status $fasAllocStatus")
         }
 
         val out0 = lib.TfLiteInterpreterGetOutputTensor(localInterpreter, 0)
@@ -296,6 +328,75 @@ internal class JvmFaceDetector(
         return extractFaceCrop(image, face, targetSize)
     }
 
+    fun computeLivenessScore(frame: CameraFrame, face: BlazeFaceDetection): Float? {
+        val image = decodeFrameToImage(frame) ?: return null
+        return computeLivenessScore(image, face)
+    }
+
+    fun computeLivenessScore(imageBytes: ByteArray, face: BlazeFaceDetection): Float? {
+        val image = decodeImageBytesToBufferedImage(imageBytes) ?: return null
+        return computeLivenessScore(image, face)
+    }
+
+    fun computeLivenessScore(sourceImage: BufferedImage, face: BlazeFaceDetection): Float? {
+        synchronized(lock) {
+            if (isClosed) return null
+            val localFasInterp = antiSpoofInterpreter ?: return null
+
+            val imgW = sourceImage.width
+            val imgH = sourceImage.height
+            if (imgW <= 1 || imgH <= 1) return null
+
+            val cropBox = computeAntiSpoofCropBox(
+                boundingBox = face.boundingBox,
+                imageWidth = imgW,
+                imageHeight = imgH,
+                scale = 2.7
+            )
+            val left = cropBox.left.toInt().coerceIn(0, imgW - 1)
+            val top = cropBox.top.toInt().coerceIn(0, imgH - 1)
+            val width = cropBox.width.toInt().coerceIn(1, imgW - left)
+            val height = cropBox.height.toInt().coerceIn(1, imgH - top)
+
+            val subImage = sourceImage.getSubimage(left, top, width, height)
+            val targetSize = 80
+            val cropImage = BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_RGB)
+            val g2d = cropImage.createGraphics()
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+            g2d.drawImage(subImage, 0, 0, targetSize, targetSize, null)
+            g2d.dispose()
+
+            val inMem = Memory((targetSize * targetSize * 3 * 4).toLong())
+            var idx = 0
+            for (y in 0 until targetSize) {
+                for (x in 0 until targetSize) {
+                    val rgb = cropImage.getRGB(x, y)
+                    val r = (rgb shr 16) and 0xFF
+                    val gVal = (rgb shr 8) and 0xFF
+                    val b = rgb and 0xFF
+                    inMem.setFloat((idx++ * 4).toLong(), r.toFloat())
+                    inMem.setFloat((idx++ * 4).toLong(), gVal.toFloat())
+                    inMem.setFloat((idx++ * 4).toLong(), b.toFloat())
+                }
+            }
+
+            val inTensor = lib.TfLiteInterpreterGetInputTensor(localFasInterp, 0) ?: return null
+            if (lib.TfLiteTensorCopyFromBuffer(inTensor, inMem, inMem.size()) != TfLiteCLibrary.KTFLITE_OK) {
+                return null
+            }
+            if (lib.TfLiteInterpreterInvoke(localFasInterp) != TfLiteCLibrary.KTFLITE_OK) {
+                return null
+            }
+            val outTensor = lib.TfLiteInterpreterGetOutputTensor(localFasInterp, 0) ?: return null
+            val outMem = Memory(3 * 4L)
+            if (lib.TfLiteTensorCopyToBuffer(outTensor, outMem, outMem.size()) != TfLiteCLibrary.KTFLITE_OK) {
+                return null
+            }
+            return outMem.getFloat(1 * 4L).coerceIn(0f, 1f)
+        }
+    }
+
     private fun decodeFrameToImage(frame: CameraFrame): BufferedImage? {
         val rawImage = (frame.platformHandle as? BufferedImage) ?: return null
 
@@ -323,6 +424,13 @@ internal class JvmFaceDetector(
         synchronized(lock) {
             if (isClosed) return
             isClosed = true
+            antiSpoofInterpreter?.let { lib.TfLiteInterpreterDelete(it) }
+            antiSpoofInterpreter = null
+            antiSpoofOptions?.let { lib.TfLiteInterpreterOptionsDelete(it) }
+            antiSpoofOptions = null
+            antiSpoofModel?.let { lib.TfLiteModelDelete(it) }
+            antiSpoofModel = null
+            antiSpoofModelMemory = null
             interpreter?.let { lib.TfLiteInterpreterDelete(it) }
             interpreter = null
             options?.let { lib.TfLiteInterpreterOptionsDelete(it) }
