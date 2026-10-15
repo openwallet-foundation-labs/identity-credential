@@ -19,7 +19,9 @@ internal actual fun renderOverlay(
     debug: Boolean,
     currentSimilarity: Float?,
     bestSimilarity: Float,
-    matchThreshold: Float
+    matchThreshold: Float,
+    currentLivenessScore: Float?,
+    livenessThreshold: Float
 ): OverlayFrame? {
     val firstFace = faces.firstOrNull() as? BlazeFaceDetection
     val width = if (firstFace != null && firstFace.imageWidth > 0) firstFace.imageWidth else frame.uprightWidth
@@ -170,15 +172,31 @@ internal actual fun renderOverlay(
 
             // Match percentage badge
             val similarityToDisplay = currentSimilarity ?: if (bestSimilarity > 0f) bestSimilarity else null
-            if (similarityToDisplay != null) {
-                val percentage = (similarityToDisplay * 100).toInt().coerceIn(0, 100)
-                val isMatch = similarityToDisplay >= matchThreshold
+            if (similarityToDisplay != null || currentLivenessScore != null) {
+                val text = when {
+                    similarityToDisplay != null && currentLivenessScore != null -> {
+                        val simPct = (similarityToDisplay * 100).toInt().coerceIn(0, 100)
+                        val livePct = (currentLivenessScore * 100).toInt().coerceIn(0, 100)
+                        "$simPct% · L:$livePct%"
+                    }
+                    similarityToDisplay != null -> {
+                        val percentage = (similarityToDisplay * 100).toInt().coerceIn(0, 100)
+                        "$percentage%"
+                    }
+                    else -> {
+                        val livePct = (currentLivenessScore!! * 100).toInt().coerceIn(0, 100)
+                        "L:$livePct%"
+                    }
+                }
+                val isMatch = (similarityToDisplay == null || similarityToDisplay >= matchThreshold) &&
+                    (currentLivenessScore == null || currentLivenessScore >= livenessThreshold)
                 val labelColor = when {
                     isMatch -> Color(0x69, 0xF0, 0xAE)
-                    similarityToDisplay >= 0.4f -> Color(0xFF, 0xD6, 0x00)
+                    (similarityToDisplay != null && similarityToDisplay >= 0.4f) ||
+                        (similarityToDisplay == null && currentLivenessScore != null && currentLivenessScore >= 0.3f) ->
+                        Color(0xFF, 0xD6, 0x00)
                     else -> Color(0xFF, 0x52, 0x52)
                 }
-                val text = "$percentage%"
                 g.font = Font("SansSerif", Font.BOLD, (16f * dpToPx).toInt())
                 val fm = g.fontMetrics
                 val textW = fm.stringWidth(text)

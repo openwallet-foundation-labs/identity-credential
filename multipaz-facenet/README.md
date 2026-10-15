@@ -1,8 +1,8 @@
 # Multipaz FaceNet Module
 
-The `multipaz-facenet` module provides cross-platform biometric face matching and active liveness verification for the Multipaz SDK. It uses Google MediaPipe BlazeFace for landmark alignment and MobileFaceNet for feature extraction and similarity scoring.
+The `multipaz-facenet` module provides cross-platform biometric face matching and passive liveness verification for the Multipaz SDK. It uses Google MediaPipe BlazeFace for landmark alignment, MobileFaceNet for feature extraction and similarity scoring, and `MiniFASNetV2` (`Silent-Face-Anti-Spoofing`) for single-frame passive presentation attack detection (PAD).
 
-In addition to implementing the client-side `FaceMatcher` interface for wallet applications on mobile devices (Android and iOS), this module can also be used on the server-side (JVM on Linux and macOS) for face detection, aligned face cropping, and portrait-to-portrait matching—for example, in identity issuance and credential-provisioning flows where an applicant's portrait photo must be verified against existing records or government registry portraits.
+In addition to implementing the client-side `FaceMatcher` interface for wallet applications on mobile devices (Android and iOS), this module can also be used on the server-side (JVM on Linux and macOS) for face detection, aligned face cropping, passive anti-spoofing, and portrait-to-portrait matching—for example, in identity issuance and credential-provisioning flows where an applicant's portrait photo must be verified against existing records or government registry portraits.
 
 ## Table of Contents
 
@@ -19,14 +19,15 @@ In addition to implementing the client-side `FaceMatcher` interface for wallet a
 
 The module enables two primary biometric workflows:
 
-1. **Face Matching against Reference Portrait**: Compares live camera frames against an issued credential portrait (in PNG, JPEG, or JPEG 2000 format).
-2. **Active Liveness Verification**: Guides the user through randomized head-pose challenges (left, right, tilt up, tilt down, straight ahead) followed by high-resolution still portrait capture.
+1. **Face Matching against Reference Portrait**: Compares live camera frames against an issued credential portrait (in PNG, JPEG, or JPEG 2000 format) while simultaneously verifying passive liveness (`MiniFASNetV2`).
+2. **Passive Liveness Verification & Portrait Capture**: Evaluates real-vs-spoof liveness while the user looks directly at the camera (without requiring head-pose challenges) and captures a high-resolution upright portrait photo.
 
 ### Key Components
 
 - **`FaceNetFaceMatcher`**: Main entry point implementing `org.multipaz.facematch.FaceMatcher`. Accepts a MobileFaceNet model provider, configuration (`FaceNetModelConfig`), and optional debug logging.
-- **`FaceNetSessionBase` / `FaceNetLivenessSessionBase`**: Platform-agnostic state machines managing detection frames, landmark verification, consecutive matching thresholds, and challenge transitions.
-- **`BlazeFaceDecoder` & `BlazeFaceModelData`**: MediaPipe BlazeFace short-range face detector. Extracts bounding boxes and 6 2D facial landmarks (eyes, nose, mouth center, ear tragi) for eye-level affine rotation and face cropping.
+- **`FaceNetSessionBase` / `FaceNetLivenessSessionBase`**: Platform-agnostic state machines managing detection frames, landmark verification, passive anti-spoofing checks, and consecutive matching thresholds.
+- **`BlazeFaceDecoder` & `BlazeFaceModelData`**: MediaPipe BlazeFace short-range face detector. Extracts bounding boxes and 6 2D facial landmarks (eyes, nose, mouth center, ear tragi) for 4-point least-squares Procrustes/Umeyama similarity alignment and face cropping.
+- **`MiniFasNetModelData`**: Embedded `MiniFASNetV2` (`2.7_80x80_MiniFASNetV2`, Apache-2.0 license) passive anti-spoofing CNN trained with Fourier spectrum supervision to detect printed photos and digital screen replay attacks from a single straight-gaze frame.
 - **Platform Interpreters**:
   - **Android**: `AndroidFaceNetInterpreter` & `AndroidFaceDetector` using Google LiteRT (`org.tensorflow.lite.Interpreter`).
   - **iOS**: `IosFaceNetInterpreter` & `IosFaceDetector` using TensorFlowLiteC via Kotlin/Native cinterop.
@@ -35,19 +36,19 @@ The module enables two primary biometric workflows:
 ### Debug Mode & Cheat Mode
 
 When `FaceNetFaceMatcher` is instantiated with `debug = true` (or registered with the identifier `"facenet_debug"`):
-- **On-Screen Biometric Telemetry**: The camera preview overlay displays real-time similarity scores, match threshold, and facial landmark bounding boxes.
+- **On-Screen Biometric Telemetry**: The camera preview overlay displays real-time similarity scores, passive liveness scores (`L:%`), thresholds, and facial landmark wireframes.
 - **Cheat Mode**: Tapping or pressing anywhere on the camera video preview area instantly satisfies the biometric match or liveness check (setting similarity to `1.0f` and marking verification as successful). This enables developers to easily test presentation and verification flows with non-matching test credentials or in simulator environments without needing the actual credential subject present.
 
 ---
 
 ## Supported Platforms
 
-| Platform | Face Detection Engine | Embedding / Matching Engine | Native Acceleration |
-| :--- | :--- | :--- | :--- |
-| **Android** | MediaPipe BlazeFace (LiteRT) | MobileFaceNet (LiteRT) | CPU / XNNPACK (4 threads) |
-| **iOS** (Device & Simulator) | MediaPipe BlazeFace (TFLite C) | MobileFaceNet (TFLite C) | CPU / XNNPACK |
-| **JVM** (Linux & macOS: Server/Desktop) | MediaPipe BlazeFace (TFLite C) | MobileFaceNet (TFLite C) | CPU / XNNPACK |
-| **Web** (JS / Wasm) | Stubs / Prompts | Stubs / Prompts | Browser Camera Stream |
+| Platform | Face Detection Engine | Anti-Spoofing Engine | Embedding / Matching Engine | Native Acceleration |
+| :--- | :--- | :--- | :--- | :--- |
+| **Android** | MediaPipe BlazeFace (LiteRT) | MiniFASNetV2 (LiteRT) | MobileFaceNet (LiteRT) | CPU / XNNPACK (4 threads) |
+| **iOS** (Device & Simulator) | MediaPipe BlazeFace (TFLite C) | MiniFASNetV2 (TFLite C) | MobileFaceNet (TFLite C) | CPU / XNNPACK |
+| **JVM** (Linux & macOS: Server/Desktop) | MediaPipe BlazeFace (TFLite C) | MiniFASNetV2 (TFLite C) | MobileFaceNet (TFLite C) | CPU / XNNPACK |
+| **Web** (JS / Wasm) | Stubs / Prompts | Stubs / Prompts | Stubs / Prompts | Browser Camera Stream |
 
 ---
 
@@ -76,6 +77,10 @@ The `prebuilts/` directory houses native binaries and model files required for c
 ### 3. `prebuilts/face_detection_short_range.tflite`
 - **Purpose**: Google MediaPipe BlazeFace short-range face detection model (Apache License 2.0).
 - **Usage**: Used directly as an asset/resource on Android and iOS when bundled. A Base64-encoded fallback is also embedded in `BlazeFaceModelData.kt` to guarantee out-of-the-box operation without requiring external asset packaging.
+
+### 4. `prebuilts/minifasnet_v2_80x80_fp16.tflite`
+- **Purpose**: `MiniFASNetV2` (`2.7_80x80_MiniFASNetV2`) passive face anti-spoofing model from `minivision-ai/Silent-Face-Anti-Spoofing` (Apache License 2.0), converted to FP16 TFLite.
+- **Usage**: Evaluates an 80x80 `2.7x`-expanded bounding-box face crop and outputs 3-class softmax probabilities (`[spoof_0, real_1, spoof_2]`). A Base64-encoded fallback is embedded in `MiniFasNetModelData.kt` for zero-configuration cross-platform operation.
 
 ---
 

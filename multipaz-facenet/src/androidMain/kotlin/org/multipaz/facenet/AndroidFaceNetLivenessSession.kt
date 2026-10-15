@@ -36,6 +36,11 @@ internal class AndroidFaceNetLivenessSession(
         return activeDetector.detectFaces(frame)
     }
 
+    override suspend fun computeLivenessScore(frame: CameraFrame, face: AndroidDetectedFace): Float? {
+        val activeDetector = detector ?: return null
+        return activeDetector.computeLivenessScore(frame, face)
+    }
+
     override suspend fun captureHighResolutionImage(frame: CameraFrame): ByteString? {
         val platformHandle = frame.platformHandle
         val (sourceBitmap, shouldRecycle) = when {

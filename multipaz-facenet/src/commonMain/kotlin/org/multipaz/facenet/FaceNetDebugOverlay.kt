@@ -10,5 +10,8 @@ internal expect fun renderOverlay(
     debug: Boolean,
     currentSimilarity: Float?,
     bestSimilarity: Float,
-    matchThreshold: Float
+    matchThreshold: Float,
+    currentLivenessScore: Float? = null,
+    livenessThreshold: Float = 0.50f
 ): OverlayFrame?
+

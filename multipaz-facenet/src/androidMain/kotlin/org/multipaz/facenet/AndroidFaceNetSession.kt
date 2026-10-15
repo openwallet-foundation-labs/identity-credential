@@ -89,6 +89,11 @@ internal class AndroidFaceNetSession(
         return cameraEmbedding
     }
 
+    override suspend fun computeLivenessScore(frame: CameraFrame, face: AndroidDetectedFace): Float? {
+        val activeDetector = detector ?: return null
+        return activeDetector.computeLivenessScore(frame, face)
+    }
+
     override fun onSessionClosed() {
         try {
             detector?.close()

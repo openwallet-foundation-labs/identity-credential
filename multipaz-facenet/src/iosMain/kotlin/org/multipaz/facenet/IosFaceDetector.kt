@@ -90,7 +90,8 @@ private data class ImageRefHolder(
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 internal class IosFaceDetector(
-    modelBytes: ByteString? = null
+    modelBytes: ByteString? = null,
+    antiSpoofModelBytes: ByteString? = null
 ) : AutoCloseable {
 
     private val isClosed = kotlinx.atomicfu.atomic(false)
@@ -100,6 +101,11 @@ internal class IosFaceDetector(
     private var options: CPointer<TfLiteInterpreterOptions>? = null
     private var xnnpackDelegate: CPointer<TfLiteDelegate>? = null
     private var interpreter: CPointer<TfLiteInterpreter>? = null
+
+    private var antiSpoofModelData: kotlinx.cinterop.COpaquePointer? = null
+    private var antiSpoofModel: CPointer<TfLiteModel>? = null
+    private var antiSpoofOptions: CPointer<TfLiteInterpreterOptions>? = null
+    private var antiSpoofInterpreter: CPointer<TfLiteInterpreter>? = null
 
     private val regressorsIndex: Int
     private val classificatorsIndex: Int
@@ -151,6 +157,42 @@ internal class IosFaceDetector(
             throw IllegalStateException("Failed to allocate tensors in TfLiteInterpreter: status $allocStatus")
         }
 
+        // Initialize MiniFASNetV2 passive anti-spoofing interpreter
+        val fasBytes = when {
+            antiSpoofModelBytes != null && !antiSpoofModelBytes.isEmpty() -> antiSpoofModelBytes.toByteArray()
+            else -> loadModelFromBundle("minifasnet_v2_80x80_fp16")
+                ?: MiniFasNetModelData.defaultModelBytes.toByteArray()
+        }
+        val nativeFasBytes = platform.posix.malloc(fasBytes.size.toULong())
+            ?: throw OutOfMemoryError("Failed to allocate native memory for MiniFASNetV2 model")
+        fasBytes.usePinned { pinned ->
+            platform.posix.memcpy(nativeFasBytes, pinned.addressOf(0), fasBytes.size.toULong())
+        }
+        antiSpoofModelData = nativeFasBytes
+
+        val localFasModel = TfLiteModelCreate(nativeFasBytes, fasBytes.size.toULong())
+            ?: run {
+                platform.posix.free(nativeFasBytes)
+                antiSpoofModelData = null
+                throw IllegalStateException("Failed to parse MiniFASNetV2 model from bytes.")
+            }
+        antiSpoofModel = localFasModel
+
+        val localFasOptions = TfLiteInterpreterOptionsCreate()
+            ?: throw IllegalStateException("Failed to create TfLiteInterpreterOptions for MiniFASNetV2.")
+        antiSpoofOptions = localFasOptions
+        TfLiteInterpreterOptionsSetNumThreads(localFasOptions, 4)
+        xnnpackDelegate?.let { TfLiteInterpreterOptionsAddDelegate(localFasOptions, it) }
+
+        val localFasInterpreter = TfLiteInterpreterCreate(localFasModel, localFasOptions)
+            ?: throw IllegalStateException("Failed to create TfLiteInterpreter for MiniFASNetV2.")
+        antiSpoofInterpreter = localFasInterpreter
+
+        val fasAllocStatus = TfLiteInterpreterAllocateTensors(localFasInterpreter)
+        if (fasAllocStatus != kTfLiteOk) {
+            throw IllegalStateException("Failed to allocate tensors for MiniFASNetV2: status $fasAllocStatus")
+        }
+
         val out0 = TfLiteInterpreterGetOutputTensor(localInterpreter, 0)
         val out0LastDim = if (out0 != null) TfLiteTensorDim(out0, 2) else 16
         if (out0LastDim == 16) {
@@ -163,7 +205,7 @@ internal class IosFaceDetector(
 
         Logger.d(
             TAG,
-            "BlazeFace detector initialized on iOS: regressorsIndex=$regressorsIndex, " +
+            "BlazeFace + MiniFASNetV2 initialized on iOS: regressorsIndex=$regressorsIndex, " +
                     "classificatorsIndex=$classificatorsIndex"
         )
     }
@@ -573,9 +615,128 @@ internal class IosFaceDetector(
         return cgImage
     }
 
+    fun computeLivenessScore(frame: CameraFrame, face: IosDetectedFace): Float? {
+        val holder = extractCgImage(frame) ?: return null
+        val (uprightImage, isAllocated) = ensureUpright(holder.cgImage, frame.rotationDegrees)
+        return try {
+            computeLivenessScore(uprightImage, face)
+        } finally {
+            if (isAllocated) {
+                CGImageRelease(uprightImage)
+            }
+            if (holder.needsRelease) {
+                CGImageRelease(holder.cgImage)
+            }
+        }
+    }
+
+    fun computeLivenessScore(imageBytes: ByteArray, face: IosDetectedFace): Float? {
+        val cgImage = decodeToCgImage(imageBytes) ?: return null
+        return try {
+            computeLivenessScore(cgImage, face)
+        } finally {
+            CGImageRelease(cgImage)
+        }
+    }
+
+    fun computeLivenessScore(sourceImage: CGImageRef, face: IosDetectedFace): Float? {
+        if (isClosed.value) return null
+        val localFasInterpreter = antiSpoofInterpreter ?: return null
+
+        val imgW = CGImageGetWidth(sourceImage).toDouble()
+        val imgH = CGImageGetHeight(sourceImage).toDouble()
+        if (imgW <= 1.0 || imgH <= 1.0) return null
+
+        val cropBox = computeAntiSpoofCropBox(
+            boundingBox = face.boundingBox,
+            imageWidth = imgW.toInt(),
+            imageHeight = imgH.toInt(),
+            scale = 2.7
+        )
+
+        val targetSize = 80
+        val colorSpace = CGColorSpaceCreateDeviceRGB()
+        val bitmapContext = CGBitmapContextCreate(
+            data = null,
+            width = targetSize.toULong(),
+            height = targetSize.toULong(),
+            bitsPerComponent = 8u,
+            bytesPerRow = (targetSize * 4).toULong(),
+            space = colorSpace,
+            bitmapInfo = CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value
+        )
+        CGColorSpaceRelease(colorSpace)
+        if (bitmapContext == null) return null
+
+        val inputFloats = FloatArray(targetSize * targetSize * 3)
+        try {
+            CGContextSaveGState(bitmapContext)
+            try {
+                val scaleX = targetSize.toDouble() / cropBox.width.coerceAtLeast(1.0)
+                val scaleY = targetSize.toDouble() / cropBox.height.coerceAtLeast(1.0)
+                val bottomUpY = imgH - (cropBox.top + cropBox.height)
+                val t1 = CGAffineTransformMakeScale(scaleX, scaleY)
+                val t2 = CGAffineTransformMakeTranslation(-cropBox.left, -bottomUpY)
+                val transform = CGAffineTransformConcat(t2, t1)
+                CGContextConcatCTM(bitmapContext, transform)
+                CGContextDrawImage(bitmapContext, CGRectMake(0.0, 0.0, imgW, imgH), sourceImage)
+            } finally {
+                CGContextRestoreGState(bitmapContext)
+            }
+
+            val rawData = CGBitmapContextGetData(bitmapContext) ?: return null
+            val bytePtr = rawData.reinterpret<ByteVar>()
+            var floatIdx = 0
+            for (i in 0 until targetSize * targetSize) {
+                val r = bytePtr[i * 4 + 0].toInt() and 0xFF
+                val g = bytePtr[i * 4 + 1].toInt() and 0xFF
+                val b = bytePtr[i * 4 + 2].toInt() and 0xFF
+                inputFloats[floatIdx++] = r.toFloat()
+                inputFloats[floatIdx++] = g.toFloat()
+                inputFloats[floatIdx++] = b.toFloat()
+            }
+        } finally {
+            CGContextRelease(bitmapContext)
+        }
+
+        val inTensor = TfLiteInterpreterGetInputTensor(localFasInterpreter, 0) ?: return null
+        val inByteSize = (inputFloats.size * Float.SIZE_BYTES).toULong()
+        val copyInOk = inputFloats.usePinned { pinned ->
+            TfLiteTensorCopyFromBuffer(inTensor, pinned.addressOf(0), inByteSize) == kTfLiteOk
+        }
+        if (!copyInOk) return null
+
+        if (TfLiteInterpreterInvoke(localFasInterpreter) != kTfLiteOk) return null
+
+        val outTensor = TfLiteInterpreterGetOutputTensor(localFasInterpreter, 0) ?: return null
+        val outProbs = FloatArray(3)
+        val copyOutOk = outProbs.usePinned { pinned ->
+            TfLiteTensorCopyToBuffer(outTensor, pinned.addressOf(0), (outProbs.size * Float.SIZE_BYTES).toULong()) == kTfLiteOk
+        }
+        if (!copyOutOk) return null
+
+        return outProbs[1].coerceIn(0f, 1f)
+    }
+
     override fun close() {
         if (isClosed.value) return
         isClosed.value = true
+        antiSpoofInterpreter?.let {
+            TfLiteInterpreterDelete(it)
+            antiSpoofInterpreter = null
+        }
+        antiSpoofOptions?.let {
+            TfLiteInterpreterOptionsDelete(it)
+            antiSpoofOptions = null
+        }
+        antiSpoofModel?.let {
+            TfLiteModelDelete(it)
+            antiSpoofModel = null
+        }
+        antiSpoofModelData?.let {
+            platform.posix.free(it)
+            antiSpoofModelData = null
+        }
         interpreter?.let {
             TfLiteInterpreterDelete(it)
             interpreter = null

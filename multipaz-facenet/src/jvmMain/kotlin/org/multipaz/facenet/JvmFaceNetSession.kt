@@ -61,6 +61,11 @@ internal class JvmFaceNetSession(
         return activeInterpreter.getEmbedding(faceCrop)
     }
 
+    override suspend fun computeLivenessScore(frame: CameraFrame, face: BlazeFaceDetection): Float? {
+        val activeDetector = detector ?: return null
+        return activeDetector.computeLivenessScore(frame, face)
+    }
+
     override fun onSessionClosed() {
         try {
             detector?.close()

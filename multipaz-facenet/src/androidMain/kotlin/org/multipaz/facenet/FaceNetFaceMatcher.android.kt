@@ -121,3 +121,24 @@ internal actual suspend fun extractDetectedFaceCrop(
     }
 }
 
+internal actual suspend fun computePortraitLivenessScore(
+    portrait: ByteString
+): Float {
+    AndroidFaceDetector().use { detector ->
+        val bytes = portrait.toByteArray()
+        val bitmap = decodePortraitBytesToBitmap(bytes)
+            ?: throw IllegalArgumentException("Failed to decode portrait bytes to bitmap")
+        try {
+            val faces = detector.detectFaces(bitmap)
+            if (faces.isEmpty()) {
+                throw IllegalArgumentException("No face detected in portrait")
+            }
+            return detector.computeLivenessScore(bitmap, faces[0])
+                ?: throw IllegalStateException("Failed to compute liveness score")
+        } finally {
+            bitmap.recycle()
+        }
+    }
+}
+
+

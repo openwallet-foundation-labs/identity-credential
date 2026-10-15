@@ -91,3 +91,18 @@ internal actual suspend fun extractDetectedFaceCrop(
     }
 }
 
+internal actual suspend fun computePortraitLivenessScore(
+    portrait: ByteString
+): Float {
+    IosFaceDetector().use { detector ->
+        val bytes = portrait.toByteArray()
+        val faces = detector.detectFaces(bytes)
+        if (faces.isEmpty()) {
+            throw IllegalArgumentException("No face detected in portrait")
+        }
+        return detector.computeLivenessScore(bytes, faces[0])
+            ?: throw IllegalStateException("Failed to compute liveness score")
+    }
+}
+
+

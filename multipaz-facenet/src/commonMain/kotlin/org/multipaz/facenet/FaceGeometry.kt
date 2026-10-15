@@ -109,3 +109,65 @@ fun computeFaceAlignmentTransform(
     return SimilarityTransform2D(a = a, b = b, tx = tx, ty = ty)
 }
 
+/**
+ * Computes the expanded, image-clamped bounding box for passive face anti-spoofing (`MiniFASNetV2`).
+ *
+ * Follows the `Silent-Face-Anti-Spoofing` `CropImage._get_new_box` formulation: expands [boundingBox]
+ * around its center by [scale] (default `2.7` for `MiniFASNetV2`), capped so the expanded box does not
+ * exceed the source image dimensions, and shifts the box inward if it extends beyond `[0, imageWidth - 1]`
+ * or `[0, imageHeight - 1]`.
+ */
+fun computeAntiSpoofCropBox(
+    boundingBox: FaceBoundingBox,
+    imageWidth: Int,
+    imageHeight: Int,
+    scale: Double = 2.7
+): FaceBoundingBox {
+    val srcW = imageWidth.toDouble()
+    val srcH = imageHeight.toDouble()
+    if (srcW <= 1.0 || srcH <= 1.0 || boundingBox.width <= 0.0 || boundingBox.height <= 0.0) {
+        return FaceBoundingBox(0.0, 0.0, srcW.coerceAtLeast(1.0), srcH.coerceAtLeast(1.0))
+    }
+
+    val s = minOf((srcH - 1.0) / boundingBox.height, (srcW - 1.0) / boundingBox.width, scale)
+    val newW = boundingBox.width * s
+    val newH = boundingBox.height * s
+    val centerX = boundingBox.left + boundingBox.width / 2.0
+    val centerY = boundingBox.top + boundingBox.height / 2.0
+
+    var leftTopX = centerX - newW / 2.0
+    var leftTopY = centerY - newH / 2.0
+    var rightBottomX = centerX + newW / 2.0
+    var rightBottomY = centerY + newH / 2.0
+
+    if (leftTopX < 0.0) {
+        rightBottomX -= leftTopX
+        leftTopX = 0.0
+    }
+    if (leftTopY < 0.0) {
+        rightBottomY -= leftTopY
+        leftTopY = 0.0
+    }
+    if (rightBottomX > srcW - 1.0) {
+        leftTopX -= (rightBottomX - (srcW - 1.0))
+        rightBottomX = srcW - 1.0
+    }
+    if (rightBottomY > srcH - 1.0) {
+        leftTopY -= (rightBottomY - (srcH - 1.0))
+        rightBottomY = srcH - 1.0
+    }
+
+    val clampedLeft = leftTopX.coerceIn(0.0, srcW - 1.0)
+    val clampedTop = leftTopY.coerceIn(0.0, srcH - 1.0)
+    val clampedWidth = (rightBottomX - clampedLeft + 1.0).coerceIn(1.0, srcW - clampedLeft)
+    val clampedHeight = (rightBottomY - clampedTop + 1.0).coerceIn(1.0, srcH - clampedTop)
+
+    return FaceBoundingBox(
+        left = clampedLeft,
+        top = clampedTop,
+        width = clampedWidth,
+        height = clampedHeight
+    )
+}
+
+

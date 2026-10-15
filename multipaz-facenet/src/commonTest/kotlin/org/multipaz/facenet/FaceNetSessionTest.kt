@@ -41,6 +41,7 @@ class FaceNetSessionTest {
     ) {
         var mockFaces: List<DetectedFacePose> = emptyList()
         var mockEmbedding: FaceEmbedding? = null
+        var mockLivenessScore: Float? = 0.99f
         var pipelineInitError: Exception? = null
         var isClosed = false
 
@@ -55,6 +56,10 @@ class FaceNetSessionTest {
 
         override suspend fun computeCameraEmbedding(frame: CameraFrame, face: DetectedFacePose): FaceEmbedding? {
             return mockEmbedding
+        }
+
+        override suspend fun computeLivenessScore(frame: CameraFrame, face: DetectedFacePose): Float? {
+            return mockLivenessScore
         }
 
         override fun onSessionClosed() {
@@ -78,6 +83,7 @@ class FaceNetSessionTest {
         enablePoseSmoothing = enablePoseSmoothing
     ) {
         var mockFaces: List<DetectedFacePose> = emptyList()
+        var mockLivenessScore: Float? = 0.99f
         var pipelineInitError: Exception? = null
         var isClosed = false
         var capturedBytes: ByteString? = ByteString(byteArrayOf(1, 2, 3))
@@ -92,6 +98,10 @@ class FaceNetSessionTest {
 
         override suspend fun detectFaces(frame: CameraFrame): List<DetectedFacePose> {
             return mockFaces
+        }
+
+        override suspend fun computeLivenessScore(frame: CameraFrame, face: DetectedFacePose): Float? {
+            return mockLivenessScore
         }
 
         override fun onSessionClosed() {
@@ -258,11 +268,13 @@ class FaceNetSessionTest {
         }
 
         session.mockFaces = listOf(MockDetectedFace())
+        session.mockLivenessScore = 0.99f
 
-        // Frame 1: matching embedding -> consecutiveMatchFrames = 1 (should NOT advance yet)
+        // Frame 1: matching embedding -> consecutiveMatchFrames = 1 (should NOT complete yet)
         session.mockEmbedding = matchingEmb
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetSessionBase.Phase.POSITIONING, session.phase)
+        assertEquals("Hold still...", session.state.value.message)
 
         // Frame 2: non-matching embedding -> resets consecutiveMatchFrames to 0
         session.mockEmbedding = nonMatchingEmb
@@ -274,10 +286,39 @@ class FaceNetSessionTest {
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetSessionBase.Phase.POSITIONING, session.phase)
 
-        // Frame 4: second consecutive matching embedding -> consecutiveMatchFrames = 2 -> advances!
+        // Frame 4: second consecutive matching + live embedding -> consecutiveMatchFrames = 2 -> completes!
         session.feedFrame(dummyFrame)
-        assertEquals(FaceNetSessionBase.Phase.MATCH_CONVEYED, session.phase)
-        assertEquals("Hold still...", session.state.value.message)
+        assertEquals(FaceNetSessionBase.Phase.COMPLETED, session.phase)
+        assertEquals(FaceMatcherPromptState.Status.SUCCESS, session.state.value.status)
+        assertEquals("Identity verified", session.state.value.message)
+    }
+
+    @Test
+    fun testSpoofAttackRejectedEvenWithMatchingEmbedding() = runTest {
+        var currentTime = 1000L
+        val session = TestFaceNetSession(clock = { currentTime })
+        val matchingEmb = FaceEmbedding(FaceTestData.QUALCOMM_DEMO_1_GOLDEN_EMBEDDING)
+
+        session.mockFaces = listOf(MockDetectedFace())
+        session.mockEmbedding = matchingEmb
+        session.mockLivenessScore = 0.05f // Spoof attack (e.g. printed photo or screen)
+
+        // Even with 3 consecutive matching frames, spoof liveness score prevents completion
+        session.feedFrame(dummyFrame)
+        session.feedFrame(dummyFrame)
+        session.feedFrame(dummyFrame)
+        assertEquals(FaceNetSessionBase.Phase.POSITIONING, session.phase)
+        assertEquals(FaceMatcherPromptState.Status.IN_PROGRESS, session.state.value.status)
+
+        // Advance past matchTimeoutMs (8000ms) -> fails with explicit liveness failure message
+        currentTime = 10000L
+        session.feedFrame(dummyFrame)
+        assertEquals(FaceNetSessionBase.Phase.FAILED, session.phase)
+        assertEquals(FaceMatcherPromptState.Status.FAILED, session.state.value.status)
+        assertEquals(
+            "Liveness check failed - ensure you are not using a photo or screen",
+            session.state.value.message
+        )
     }
 
     @Test
@@ -288,37 +329,13 @@ class FaceNetSessionTest {
 
         session.mockFaces = listOf(MockDetectedFace())
         session.mockEmbedding = matchingEmb
+        session.mockLivenessScore = 0.99f
 
-        // 2 consecutive matching frames to pass POSITIONING
+        // 2 consecutive matching & live straight frames complete verification without head-pose challenges
         session.feedFrame(dummyFrame)
+        assertEquals(FaceNetSessionBase.Phase.POSITIONING, session.phase)
         session.feedFrame(dummyFrame)
-        assertEquals(FaceNetSessionBase.Phase.MATCH_CONVEYED, session.phase)
 
-        // Advance past matchConveyDurationMs (1200ms) to enter LIVENESS_CHALLENGE
-        currentTime += 1300L
-        session.feedFrame(dummyFrame)
-        assertEquals(FaceNetSessionBase.Phase.LIVENESS_CHALLENGE, session.phase)
-        assertEquals(0, session.currentChallengeIndex)
-
-        // Complete each challenge in sequence
-        for (step in session.challenges.indices) {
-            val direction = session.challenges[step]
-            val pose = when (direction) {
-                ChallengeDirection.LEFT -> MockDetectedFace(yaw = 20f)
-                ChallengeDirection.RIGHT -> MockDetectedFace(yaw = -20f)
-                ChallengeDirection.UP -> MockDetectedFace(pitch = 16f)
-                ChallengeDirection.DOWN -> MockDetectedFace(pitch = -16f)
-                ChallengeDirection.CENTER -> MockDetectedFace(yaw = 0f, pitch = 0f)
-            }
-            session.mockFaces = listOf(pose)
-
-            // Requires 3 consecutive frames with progress >= 0.85f
-            session.feedFrame(dummyFrame)
-            session.feedFrame(dummyFrame)
-            session.feedFrame(dummyFrame)
-        }
-
-        // All challenges completed -> SUCCESS
         assertEquals(FaceNetSessionBase.Phase.COMPLETED, session.phase)
         assertEquals(FaceMatcherPromptState.Status.SUCCESS, session.state.value.status)
         assertEquals("Identity verified", session.state.value.message)
@@ -390,57 +407,17 @@ class FaceNetSessionTest {
             randomSeed = 42L
         )
 
-        assertEquals(3, session.challenges.size)
         assertEquals("Position your face and look at the camera", session.state.value.message)
 
-        // 2 consecutive straight frames to pass POSITIONING directly to LIVENESS_CHALLENGE
+        // Frame 1 with live straight face: consecutiveMatchFrames = 1
         session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = 0f, roll = 0f))
+        session.mockLivenessScore = 0.99f
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetLivenessSessionBase.Phase.POSITIONING, session.phase)
-        session.feedFrame(dummyFrame)
-        assertEquals(FaceNetLivenessSessionBase.Phase.LIVENESS_CHALLENGE, session.phase)
-
-        // Perform each of the 3 challenges
-        for (step in session.challenges.indices) {
-            val direction = session.challenges[step]
-            val pose = when (direction) {
-                ChallengeDirection.LEFT -> MockDetectedFace(yaw = 20f)
-                ChallengeDirection.RIGHT -> MockDetectedFace(yaw = -20f)
-                ChallengeDirection.UP -> MockDetectedFace(pitch = 16f)
-                ChallengeDirection.DOWN -> MockDetectedFace(pitch = -16f)
-                ChallengeDirection.CENTER -> MockDetectedFace(yaw = 0f, pitch = 0f)
-            }
-            session.mockFaces = listOf(pose)
-            session.feedFrame(dummyFrame)
-            session.feedFrame(dummyFrame)
-            session.feedFrame(dummyFrame)
-        }
-
-        // After completing 3 challenges, transitions to PREPARE_FOR_PHOTO phase (duration 2000ms)
-        assertEquals(FaceNetLivenessSessionBase.Phase.PREPARE_FOR_PHOTO, session.phase)
-        assertEquals(FaceMatcherLivenessPromptState.Status.IN_PROGRESS, session.state.value.status)
         assertEquals("Hold still...", session.state.value.message)
         assertNull(session.state.value.capturedImage)
 
-        // Before 2000ms elapsed, stays in PREPARE_FOR_PHOTO
-        currentTime += 1000L
-        session.feedFrame(dummyFrame)
-        assertEquals(FaceNetLivenessSessionBase.Phase.PREPARE_FOR_PHOTO, session.phase)
-        assertEquals(FaceMatcherLivenessPromptState.Status.IN_PROGRESS, session.state.value.status)
-
-        // After 2000ms elapsed, transitions to CAPTURING
-        currentTime += 1100L
-        session.feedFrame(dummyFrame)
-        assertEquals(FaceNetLivenessSessionBase.Phase.CAPTURING, session.phase)
-        assertEquals("Hold still...", session.state.value.message)
-        assertNull(session.state.value.capturedImage)
-
-        // Frame 1 in CAPTURING with steady straight face: steadyHoldFrames = 1
-        session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = 0f, roll = 0f))
-        session.feedFrame(dummyFrame)
-        assertEquals(FaceNetLivenessSessionBase.Phase.CAPTURING, session.phase)
-
-        // Frame 2 in CAPTURING with steady straight face: steadyHoldFrames = 2 -> captures photo and completes!
+        // Frame 2 with live straight face: consecutiveMatchFrames = 2 -> captures photo and completes!
         session.feedFrame(dummyFrame)
         assertEquals(FaceNetLivenessSessionBase.Phase.COMPLETED, session.phase)
         assertEquals(FaceMatcherLivenessPromptState.Status.SUCCESS, session.state.value.status)
@@ -449,6 +426,31 @@ class FaceNetSessionTest {
         assertEquals(ByteString(byteArrayOf(1, 2, 3)), session.state.value.capturedImage)
         assertTrue(session.ringSegments.all { it.color == RingSegment.COLOR_GREEN })
         assertNotNull(session.state.value.overlay)
+    }
+
+    @Test
+    fun testLivenessSessionRejectsSpoof() = runTest {
+        var currentTime = 1000L
+        val session = TestFaceNetLivenessSession(clock = { currentTime })
+
+        session.mockFaces = listOf(MockDetectedFace(yaw = 0f, pitch = 0f, roll = 0f))
+        session.mockLivenessScore = 0.02f // Spoof score below threshold
+
+        session.feedFrame(dummyFrame)
+        session.feedFrame(dummyFrame)
+        session.feedFrame(dummyFrame)
+        assertEquals(FaceNetLivenessSessionBase.Phase.POSITIONING, session.phase)
+        assertNull(session.state.value.capturedImage)
+
+        // Advance past livenessTimeoutMs (8000ms) -> fails session
+        currentTime = 10000L
+        session.feedFrame(dummyFrame)
+        assertEquals(FaceNetLivenessSessionBase.Phase.FAILED, session.phase)
+        assertEquals(FaceMatcherLivenessPromptState.Status.FAILED, session.state.value.status)
+        assertEquals(
+            "Liveness check failed - ensure you are not using a photo or screen",
+            session.state.value.message
+        )
     }
 
     @Test
