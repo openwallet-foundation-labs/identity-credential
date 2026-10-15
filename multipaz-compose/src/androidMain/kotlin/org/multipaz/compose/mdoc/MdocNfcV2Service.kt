@@ -11,12 +11,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
@@ -43,7 +45,6 @@ import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.presentment.EngagementParams
@@ -52,10 +53,12 @@ import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentModel
 import org.multipaz.presentment.PresentmentSource
 import org.multipaz.prompt.PromptModel
+import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * Base class for implementing NFCv2 engagement according to ISO/IEC 18013 Second Edition.
@@ -72,12 +75,31 @@ abstract class MdocNfcV2Service(
 ) : NfcApduService(applicationContext, sendResponse) {
     companion object {
         private const val TAG = "MdocNfcV2Service"
+
+        // Active multi-tap state stored in companion so that subsequent taps
+        // work regardless of whether Android reuses or recreates the HostApduService instance.
+        @Volatile
+        internal var hybridTransport: NfcHybridTransportMdoc? = null
+
+        @Volatile
+        internal var activeEngagementParamsFlow: MutableStateFlow<EngagementParams>? = null
+
+        @Volatile
+        internal var activeDeviceRequest: DeviceRequest? = null
+
+        @Volatile
+        internal var activeEngagement: MdocNfcV2EngagementHelper? = null
+
+        @Volatile
+        internal var onHybridTransportCreated: ((NfcHybridTransportMdoc) -> Unit)? = null
     }
 
     private fun vibrate(pattern: List<Int>) {
         val vibrator = ContextCompat.getSystemService(applicationContext, Vibrator::class.java)
-        val vibrationEffect = VibrationEffect.createWaveform(pattern.map { it.toLong() }.toLongArray(), -1)
-        vibrator?.vibrate(vibrationEffect)
+        vibrator?.let {
+            val vibrationEffect = VibrationEffect.createWaveform(pattern.map { ms -> ms.toLong() }.toLongArray(), -1)
+            it.vibrate(vibrationEffect)
+        }
     }
 
     private fun vibrateError() {
@@ -93,20 +115,13 @@ abstract class MdocNfcV2Service(
     private var dispatchJob: Job? = null
 
     // A job started when the reader has selected us and used for listening for
-    // a signal from the UI that it wants to cancel.
+    // a signal from the UI that it wants to cancel during NFC engagement.
     private var listenForCancellationFromUiJob: Job? = null
-
-    // A job started when we're waiting for a connection on the non-NFC transport.
-    private var waitForTransportJob: Job? = null
-
-    // A job started after NFC engagement completes successfully and
-    // runs until the remote reader disconnects.
-    private var transactionJob: Job? = null
 
     @Volatile
     private var engagement: MdocNfcV2EngagementHelper? = null
 
-    // Channel used for bouncing data from processCommandApdu() and onDeactivated() to engagementJob coroutine.
+    // Channel used for bouncing data from processCommandApdu() and onDeactivated() to dispatchJob coroutine.
     private val dispatchChannel = Channel<Data>(Channel.UNLIMITED)
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -132,6 +147,7 @@ abstract class MdocNfcV2Service(
      * @property negotiatedHandoverPreferredOrder a list of the preferred order for which kind of
      *   [org.multipaz.mdoc.transport.MdocTransport] to create when using NFC negotiated handover.
      * @property transportOptions the [MdocTransportOptions] to use for newly created connections.
+     * @property transportFactory the [MdocTransportFactory] to use for creating transports.
      * @property capabilities the capabilities to convey to the mdoc reader.
      */
     data class Settings(
@@ -143,6 +159,7 @@ abstract class MdocNfcV2Service(
         val useNegotiatedHandover: Boolean,
         val negotiatedHandoverPreferredOrder: List<String>,
         val transportOptions: MdocTransportOptions,
+        val transportFactory: MdocTransportFactory = MdocTransportFactory.Default,
         val capabilities: Map<Capability, DataItem> = mapOf(
             Capability.READER_AUTH_ALL_SUPPORT to true.toDataItem(),
             Capability.EXTENDED_REQUEST_SUPPORT to true.toDataItem()
@@ -204,11 +221,23 @@ abstract class MdocNfcV2Service(
         }
     }
 
+    @Volatile
+    private var pendingEngagementDeviceKey: EcPrivateKey? = null
+
     override fun onDestroy() {
         Logger.i(TAG, "onDestroy")
         super.onDestroy()
+        val currentEngagement = engagement
+        if (activeEngagement === currentEngagement) {
+            activeEngagement = null
+        }
+        engagement = null
+        pendingEngagementDeviceKey?.close()
+        pendingEngagementDeviceKey = null
         serviceScope.cancel()
         dispatchJob = null
+        listenForCancellationFromUiJob?.cancel()
+        listenForCancellationFromUiJob = null
         dispatchChannel.close()
     }
 
@@ -216,13 +245,6 @@ abstract class MdocNfcV2Service(
     private var engagementStarted = false
     @Volatile
     private var engagementComplete = false
-    @Volatile
-    private var hybridTransport: NfcHybridTransportMdoc? = null
-
-    @Volatile
-    private var activeEngagementParamsFlow: MutableStateFlow<EngagementParams>? = null
-    @Volatile
-    private var activeDeviceRequest: DeviceRequest? = null
 
     private suspend fun startEngagement() {
         Logger.i(TAG, "startEngagement")
@@ -236,35 +258,45 @@ abstract class MdocNfcV2Service(
         val t1 = Clock.System.now()
         Logger.i(TAG, "Settings provided by application in ${(t1 - t0).inWholeMilliseconds} ms")
 
+        pendingEngagementDeviceKey?.close()
         val eDeviceKey = Crypto.createEcPrivateKey(settings.sessionEncryptionCurve)
+        pendingEngagementDeviceKey = eDeviceKey
         val timeStarted = Clock.System.now()
 
-        listenForCancellationFromUiJob = CoroutineScope(Dispatchers.IO).launch {
-            settings.presentmentModel?.state?.collect { state ->
-                if (state == PresentmentModel.State.CanceledByUser) {
-                    cancelEngagementJobs()
-                    transactionJob?.cancel()
-                    transactionJob = null
-                    waitForTransportJob?.cancel()
-                    waitForTransportJob = null
-                }
-            }
+        val currentJob = transactionJob
+        if (currentJob != null && !currentJob.isActive && !currentJob.isCompleted) {
+            currentJob.join()
         }
-
         if (transactionJob?.isActive != true) {
             settings.presentmentModel?.setConnecting()
+        }
+
+        listenForCancellationFromUiJob?.cancel()
+        listenForCancellationFromUiJob = serviceScope.launch(Dispatchers.IO) {
+            settings.presentmentModel?.state?.collect { state ->
+                if (state == PresentmentModel.State.CanceledByUser) {
+                    engagementComplete = true
+                    transactionJob?.cancel()
+                }
+            }
         }
 
         // TODO: Listen on methods _before_ starting the engagement helper so we can send the PSM
         //   for mdoc Peripheral Server mode when using NFC Static Handover.
         //
-        engagement = MdocNfcV2EngagementHelper(
+        lateinit var currentEngagement: MdocNfcV2EngagementHelper
+        currentEngagement = MdocNfcV2EngagementHelper(
             eDeviceKey = eDeviceKey.publicKey,
             onHandoverComplete = { connectionMethod, encodedDeviceEngagement, handover ->
                 // OK, we're done with engagement, and we're communicating with a bona fide ISO/IEC 18013-5 Second
                 // Edition reader capable of NFCv2. Let the user know and launch a new job to start the transaction.
                 //
                 vibrateSuccess()
+
+                if (pendingEngagementDeviceKey === eDeviceKey) {
+                    pendingEngagementDeviceKey = null
+                }
+                activeEngagement = currentEngagement
 
                 val currentParams = EngagementParams(
                     eDeviceKey = eDeviceKey,
@@ -274,62 +306,57 @@ abstract class MdocNfcV2Service(
 
                 val isNfcOnly = connectionMethod is MdocConnectionMethodNfcV2
 
-                if (isNfcOnly && transactionJob?.isActive == true && hybridTransport != null && activeEngagementParamsFlow != null) {
+                if (isNfcOnly &&
+                    hybridTransport?.isNfcOnly == true &&
+                    transactionJob?.isActive == true &&
+                    activeEngagementParamsFlow != null
+                ) {
                     Logger.i(TAG, "Re-tap detected during active presentment. Updating engagement parameters.")
+                    val previousParams = activeEngagementParamsFlow?.value
                     activeEngagementParamsFlow?.value = currentParams
+                    if (previousParams != null && previousParams.eDeviceKey !== currentParams.eDeviceKey) {
+                        previousParams.eDeviceKey.close()
+                    }
                     return@MdocNfcV2EngagementHelper
                 }
 
+                val previousTransactionJob = transactionJob
+                previousTransactionJob?.cancel(TransactionSupersededException())
+
                 val paramsFlow = MutableStateFlow(currentParams)
                 activeEngagementParamsFlow = paramsFlow
+                activeDeviceRequest = null
 
-                val newTransport = NfcHybridTransportMdoc(
+                lateinit var newTransport: NfcHybridTransportMdoc
+                newTransport = NfcHybridTransportMdoc(
                     sendMessageViaNfc = { message ->
-                        engagement?.let {
-                            it.sendMessage(message)
-                            true
-                        } ?: false
+                        if (hybridTransport === newTransport) {
+                            activeEngagement?.let {
+                                it.sendMessage(message)
+                                true
+                            } ?: false
+                        } else {
+                            false
+                        }
                     }
                 )
                 if (!isNfcOnly) {
                     newTransport.setExpectTransport(true)
                 }
                 hybridTransport = newTransport
-                settings.presentmentModel?.setNfcOnly(isNfcOnly)
-
-                if (isNfcOnly) {
-                    serviceScope.launch {
-                        newTransport.isNfcConnected.collect { connected ->
-                            settings.presentmentModel?.setNfcConnected(connected)
-                        }
-                    }
-                }
+                onHybridTransportCreated?.invoke(newTransport)
 
                 // We launch transactionJob in a new detached scope so it survives both
                 // NFC deactivation (the reader moving away) and the Service's onDestroy
                 // (as the transaction may continue over BLE and wait for UI consent).
                 transactionJob = CoroutineScope(Dispatchers.IO + settings.promptModel).launch {
-                    // Start PresentmentActivity...
-                    if (settings.activityClass != null) {
-                        val intent = Intent(applicationContext, settings.activityClass)
-                        intent.addFlags(
-                            Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                                    Intent.FLAG_ACTIVITY_NO_ANIMATION
-                        )
-                        applicationContext.startActivity(intent)
-                    }
-
-                    // Connect to the transport and start the transaction...
-                    hybridTransport!!.open(eDeviceKey.publicKey)
-                    val duration = Clock.System.now() - timeStarted
                     startTransaction(
-                        transport = hybridTransport!!,
+                        previousTransactionJob = previousTransactionJob,
+                        timeStarted = timeStarted,
+                        transport = newTransport,
                         settings = settings,
                         connectionMethod = connectionMethod,
                         engagementParamsFlow = paramsFlow,
-                        engagementDuration = duration
                     )
                 }
             },
@@ -348,13 +375,14 @@ abstract class MdocNfcV2Service(
                                     add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(readerKey.publicKey.toCoseKey().toDataItem()))))
                                     add(updatedParams.handover)
                                 }
-                                val sessionEncryption = SessionEncryption(
+                                val (encodedDeviceRequest, _) = SessionEncryption(
                                     role = MdocRole.MDOC,
-                                    eSelfKey = updatedParams.eDeviceKey,
+                                    eSelfKey = updatedParams.eDeviceKey.duplicate(),
                                     remotePublicKey = readerKey.publicKey,
                                     encodedSessionTranscript = Cbor.encode(sessionTranscript)
-                                )
-                                val (encodedDeviceRequest, _) = sessionEncryption.decryptMessage(message.toByteArray())
+                                ).use { sessionEncryption ->
+                                    sessionEncryption.decryptMessage(message.toByteArray())
+                                }
                                 if (encodedDeviceRequest != null) {
                                     val newDeviceRequest = DeviceRequest.fromDataItem(Cbor.decode(encodedDeviceRequest))
                                     if (!newDeviceRequest.isStructurallyEquivalent(currentActiveRequest)) {
@@ -362,8 +390,16 @@ abstract class MdocNfcV2Service(
                                         Logger.iCbor(TAG, "New request", newDeviceRequest.toDataItem())
                                         Logger.w(TAG, "Incoming DeviceRequest is NOT structurally equivalent to active request. Killing old session.")
                                         transactionJob?.cancel()
-                                        transactionJob = null
                                         activeDeviceRequest = null
+                                        hybridTransport = null
+                                        activeEngagement?.sendMessage(
+                                            ByteString(
+                                                SessionEncryption.encodeStatus(
+                                                    Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                                                )
+                                            )
+                                        )
+                                        return@MdocNfcV2EngagementHelper
                                     } else {
                                         Logger.i(TAG, "Incoming DeviceRequest IS structurally equivalent to active request.")
                                     }
@@ -382,7 +418,13 @@ abstract class MdocNfcV2Service(
                 // here such as showing an error or vibrating the phone.
                 //
                 engagementComplete = true
-                settings.presentmentModel?.setCompleted(error)
+                if (pendingEngagementDeviceKey === eDeviceKey) {
+                    pendingEngagementDeviceKey?.close()
+                    pendingEngagementDeviceKey = null
+                }
+                if (transactionJob?.isActive != true) {
+                    settings.presentmentModel?.setCompleted(error)
+                }
                 Logger.w(TAG, "Engagement failed. Maybe this wasn't an ISO mdoc reader.", error)
             },
             negotiatedHandoverPicker = { connectionMethods ->
@@ -401,52 +443,116 @@ abstract class MdocNfcV2Service(
             },
             capabilities = settings.capabilities
         )
+        engagement = currentEngagement
     }
 
     private suspend fun startTransaction(
+        previousTransactionJob: Job?,
+        timeStarted: Instant,
         transport: NfcHybridTransportMdoc,
         settings: Settings,
         connectionMethod: MdocConnectionMethod,
         engagementParamsFlow: StateFlow<EngagementParams>,
-        engagementDuration: Duration,
     ) {
-        val initialParams = engagementParamsFlow.value
-        val eDeviceKey = initialParams.eDeviceKey
         val transactionJobContext = currentCoroutineContext()
-        if (connectionMethod is MdocConnectionMethodNfcV2) {
-            transport.setExpectTransport(false)
-            // Nothing to do
-        } else {
-            transport.setExpectTransport(true)
-            // Wait for the non-NFC transport in a coroutine so we are not blocking
-            // initiating presentment....
-            waitForTransportJob = CoroutineScope(transactionJobContext).launch(Dispatchers.IO) {
-                try {
-                    val negotiatedTransport = MdocTransportFactory.Default.createTransport(
-                        connectionMethod = connectionMethod,
-                        role = MdocRole.MDOC,
-                        options = settings.transportOptions
-                    )
-                    negotiatedTransport.open(eSenderKey = eDeviceKey.publicKey)
-                    transport.setTransport(negotiatedTransport)
+        val isNfcOnly = connectionMethod is MdocConnectionMethodNfcV2
+        var enteredPresentment = false
+        var waitForTransportJob: Job? = null
+        var uiCancelJob: Job? = null
+        var nfcConnectedJob: Job? = null
 
-                    // Monitor the secondary transport
-                    launch {
-                        negotiatedTransport.state.collect { state ->
+        try {
+            previousTransactionJob?.let { prevJob ->
+                Logger.i(TAG, "Waiting for previous active transactionJob to finish cleanup")
+                prevJob.join()
+            }
+
+            settings.presentmentModel?.setNfcOnly(isNfcOnly)
+
+            // Start PresentmentActivity...
+            if (settings.activityClass != null) {
+                val intent = Intent(applicationContext, settings.activityClass)
+                intent.addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_NO_HISTORY or
+                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                            Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
+                applicationContext.startActivity(intent)
+            }
+
+            val engagementDuration = Clock.System.now() - timeStarted
+            val initialParams = engagementParamsFlow.value
+            val eDeviceKey = initialParams.eDeviceKey
+
+            uiCancelJob = CoroutineScope(transactionJobContext).launch {
+                settings.presentmentModel?.state?.collect { state ->
+                    if (state == PresentmentModel.State.CanceledByUser) {
+                        transactionJobContext.cancel(CancellationException("Presentment was cancelled by user"))
+                    }
+                }
+            }
+
+            nfcConnectedJob = if (isNfcOnly) {
+                CoroutineScope(transactionJobContext).launch {
+                    transport.isNfcConnected.collect { connected ->
+                        settings.presentmentModel?.setNfcConnected(connected)
+                    }
+                }
+            } else {
+                null
+            }
+
+            val preselectedDocuments = settings.presentmentModel?.documentsSelected?.value ?: emptyList()
+            settings.presentmentModel?.setConnecting()
+
+            transport.open(eDeviceKey.publicKey)
+
+            if (isNfcOnly) {
+                transport.setExpectTransport(false)
+            } else {
+                transport.setExpectTransport(true)
+                // Wait for the non-NFC transport in a coroutine so we are not blocking
+                // initiating presentment....
+                waitForTransportJob = CoroutineScope(transactionJobContext).launch(Dispatchers.IO) {
+                    var negotiatedTransport: MdocTransport? = null
+                    var handedOffToHybrid = false
+                    try {
+                        val createdTransport = settings.transportFactory.createTransport(
+                            connectionMethod = connectionMethod,
+                            role = MdocRole.MDOC,
+                            options = settings.transportOptions
+                        )
+                        negotiatedTransport = createdTransport
+                        createdTransport.open(eSenderKey = eDeviceKey.publicKey)
+                        transport.setTransport(createdTransport)
+                        handedOffToHybrid = true
+
+                        // Monitor the secondary transport
+                        createdTransport.state.collect { state ->
                             if (state == MdocTransport.State.FAILED || state == MdocTransport.State.CLOSED) {
                                 transactionJobContext.cancel(CancellationException("Secondary transport $state"))
                             }
                         }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        Logger.w(TAG, "Error opening non-NFC transport", e)
+                    } finally {
+                        if (!handedOffToHybrid) {
+                            withContext(NonCancellable) {
+                                try {
+                                    negotiatedTransport?.close()
+                                } catch (e: Exception) {
+                                    if (e is CancellationException) throw e
+                                    Logger.w(TAG, "Error closing unattached negotiated transport", e)
+                                }
+                            }
+                        }
                     }
-                } catch (e: Exception) {
-                    Logger.w(TAG, "Error opening non-NFC transport", e)
                 }
             }
-        }
 
-        try {
-            val preselectedDocuments = settings.presentmentModel?.documentsSelected?.value ?: emptyList()
-            settings.presentmentModel?.setConnecting()
+            enteredPresentment = true
             Iso18013Presentment(
                 transport = transport,
                 engagementParams = engagementParamsFlow,
@@ -466,17 +572,48 @@ abstract class MdocNfcV2Service(
             )
             settings.presentmentModel?.setCompleted(null)
         } catch (e: Exception) {
-            Logger.w(TAG, "Caught error while performing 18013-5 transaction", e)
-            if (e is CancellationException) {
-                settings.presentmentModel?.setCompleted(PresentmentCanceledException("Presentment was cancelled"))
+            if (e is TransactionSupersededException) {
+                Logger.i(TAG, "Transaction was superseded by a new NFC tap")
             } else {
-                settings.presentmentModel?.setCompleted(e)
+                Logger.w(TAG, "Caught error while performing 18013-5 transaction", e)
+                if (e is CancellationException) {
+                    settings.presentmentModel?.setCompleted(PresentmentCanceledException("Presentment was cancelled"))
+                } else {
+                    settings.presentmentModel?.setCompleted(e)
+                }
             }
         } finally {
-            listenForCancellationFromUiJob?.cancel()
-            listenForCancellationFromUiJob = null
-            activeEngagementParamsFlow = null
-            activeDeviceRequest = null
+            withContext(NonCancellable) {
+                uiCancelJob?.cancel()
+                nfcConnectedJob?.cancel()
+                listenForCancellationFromUiJob?.cancel()
+                listenForCancellationFromUiJob = null
+                waitForTransportJob?.let {
+                    it.cancel()
+                    it.join()
+                }
+                if (!enteredPresentment) {
+                    try {
+                        engagementParamsFlow.value.eDeviceKey.close()
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        Logger.w(TAG, "Error closing eDeviceKey", e)
+                    }
+                    try {
+                        transport.close()
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        Logger.w(TAG, "Error closing hybrid transport", e)
+                    }
+                }
+                if (activeEngagementParamsFlow === engagementParamsFlow) {
+                    activeEngagementParamsFlow = null
+                    activeDeviceRequest = null
+                }
+                if (hybridTransport === transport) {
+                    hybridTransport = null
+                }
+            }
         }
     }
 
@@ -498,6 +635,20 @@ abstract class MdocNfcV2Service(
 
     // Called by coroutine running in I/O thread, see onCreate() for details
     private suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu? {
+        if (commandApdu.isApplicationSelect && engagementStarted) {
+            Logger.i(TAG, "Received SELECT APPLICATION while engagement already in progress; resetting for new engagement")
+            engagement?.processDeactivated(0)
+            if (activeEngagement === engagement) {
+                activeEngagement = null
+            }
+            engagement = null
+            pendingEngagementDeviceKey?.close()
+            pendingEngagementDeviceKey = null
+            engagementStarted = false
+            engagementComplete = false
+            cancelEngagementJobs()
+        }
+
         // TODO: maybe need replay and super-fast response as in mdocReaderNfcHandover.kt function processCommandApdu()
         if (!engagementStarted) {
             engagementStarted = true
@@ -522,20 +673,27 @@ abstract class MdocNfcV2Service(
     // Called by coroutine running in I/O thread, see onCreate() for details
     private suspend fun processDeactivated(reason: Int) {
         try {
-            engagement?.processDeactivated(reason)
+            val currentEngagement = engagement
+            currentEngagement?.processDeactivated(reason)
             hybridTransport?.onNfcDeactivated(reason)
 
             // Android might reuse this service for the next tap. That is, we can't rely on onDestroy()
             // firing right after this, then onCreate(). So reset everything so next time the OS calls
             // processCommandApdu() we'll start processing a new engagement.
             //
+            if (activeEngagement === currentEngagement) {
+                activeEngagement = null
+            }
             engagement = null
+            pendingEngagementDeviceKey?.close()
+            pendingEngagementDeviceKey = null
             engagementStarted = false
             engagementComplete = false
+            applicationSelectProcessed = false
 
+            cancelEngagementJobs()
             if (transactionJob?.isActive != true) {
                 hybridTransport = null
-                cancelEngagementJobs()
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -557,6 +715,9 @@ abstract class MdocNfcV2Service(
             Logger.w(TAG, "Error decoding APDU", e)
             return null
         }
+        if (commandApdu.isApplicationSelect) {
+            engagementComplete = false
+        }
         if (!engagementComplete) {
             if (commandApdu.isApplicationSelect) {
                 applicationSelectProcessed = true
@@ -575,9 +736,16 @@ abstract class MdocNfcV2Service(
     // Called by OS when NFC tag reader deactivates
     override fun onDeactivated(reason: Int) {
         Logger.i(TAG, "onDeactivated: reason=$reason")
-        // Important: we must call this here to unblock dispatchJob if it is suspended in
-        // engagement.processApdu() waiting for a response to send back to the reader.
-        engagement?.processDeactivated(reason)
+        // Important: we must call these here to unblock dispatchJob if it is suspended in
+        // engagement.processApdu() waiting for a response to send back to the reader, and
+        // to ensure hybridTransport is marked disconnected even if onDestroy() runs before
+        // dispatchJob processes DeactivatedData.
+        val currentEngagement = engagement
+        currentEngagement?.processDeactivated(reason)
+        if (activeEngagement === currentEngagement) {
+            activeEngagement = null
+        }
+        hybridTransport?.onNfcDeactivated(reason)
         // Bounce the event to processDeactivated() above via the coroutine in I/O thread set up in onCreate()
         val unused = dispatchChannel.trySend(DeactivatedData(reason))
     }

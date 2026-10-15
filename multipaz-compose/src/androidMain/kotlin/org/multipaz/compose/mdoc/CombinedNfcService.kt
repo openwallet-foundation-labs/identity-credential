@@ -31,7 +31,9 @@ abstract class CombinedNfcService: HostApduService() {
     override fun onCreate() {
         super.onCreate()
 
-        initializeApplication(applicationContext)
+        applicationContext?.let {
+            initializeApplication(it)
+        }
 
         services = buildServices()
 
@@ -84,9 +86,7 @@ abstract class CombinedNfcService: HostApduService() {
     override fun onDeactivated(reason: Int) {
         Logger.d(TAG, "onDeactivated reason $reason")
         activeAid?.let { activeAid ->
-            services[activeAid]?.let { service ->
-                return service.onDeactivated(reason)
-            }
+            services[activeAid]?.onDeactivated(reason)
         }
         activeAid = null
     }

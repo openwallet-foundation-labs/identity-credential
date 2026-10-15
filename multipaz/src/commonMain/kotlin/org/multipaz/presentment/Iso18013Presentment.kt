@@ -1,10 +1,13 @@
 package org.multipaz.presentment
 
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -172,9 +175,10 @@ suspend fun Iso18013Presentment(
                 }
                 Logger.dCbor(TAG, "SessionTranscript", sessionTranscript)
                 encodedSessionTranscript = Cbor.encode(sessionTranscript)
+                sessionEncryption?.close()
                 sessionEncryption = SessionEncryption(
                     role = MdocRole.MDOC,
-                    eSelfKey = eDeviceKeyToUse,
+                    eSelfKey = eDeviceKeyToUse.duplicate(),
                     remotePublicKey = currentEReaderKey.publicKey,
                     encodedSessionTranscript = encodedSessionTranscript,
                     insertSequenceNumbers = insertSequenceNumbers
@@ -197,6 +201,9 @@ suspend fun Iso18013Presentment(
             val deviceRequest = DeviceRequest.fromDataItem(deviceRequestCbor)
             deviceRequest.verifyReaderAuthentication(sessionTranscript)
             onDeviceRequest(deviceRequest)
+            if (transport is NfcHybridTransportMdoc && transport.isNfcOnly) {
+                transport.markResponsePending()
+            }
 
             val selection: CredentialSelection
             val keyUnlockDataProvider: KeyUnlockDataProvider
@@ -250,21 +257,26 @@ suspend fun Iso18013Presentment(
             // Dynamic session transcript & session encryption update if engagementParams updated (e.g. re-tap)
             val latestParams = engagementParams.value
             if (latestParams != currentParams) {
+                if (latestParams.eDeviceKey !== currentParams.eDeviceKey) {
+                    currentParams.eDeviceKey.close()
+                }
                 val latestEDeviceKey = latestParams.eDeviceKey
                 val latestDeviceEngagement = latestParams.deviceEngagement
                 val latestHandover = latestParams.handover
                 val latestEReaderKey = latestParams.eReaderKey ?: activeEReaderKey!!.publicKey
                 val encodedCoseKeyToUse = latestParams.eReaderKey?.let { Cbor.encode(it.toCoseKey().toDataItem()) }
                     ?: activeEReaderKey!!.encodedCoseKey
+                activeEReaderKey = EReaderKey(latestEReaderKey, encodedCoseKeyToUse)
 
                 sessionTranscript = buildCborArray {
                     add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(latestDeviceEngagement))))
                     add(Tagged(Tagged.ENCODED_CBOR, Bstr(encodedCoseKeyToUse)))
                     add(latestHandover)
                 }
+                sessionEncryption?.close()
                 sessionEncryption = SessionEncryption(
                     role = MdocRole.MDOC,
-                    eSelfKey = latestEDeviceKey,
+                    eSelfKey = latestEDeviceKey.duplicate(),
                     remotePublicKey = latestEReaderKey,
                     encodedSessionTranscript = Cbor.encode(sessionTranscript),
                     insertSequenceNumbers = insertSequenceNumbers
@@ -305,28 +317,36 @@ suspend fun Iso18013Presentment(
             Logger.i(TAG, "Response sent, keeping connection open")
         }
     } finally {
-        if (sendSessionTermination && (transport !is NfcHybridTransportMdoc || !transport.isNfcOnly || transport.isNfcConnected.value)) {
-            Logger.i(TAG, "Sending session-termination")
-            try {
-                transport.sendMessage(
-                    SessionEncryption.encodeStatus(
-                        statusCode = Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
-                        sequenceNumber = if (insertSequenceNumbers) {
-                            sessionEncryption?.nextSequenceNumber
-                        } else {
-                            null
-                        }
+        try {
+            if (sendSessionTermination &&
+                currentCoroutineContext().isActive &&
+                (transport !is NfcHybridTransportMdoc || !transport.isNfcOnly || transport.isNfcConnected.value)
+            ) {
+                Logger.i(TAG, "Sending session-termination")
+                try {
+                    transport.sendMessage(
+                        SessionEncryption.encodeStatus(
+                            statusCode = Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
+                            sequenceNumber = if (insertSequenceNumbers) {
+                                sessionEncryption?.nextSequenceNumber
+                            } else {
+                                null
+                            }
+                        )
                     )
-                )
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Logger.w(TAG, "Caught error while sending session-termination", e)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Logger.w(TAG, "Caught error while sending session-termination", e)
+                }
+            }
+        } finally {
+            withContext(NonCancellable) {
+                sessionEncryption?.close()
+                engagementParams.value.eDeviceKey.close()
+                Logger.i(TAG, "Closing transport")
+                transport.close()
             }
         }
-        sessionEncryption?.close()
-        engagementParams.value.eDeviceKey.close()
-        Logger.i(TAG, "Closing transport")
-        transport.close()
     }
 }
 

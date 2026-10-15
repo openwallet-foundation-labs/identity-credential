@@ -17,6 +17,7 @@ import org.multipaz.util.fromHex
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -502,5 +503,36 @@ class MdocNfcEngagementHelperTest {
             onError = { error -> },
             staticHandoverMethods = getConnectionMethods()
         )
+    }
+
+    @Test
+    fun testStaticHandoverReselectNdefFile() = runTest {
+        val staticHandoverConnectionMethods = getConnectionMethods()
+        var handoverCompleteCalls = 0
+        val engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = getEDeviceKeyPub(),
+            onHandoverComplete = { connectionMethods, _, _ ->
+                handoverCompleteCalls += 1
+                assertEquals(staticHandoverConnectionMethods, connectionMethods)
+            },
+            onError = { error ->
+                fail("onError should not be called with $error")
+            },
+            staticHandoverMethods = staticHandoverConnectionMethods,
+        )
+
+        val tag = LoopbackIsoTag(engagementHelper)
+        tag.selectApplication(Nfc.NDEF_APPLICATION_ID)
+        tag.selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID)
+        tag.readBinary(0, 15)
+        tag.selectFile(0xe104)
+        val firstLengthBytes = tag.readBinary(0, 2)
+        assertEquals(1, handoverCompleteCalls)
+
+        // Re-select file 0xe104 within the same engagement without raising an error or duplicate callback
+        tag.selectFile(0xe104)
+        val secondLengthBytes = tag.readBinary(0, 2)
+        assertEquals(1, handoverCompleteCalls)
+        assertContentEquals(firstLengthBytes, secondLengthBytes)
     }
 }

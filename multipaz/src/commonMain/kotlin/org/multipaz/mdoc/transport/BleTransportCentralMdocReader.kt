@@ -88,19 +88,26 @@ internal class BleTransportCentralMdocReader(
     }
 
     override suspend fun advertise() {
-        mutex.withLock {
-            check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
-            _state.value = State.ADVERTISING
-        }
         try {
             coroutineScope {
-                currentJob = coroutineContext[Job]
+                mutex.withLock {
+                    check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
+                    _state.value = State.ADVERTISING
+                    currentJob = coroutineContext[Job]
+                }
                 peripheralManager.waitForPowerOn()
                 peripheralManager.advertiseService(uuid)
             }
         } catch (error: Exception) {
             val unwrapped = error.unwrapCancellationException()
             if (unwrapped is CancellationException) {
+                withContext(NonCancellable) {
+                    mutex.withLock {
+                        if (_state.value != State.FAILED && _state.value != State.CLOSED) {
+                            closeWithoutDelay()
+                        }
+                    }
+                }
                 throw unwrapped
             } else {
                 mutex.withLock { failTransport(unwrapped) }
@@ -115,17 +122,17 @@ internal class BleTransportCentralMdocReader(
         get() = null
 
     override suspend fun open(eSenderKey: EcPublicKey) {
-        val wasAdvertising = mutex.withLock {
-            check(_state.value == State.IDLE || _state.value == State.ADVERTISING) {
-                "Expected state IDLE or ADVERTISING, got ${_state.value}"
-            }
-            val advertising = _state.value == State.ADVERTISING
-            _state.value = State.ADVERTISING
-            advertising
-        }
         try {
             coroutineScope {
-                currentJob = coroutineContext[Job]
+                val wasAdvertising = mutex.withLock {
+                    check(_state.value == State.IDLE || _state.value == State.ADVERTISING) {
+                        "Expected state IDLE or ADVERTISING, got ${_state.value}"
+                    }
+                    val advertising = _state.value == State.ADVERTISING
+                    _state.value = State.ADVERTISING
+                    currentJob = coroutineContext[Job]
+                    advertising
+                }
                 if (!wasAdvertising) {
                     // Start advertising if we aren't already...
                     peripheralManager.waitForPowerOn()
@@ -141,6 +148,13 @@ internal class BleTransportCentralMdocReader(
         } catch (error: Exception) {
             val unwrapped = error.unwrapCancellationException()
             if (unwrapped is CancellationException) {
+                withContext(NonCancellable) {
+                    mutex.withLock {
+                        if (_state.value != State.FAILED && _state.value != State.CLOSED) {
+                            closeWithoutDelay()
+                        }
+                    }
+                }
                 throw unwrapped
             } else {
                 mutex.withLock { failTransport(unwrapped) }
@@ -172,15 +186,15 @@ internal class BleTransportCentralMdocReader(
     }
 
     override suspend fun sendMessage(message: ByteArray) {
-        mutex.withLock {
-            check(_state.value == State.CONNECTED) { "Expected state CONNECTED, got ${_state.value}" }
-            if (message.isEmpty() && peripheralManager.usingL2cap) {
-                throw MdocTransportTerminationException("Transport-specific termination not available with L2CAP")
-            }
-        }
         try {
             coroutineScope {
-                currentJob = coroutineContext[Job]
+                mutex.withLock {
+                    check(_state.value == State.CONNECTED) { "Expected state CONNECTED, got ${_state.value}" }
+                    if (message.isEmpty() && peripheralManager.usingL2cap) {
+                        throw MdocTransportTerminationException("Transport-specific termination not available with L2CAP")
+                    }
+                    currentJob = coroutineContext[Job]
+                }
                 if (message.isEmpty()) {
                     peripheralManager.writeToStateCharacteristic(BleTransportConstants.STATE_CHARACTERISTIC_END)
                 } else {
@@ -217,14 +231,15 @@ internal class BleTransportCentralMdocReader(
     }
 
     override suspend fun close() = withContext(NonCancellable) {
-        currentJob?.cancel("close() was called")
+        val job = mutex.withLock { currentJob }
+        job?.cancel("close() was called")
+        job?.join()
         transportScope.cancel("Transport closed")
         mutex.withLock {
             if (_state.value == State.FAILED || _state.value == State.CLOSED) {
                 return@withContext
             }
-            peripheralManager.close()
-            _state.value = State.CLOSED
+            closeWithoutDelay()
         }
     }
 }

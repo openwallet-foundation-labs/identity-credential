@@ -12,6 +12,7 @@ import kotlinx.coroutines.yield
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.CommandApdu
@@ -187,12 +188,87 @@ class ConnectionHelperTest {
         assertFalse(invalid.openStarted)
     }
 
+    @Test
+    fun advertiseFailureClosesPreviouslyCreatedTransports() = runTest {
+        val first = TestTransport()
+        val second = TestTransport().apply {
+            advertiseError = IllegalStateException("BLE advertising failed")
+        }
+        val transports = ArrayDeque(listOf(first, second))
+        val factory = object : MdocTransportFactory {
+            override fun createTransport(
+                connectionMethod: MdocConnectionMethod,
+                role: MdocRole,
+                options: MdocTransportOptions
+            ): MdocTransport = transports.removeFirst()
+        }
+        val methods = listOf(
+            MdocConnectionMethodNfc(0xffff, 0x10000),
+            MdocConnectionMethodNfc(0xffff, 0x10000),
+        )
+
+        assertFailsWith<IllegalStateException> {
+            methods.advertise(
+                role = MdocRole.MDOC,
+                transportFactory = factory,
+                options = MdocTransportOptions(),
+            )
+        }
+
+        assertEquals(1, first.closeCalls)
+        assertEquals(MdocTransport.State.CLOSED, first.state.value)
+        assertEquals(1, second.closeCalls)
+    }
+
+    @Test
+    fun advertiseCancellationClosesCreatedTransports() = runTest {
+        val first = TestTransport()
+        val secondWait = CompletableDeferred<Unit>()
+        val second = TestTransport().apply {
+            finishAdvertise = secondWait
+        }
+        val transports = ArrayDeque(listOf(first, second))
+        val factory = object : MdocTransportFactory {
+            override fun createTransport(
+                connectionMethod: MdocConnectionMethod,
+                role: MdocRole,
+                options: MdocTransportOptions
+            ): MdocTransport = transports.removeFirst()
+        }
+        val methods = listOf(
+            MdocConnectionMethodNfc(0xffff, 0x10000),
+            MdocConnectionMethodNfc(0xffff, 0x10000),
+        )
+
+        val deferred = async {
+            methods.advertise(
+                role = MdocRole.MDOC,
+                transportFactory = factory,
+                options = MdocTransportOptions(),
+            )
+        }
+        runCurrent()
+        assertEquals(MdocTransport.State.ADVERTISING, first.state.value)
+        assertFalse(deferred.isCompleted)
+
+        deferred.cancel()
+        runCurrent()
+
+        assertTrue(deferred.isCancelled)
+        assertEquals(1, first.closeCalls)
+        assertEquals(MdocTransport.State.CLOSED, first.state.value)
+        assertEquals(1, second.closeCalls)
+        assertEquals(MdocTransport.State.CLOSED, second.state.value)
+    }
+
     private class TestTransport : MdocTransport() {
         override val state = MutableStateFlow(State.IDLE)
         override val role = MdocRole.MDOC
         override val connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
         override val scanningTime: Duration? = null
         val finishOpen = CompletableDeferred<Unit>()
+        var finishAdvertise: CompletableDeferred<Unit>? = null
+        var advertiseError: Exception? = null
         var openStarted = false
         var openCancelled = false
         var closeCalls = 0
@@ -203,6 +279,11 @@ class ConnectionHelperTest {
         }
 
         override suspend fun advertise() {
+            advertiseError?.let {
+                state.value = State.FAILED
+                throw it
+            }
+            finishAdvertise?.await()
             state.value = State.ADVERTISING
         }
 
