@@ -7,13 +7,27 @@ import Multipaz
  */
 struct FakeIssuerApprovalScreen: View {
     @Environment(ViewModel.self) private var viewModel
-    let portraitBytes: ByteString
+    let capturedImages: [FacePose: ByteString]
 
-    private var portraitImage: UIImage? {
-        UIImage(data: portraitBytes.toNSData())
+    @State private var currentIndex: Int = 0
+
+    private static let poseOrder: [FacePose] = [
+        .front,
+        .lookLeft,
+        .lookRight,
+        .lookUp,
+        .lookDown
+    ]
+
+    private var orderedEntries: [(pose: FacePose, bytes: ByteString, image: UIImage?)] {
+        Self.poseOrder.compactMap { pose in
+            guard let bytes = capturedImages[pose] else { return nil }
+            return (pose: pose, bytes: bytes, image: UIImage(data: bytes.toNSData()))
+        }
     }
 
     var body: some View {
+        let entries = orderedEntries
         ScrollView {
             VStack(spacing: 20) {
                 HStack(spacing: 8) {
@@ -27,16 +41,86 @@ struct FakeIssuerApprovalScreen: View {
                 }
                 .padding(.top, 8)
 
-                if let portraitImage {
-                    Image(uiImage: portraitImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 180, height: 230)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.accentColor, lineWidth: 2)
-                        )
+                if !entries.isEmpty {
+                    ScrollViewReader { proxy in
+                        VStack(spacing: 10) {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                                        let isSelected = index == currentIndex
+                                        VStack(spacing: 6) {
+                                            if let uiImage = entry.image {
+                                                Image(uiImage: uiImage)
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fill)
+                                                    .frame(width: 180, height: 230)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 20)
+                                                            .stroke(
+                                                                isSelected ? Color.accentColor : Color(.separator),
+                                                                lineWidth: isSelected ? 3 : 1
+                                                            )
+                                                    )
+                                            } else {
+                                                RoundedRectangle(cornerRadius: 20)
+                                                    .fill(Color(.secondarySystemBackground))
+                                                    .frame(width: 180, height: 230)
+                                                    .overlay(
+                                                        Text("Decode Failed")
+                                                            .font(.subheadline)
+                                                            .foregroundColor(.secondary)
+                                                    )
+                                            }
+                                            Text("\(entry.pose.displayLabel) (\(index + 1)/\(entries.count))")
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                        }
+                                        .id(index)
+                                        .onTapGesture {
+                                            withAnimation {
+                                                currentIndex = index
+                                                proxy.scrollTo(index, anchor: .center)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+
+                            if entries.count > 1 {
+                                HStack(spacing: 16) {
+                                    Button {
+                                        let target = max(0, currentIndex - 1)
+                                        withAnimation {
+                                            currentIndex = target
+                                            proxy.scrollTo(target, anchor: .center)
+                                        }
+                                    } label: {
+                                        Image(systemName: "chevron.left.circle.fill")
+                                            .font(.title2)
+                                    }
+                                    .disabled(currentIndex <= 0)
+
+                                    Text("\(entries[currentIndex].pose.displayLabel) (\(currentIndex + 1) of \(entries.count))")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+
+                                    Button {
+                                        let target = min(entries.count - 1, currentIndex + 1)
+                                        withAnimation {
+                                            currentIndex = target
+                                            proxy.scrollTo(target, anchor: .center)
+                                        }
+                                    } label: {
+                                        Image(systemName: "chevron.right.circle.fill")
+                                            .font(.title2)
+                                    }
+                                    .disabled(currentIndex >= entries.count - 1)
+                                }
+                            }
+                        }
+                    }
                 } else {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(Color(.secondarySystemBackground))
@@ -57,8 +141,12 @@ struct FakeIssuerApprovalScreen: View {
 
                     issuerDetailRow(label: "Issuer", value: "Utopia Department of Motor Vehicles")
                     issuerDetailRow(label: "Credential", value: "Mobile Driving Licence (mDL)")
-                    issuerDetailRow(label: "Biometric Status", value: "Active Liveness Verified")
-                    issuerDetailRow(label: "Portrait Size", value: "\(portraitBytes.toNSData().count / 1024) KB")
+                    issuerDetailRow(
+                        label: "Captured Poses",
+                        value: entries.map { $0.pose.displayLabel }.joined(separator: ", ")
+                    )
+                    let totalKb = entries.reduce(0) { $0 + $1.bytes.toNSData().count } / 1024
+                    issuerDetailRow(label: "Total Payload Size", value: "\(totalKb) KB (\(entries.count) frame(s))")
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,6 +168,7 @@ struct FakeIssuerApprovalScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(entries.isEmpty)
 
                     Button("Cancel") {
                         viewModel.pendingToastMessage = "Provisioning cancelled"

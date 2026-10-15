@@ -10,8 +10,16 @@ import kotlinx.io.bytestring.ByteString
  *
  * A fresh session instance is created per liveness attempt via [FaceMatcher.createLivenessSession].
  * It directly controls the messages above and below the camera preview, the overlay, and verification status.
+ *
+ * @property poses ordered list of [FacePose]s to capture during the session. Must not be empty.
  */
-abstract class FaceMatcherLivenessSession {
+abstract class FaceMatcherLivenessSession(
+    val poses: List<FacePose> = listOf(FacePose.FRONT)
+) {
+    init {
+        require(poses.isNotEmpty()) { "At least one pose must be specified" }
+    }
+
     protected val _state = MutableStateFlow(FaceMatcherLivenessPromptState())
 
     /** Observable reactive state stream consumed by UI dialogs. */
@@ -46,19 +54,20 @@ abstract class FaceMatcherLivenessSession {
      * @param message instructional or status message displayed to the user, or `null`.
      * @param status overall verification status.
      * @param overlay optional bitmap overlay to draw on top of the camera video stream, or `null`.
-     * @param capturedImage captured portrait photo bytes when [status] is [FaceMatcherLivenessPromptState.Status.SUCCESS], or `null`.
+     * @param capturedImages map of captured portrait photo bytes keyed by [FacePose] when [status] is
+     * [FaceMatcherLivenessPromptState.Status.SUCCESS], or empty.
      */
     protected fun updateState(
         message: String? = _state.value.message,
         status: FaceMatcherLivenessPromptState.Status = _state.value.status,
         overlay: OverlayFrame? = _state.value.overlay,
-        capturedImage: ByteString? = _state.value.capturedImage
+        capturedImages: Map<FacePose, ByteString> = _state.value.capturedImages
     ) {
         _state.value = FaceMatcherLivenessPromptState(
             message = message,
             status = status,
             overlay = overlay,
-            capturedImage = if (status == FaceMatcherLivenessPromptState.Status.SUCCESS) capturedImage else null
+            capturedImages = if (status == FaceMatcherLivenessPromptState.Status.SUCCESS) capturedImages else emptyMap()
         )
     }
 }

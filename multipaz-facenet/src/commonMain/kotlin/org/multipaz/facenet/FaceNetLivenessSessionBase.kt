@@ -10,6 +10,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.facematch.CameraFrame
 import org.multipaz.facematch.FaceMatcherLivenessPromptState
 import org.multipaz.facematch.FaceMatcherLivenessSession
+import org.multipaz.facematch.FacePose
 import org.multipaz.facematch.OverlayFrame
 import org.multipaz.util.Logger
 
@@ -46,23 +47,27 @@ private val fallbackJpegBytes = ByteString(
 )
 
 /**
- * Base class containing the shared passive liveness verification and portrait capture state machine for FaceNet.
+ * Base class containing the shared liveness verification and sequential pose capture state machine for FaceNet.
  *
  * Implements:
- * - Passive liveness verification: evaluates `MiniFASNetV2` anti-spoofing (`livenessScore >= passiveLivenessThreshold`)
- *   while the user looks straight at the camera, without requiring directional head-turn challenges.
- * - High-resolution portrait photo capture upon confirming passive liveness across 2 consecutive straight frames.
+ * - Sequential capture of the caller-requested [poses] in order (defaulting to `[FacePose.FRONT]`).
+ * - Passive liveness verification on [FacePose.FRONT]: evaluates `MiniFASNetV2` anti-spoofing
+ *   (`livenessScore >= passiveLivenessThreshold`) while the user looks straight at the camera.
+ * - Directional head-pose guidance and capture for [FacePose.LOOK_LEFT], [FacePose.LOOK_RIGHT],
+ *   [FacePose.LOOK_UP], and [FacePose.LOOK_DOWN].
+ * - High-resolution portrait photo capture for each pose across 2 consecutive valid frames.
  * - Dynamic visual feedback via [OverlayFrame] and segmented ring.
  */
 abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
     val config: FaceNetModelConfig,
+    poses: List<FacePose> = listOf(FacePose.FRONT),
     val debug: Boolean = false,
     val matcherName: String = "facenet",
     val matcherDisplayName: String = "MobileFaceNet",
     val clock: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     randomSeed: Long = clock(),
     val enablePoseSmoothing: Boolean = true
-) : FaceMatcherLivenessSession() {
+) : FaceMatcherLivenessSession(poses) {
 
     enum class Phase {
         INITIALIZING,
@@ -73,6 +78,11 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
 
     var phase = Phase.INITIALIZING
         protected set
+
+    var currentPoseIndex = 0
+        protected set
+
+    private val capturedImagesMap = mutableMapOf<FacePose, ByteString>()
 
     private var startTime: Long? = null
     private var phaseStartTime: Long = 0L
@@ -101,9 +111,33 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
 
     init {
         updateState(
-            message = "Position your face and look at the camera",
+            message = withStepSuffix(getPosePromptText(poses[0])),
             status = FaceMatcherLivenessPromptState.Status.IN_PROGRESS
         )
+    }
+
+    private fun FacePose.toChallengeDirection(): ChallengeDirection = when (this) {
+        FacePose.FRONT -> ChallengeDirection.CENTER
+        FacePose.LOOK_LEFT -> ChallengeDirection.LEFT
+        FacePose.LOOK_RIGHT -> ChallengeDirection.RIGHT
+        FacePose.LOOK_UP -> ChallengeDirection.UP
+        FacePose.LOOK_DOWN -> ChallengeDirection.DOWN
+    }
+
+    private fun getPosePromptText(pose: FacePose): String = when (pose) {
+        FacePose.FRONT -> "Position your face and look at the camera"
+        FacePose.LOOK_LEFT -> getChallengePromptText(ChallengeDirection.LEFT)
+        FacePose.LOOK_RIGHT -> getChallengePromptText(ChallengeDirection.RIGHT)
+        FacePose.LOOK_UP -> getChallengePromptText(ChallengeDirection.UP)
+        FacePose.LOOK_DOWN -> getChallengePromptText(ChallengeDirection.DOWN)
+    }
+
+    private fun withStepSuffix(baseMessage: String): String {
+        return if (poses.size > 1) {
+            "$baseMessage (Step ${currentPoseIndex + 1} of ${poses.size})"
+        } else {
+            baseMessage
+        }
     }
 
     /**
@@ -183,8 +217,12 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
                     initializePipeline()
                     phase = Phase.POSITIONING
                     phaseStartTime = now
+                    val initialPose = poses[currentPoseIndex]
+                    if (initialPose != FacePose.FRONT) {
+                        currentRingSegments = computeDirectionSegments(initialPose.toChallengeDirection(), 0.0f)
+                    }
                     updateState(
-                        message = "Position your face and look at the camera"
+                        message = withStepSuffix(getPosePromptText(initialPose))
                     )
                 } catch (e: Exception) {
                     Logger.e(TAG, "Failed to initialize pipeline", e)
@@ -206,7 +244,7 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
             updateState(
                 message = "Portrait captured",
                 status = FaceMatcherLivenessPromptState.Status.SUCCESS,
-                capturedImage = photoBytes,
+                capturedImages = poses.associateWith { photoBytes },
                 overlay = createOverlay(frame, emptyList(), null)
             )
             return
@@ -307,18 +345,88 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
 
         when (phase) {
             Phase.POSITIONING -> {
-                val elapsed = now - phaseStartTime
-                val pulse = (sin(elapsed / 250.0) * 0.35 + 0.65).toFloat()
-                val pulseColor = RingSegment.lerpColor(RingSegment.COLOR_DARK_GRAY, RingSegment.COLOR_BLUE, pulse)
+                val targetPose = poses[currentPoseIndex]
+                if (targetPose == FacePose.FRONT) {
+                    val elapsed = now - phaseStartTime
+                    val pulse = (sin(elapsed / 250.0) * 0.35 + 0.65).toFloat()
+                    val pulseColor = RingSegment.lerpColor(RingSegment.COLOR_DARK_GRAY, RingSegment.COLOR_BLUE, pulse)
 
-                if (isFacingStraight) {
-                    val straightStart = straightFaceStartTime ?: run {
-                        straightFaceStartTime = now
-                        now
+                    if (isFacingStraight) {
+                        val straightStart = straightFaceStartTime ?: run {
+                            straightFaceStartTime = now
+                            now
+                        }
+
+                        val isLive = currentLiveness != null && currentLiveness >= config.passiveLivenessThreshold
+                        if (isLive) {
+                            consecutiveMatchFrames++
+                            if (consecutiveMatchFrames >= 2) {
+                                val photoBytes = captureHighResolutionImage(frame)
+                                if (photoBytes == null) {
+                                    failSession("Could not capture portrait photo")
+                                    return
+                                }
+                                capturedImagesMap[FacePose.FRONT] = photoBytes
+                                advanceToNextPoseOrComplete(frame, faces, currentLiveness, now)
+                                return
+                            } else {
+                                currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
+                                    RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.15f)
+                                }
+                                val overlay = createOverlay(frame, faces, currentLiveness)
+                                updateState(
+                                    message = withStepSuffix("Hold still..."),
+                                    overlay = overlay
+                                )
+                            }
+                        } else {
+                            consecutiveMatchFrames = 0
+                            if (now - straightStart > livenessTimeoutMs) {
+                                currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
+                                    RingSegment(color = RingSegment.COLOR_RED, scale = 1.0f)
+                                }
+                                val overlay = createOverlay(frame, faces, currentLiveness)
+                                failSession(
+                                    message = "Liveness check failed - ensure you are not using a photo or screen",
+                                    overlay = overlay
+                                )
+                                return
+                            }
+                            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
+                                RingSegment(color = pulseColor, scale = 1.0f)
+                            }
+                            val overlay = createOverlay(frame, faces, currentLiveness)
+                            updateState(
+                                message = withStepSuffix("Hold still and look directly at the camera..."),
+                                overlay = overlay
+                            )
+                        }
+                    } else {
+                        straightFaceStartTime = null
+                        consecutiveMatchFrames = 0
+                        val prompt = when {
+                            yaw > 12f -> "Turn your head slightly to the right"
+                            yaw < -12f -> "Turn your head slightly to the left"
+                            pitch > 12f -> "Tilt your head slightly down"
+                            pitch < -12f -> "Tilt your head slightly up"
+                            roll > 15f || roll < -15f -> "Keep your head level"
+                            else -> "Look directly at the camera"
+                        }
+                        currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
+                            RingSegment(color = pulseColor, scale = 1.0f)
+                        }
+                        val overlay = createOverlay(frame, faces, currentLiveness)
+                        updateState(
+                            message = withStepSuffix(prompt),
+                            overlay = overlay
+                        )
                     }
+                } else {
+                    val direction = targetPose.toChallengeDirection()
+                    val progress = computeChallengeProgress(direction, yaw, pitch)
+                    currentRingSegments = computeDirectionSegments(direction, progress)
 
-                    val isLive = currentLiveness != null && currentLiveness >= config.passiveLivenessThreshold
-                    if (isLive) {
+                    if (progress >= 1.0f) {
                         consecutiveMatchFrames++
                         if (consecutiveMatchFrames >= 2) {
                             val photoBytes = captureHighResolutionImage(frame)
@@ -326,74 +434,67 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
                                 failSession("Could not capture portrait photo")
                                 return
                             }
-                            phase = Phase.COMPLETED
-                            headPoseFilter.reset()
-                            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                                RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.2f)
-                            }
-                            val successOverlay = createOverlay(frame, faces, currentLiveness)
-                            updateState(
-                                message = "Portrait captured",
-                                status = FaceMatcherLivenessPromptState.Status.SUCCESS,
-                                capturedImage = photoBytes,
-                                overlay = successOverlay
-                            )
+                            capturedImagesMap[targetPose] = photoBytes
+                            advanceToNextPoseOrComplete(frame, faces, currentLiveness, now)
                             return
                         } else {
-                            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                                RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.15f)
-                            }
                             val overlay = createOverlay(frame, faces, currentLiveness)
                             updateState(
-                                message = "Hold still...",
+                                message = withStepSuffix("Hold still..."),
                                 overlay = overlay
                             )
                         }
                     } else {
                         consecutiveMatchFrames = 0
-                        if (now - straightStart > livenessTimeoutMs) {
-                            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                                RingSegment(color = RingSegment.COLOR_RED, scale = 1.0f)
-                            }
-                            val overlay = createOverlay(frame, faces, currentLiveness)
-                            failSession(
-                                message = "Liveness check failed - ensure you are not using a photo or screen",
-                                overlay = overlay
-                            )
-                            return
-                        }
-                        currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                            RingSegment(color = pulseColor, scale = 1.0f)
-                        }
                         val overlay = createOverlay(frame, faces, currentLiveness)
                         updateState(
-                            message = "Hold still and look directly at the camera...",
+                            message = withStepSuffix(getPosePromptText(targetPose)),
                             overlay = overlay
                         )
                     }
-                } else {
-                    straightFaceStartTime = null
-                    consecutiveMatchFrames = 0
-                    val prompt = when {
-                        yaw > 12f -> "Turn your head slightly to the right"
-                        yaw < -12f -> "Turn your head slightly to the left"
-                        pitch > 12f -> "Tilt your head slightly down"
-                        pitch < -12f -> "Tilt your head slightly up"
-                        roll > 15f || roll < -15f -> "Keep your head level"
-                        else -> "Look directly at the camera"
-                    }
-                    currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
-                        RingSegment(color = pulseColor, scale = 1.0f)
-                    }
-                    val overlay = createOverlay(frame, faces, currentLiveness)
-                    updateState(
-                        message = prompt,
-                        overlay = overlay
-                    )
                 }
             }
 
             Phase.COMPLETED, Phase.FAILED, Phase.INITIALIZING -> {}
+        }
+    }
+
+    private fun advanceToNextPoseOrComplete(
+        frame: CameraFrame,
+        faces: List<TFace>,
+        currentLiveness: Float?,
+        now: Long
+    ) {
+        currentPoseIndex++
+        consecutiveMatchFrames = 0
+        straightFaceStartTime = null
+        phaseStartTime = now
+        if (currentPoseIndex >= poses.size) {
+            phase = Phase.COMPLETED
+            headPoseFilter.reset()
+            currentRingSegments = List(RingSegment.NUM_SEGMENTS) {
+                RingSegment(color = RingSegment.COLOR_GREEN, scale = 1.2f)
+            }
+            val successOverlay = createOverlay(frame, faces, currentLiveness)
+            updateState(
+                message = "Portrait captured",
+                status = FaceMatcherLivenessPromptState.Status.SUCCESS,
+                capturedImages = capturedImagesMap.toMap(),
+                overlay = successOverlay
+            )
+        } else {
+            val nextPose = poses[currentPoseIndex]
+            currentRingSegments = if (nextPose == FacePose.FRONT) {
+                RingSegment.defaultSegments
+            } else {
+                computeDirectionSegments(nextPose.toChallengeDirection(), 0.0f)
+            }
+            val nextOverlay = createOverlay(frame, faces, currentLiveness)
+            updateState(
+                message = withStepSuffix(getPosePromptText(nextPose)),
+                status = FaceMatcherLivenessPromptState.Status.IN_PROGRESS,
+                overlay = nextOverlay
+            )
         }
     }
 
@@ -423,7 +524,7 @@ abstract class FaceNetLivenessSessionBase<TFace : DetectedFacePose>(
         updateState(
             message = "Portrait captured",
             status = FaceMatcherLivenessPromptState.Status.SUCCESS,
-            capturedImage = fallbackJpegBytes
+            capturedImages = poses.associateWith { fallbackJpegBytes }
         )
     }
 

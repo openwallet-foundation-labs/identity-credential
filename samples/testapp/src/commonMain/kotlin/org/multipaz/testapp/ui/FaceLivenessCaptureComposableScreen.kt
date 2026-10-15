@@ -20,19 +20,22 @@ import androidx.compose.ui.unit.dp
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.facematch.FaceMatcherLivenessCapture
 import org.multipaz.facematch.FaceMatcher
+import org.multipaz.facematch.FacePose
 
 /**
  * Screen demonstrating the direct embedding of [FaceMatcherLivenessCapture] into an
  * application workflow (such as credential provisioning).
  *
  * @param faceMatcher the [FaceMatcher] to use for liveness verification, or null if unsupported.
- * @param onPortraitCaptured invoked with the captured portrait photo bytes upon success.
+ * @param poses the ordered sequence of [FacePose] values to capture.
+ * @param onPortraitsCaptured invoked with the map of captured portrait photo bytes keyed by [FacePose] upon success.
  * @param onCancel invoked if the user cancels or liveness verification fails.
  */
 @Composable
 fun FaceLivenessCaptureComposableScreen(
     faceMatcher: FaceMatcher?,
-    onPortraitCaptured: (ByteString) -> Unit,
+    poses: List<FacePose> = listOf(FacePose.FRONT),
+    onPortraitsCaptured: (Map<FacePose, ByteString>) -> Unit,
     onCancel: () -> Unit
 ) {
     LazyColumn(
@@ -61,7 +64,7 @@ fun FaceLivenessCaptureComposableScreen(
                     Text(
                         text = "This screen embeds the FaceMatcherLivenessCapture composable " +
                             "directly into the screen layout rather than showing a modal bottom sheet dialog. " +
-                            "Upon completing the liveness challenges, a portrait image will be captured for issuer approval.",
+                            "Poses to capture: ${poses.joinToString(" ") { it.name }}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -86,7 +89,9 @@ fun FaceLivenessCaptureComposableScreen(
                     )
                 }
             } else {
-                val session = remember(faceMatcher) { faceMatcher.createLivenessSession() }
+                val session = remember(faceMatcher, poses) {
+                    faceMatcher.createLivenessSession(poses = poses)
+                }
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -97,7 +102,7 @@ fun FaceLivenessCaptureComposableScreen(
                     FaceMatcherLivenessCapture(
                         session = session,
                         modifier = Modifier.fillMaxWidth(),
-                        onSuccess = onPortraitCaptured,
+                        onSuccess = onPortraitsCaptured,
                         onFailed = onCancel
                     )
                 }
@@ -113,4 +118,12 @@ fun FaceLivenessCaptureComposableScreen(
             }
         }
     }
+}
+
+internal fun FacePose.displayLabel(): String = when (this) {
+    FacePose.FRONT -> "Front"
+    FacePose.LOOK_LEFT -> "Look Left"
+    FacePose.LOOK_RIGHT -> "Look Right"
+    FacePose.LOOK_UP -> "Look Up"
+    FacePose.LOOK_DOWN -> "Look Down"
 }

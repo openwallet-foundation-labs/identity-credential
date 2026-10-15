@@ -4,6 +4,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.facematch.FaceMatcher
 import org.multipaz.facematch.FaceMatcherLivenessSession
 import org.multipaz.facematch.FaceMatcherSession
+import org.multipaz.facematch.FacePose
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -80,10 +81,12 @@ class FaceNetFaceMatcher(
         )
     }
 
-    override fun createLivenessSession(): FaceMatcherLivenessSession {
+    override fun createLivenessSession(poses: List<FacePose>): FaceMatcherLivenessSession {
+        require(poses.isNotEmpty()) { "At least one pose must be specified" }
         return createFaceNetLivenessSession(
             modelBytes = modelBytes,
             config = config,
+            poses = poses,
             debug = debug,
             matcherName = name,
             matcherDisplayName = displayName
@@ -214,6 +217,7 @@ internal expect fun createFaceNetSession(
 internal expect fun createFaceNetLivenessSession(
     modelBytes: ByteString,
     config: FaceNetModelConfig,
+    poses: List<FacePose>,
     debug: Boolean,
     matcherName: String,
     matcherDisplayName: String

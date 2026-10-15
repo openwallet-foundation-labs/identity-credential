@@ -60,6 +60,14 @@ private func clearFaceMatcherReferencePortrait(storage: Storage) async {
 struct FaceMatcherPromptScreen: View {
     @Environment(ViewModel.self) private var viewModel
 
+    private static let allPoses: [FacePose] = [
+        .lookLeft,
+        .lookRight,
+        .lookUp,
+        .lookDown,
+        .front
+    ]
+
     @State private var referencePortrait: ByteString? = nil
     @State private var isLoading: Bool = true
     @State private var showCameraSheet: Bool = false
@@ -70,9 +78,36 @@ struct FaceMatcherPromptScreen: View {
     @State private var toastMessage: String? = nil
     @State private var selectedMatcherDisplayName: String = ""
     @State private var selectedLivenessMatcherDisplayName: String = ""
+    @State private var posesText: String = allPoses.map(\.poseToken).joined(separator: " ")
     @State private var detectedFaceCrop: ByteString? = nil
     @State private var isExtractingCrop: Bool = false
     @State private var cropError: String? = nil
+
+    private var parsedPosesResult: Result<[FacePose], Error> {
+        let tokens = posesText
+            .split(whereSeparator: { $0.isWhitespace })
+            .map { String($0) }
+        guard !tokens.isEmpty else {
+            return .failure(NSError(
+                domain: "FaceMatcherPromptScreen",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Enter at least one pose (e.g. FRONT)"]
+            ))
+        }
+        var poses: [FacePose] = []
+        for token in tokens {
+            guard let pose = FacePose.fromToken(token) else {
+                let valid = Self.allPoses.map(\.poseToken).joined(separator: " ")
+                return .failure(NSError(
+                    domain: "FaceMatcherPromptScreen",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Unknown pose '\(token)'. Valid poses: \(valid)"]
+                ))
+            }
+            poses.append(pose)
+        }
+        return .success(poses)
+    }
 
     var body: some View {
         ScrollView {
@@ -420,6 +455,14 @@ struct FaceMatcherPromptScreen: View {
 
     @ViewBuilder
     private var livenessVerificationCard: some View {
+        let parsedPoses = try? parsedPosesResult.get()
+        let parseError: String? = {
+            if case .failure(let error) = parsedPosesResult {
+                return error.localizedDescription
+            }
+            return nil
+        }()
+
         VStack(alignment: .leading, spacing: 12) {
             Text("Liveness Verification")
                 .font(.headline)
@@ -443,16 +486,50 @@ struct FaceMatcherPromptScreen: View {
                 }
             }
 
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Poses to capture (space-separated)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Poses to capture (space-separated)", text: $posesText)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                if let parseError {
+                    Text(parseError)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Front only") {
+                    posesText = FacePose.front.poseToken
+                }
+                .buttonStyle(.bordered)
+
+                Button("All") {
+                    posesText = Self.allPoses.map(\.poseToken).joined(separator: " ")
+                }
+                .buttonStyle(.bordered)
+
+                Button("Random Order") {
+                    let directional = Self.allPoses.filter { $0 != .front }.shuffled()
+                    posesText = (directional + [.front]).map(\.poseToken).joined(separator: " ")
+                }
+                .buttonStyle(.bordered)
+            }
+
             Button {
+                guard let parsedPoses else { return }
                 let matcher = viewModel.faceMatcherRepository?.all.first(where: { $0.displayName == selectedLivenessMatcherDisplayName })
-                viewModel.path.append(.faceLivenessCaptureScreen(matcherName: matcher?.name))
+                viewModel.path.append(.faceLivenessCaptureScreen(matcherName: matcher?.name, poses: parsedPoses))
             } label: {
                 Text("Check liveness and capture portrait image")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(isVerifying)
+            .disabled(isVerifying || parsedPoses == nil)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

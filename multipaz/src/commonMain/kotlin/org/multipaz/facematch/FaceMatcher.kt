@@ -72,18 +72,22 @@ interface FaceMatcher {
      *
      * The implementation is required to verify that the subject in front of the camera is a live human being
      * (e.g. through active challenge interactions, blink or head-turn detection, or passive presentation attack
-     * detection) and, as part of that verification, capture a high-quality still portrait photo of the live subject.
-     * The captured portrait is returned in [FaceMatcherLivenessPromptState.capturedImage] when the session transitions
-     * to [FaceMatcherLivenessPromptState.Status.SUCCESS].
+     * detection) and capture still portrait photos of the live subject for each requested pose in [poses] in
+     * that order. The captured portraits are returned in [FaceMatcherLivenessPromptState.capturedImages] when
+     * the session transitions to [FaceMatcherLivenessPromptState.Status.SUCCESS].
      *
      * Like matching sessions, the implementation communicates with the user throughout the interaction by calling
      * [FaceMatcherLivenessSession.updateState] to provide instructions, challenge prompts, and dynamic visual overlays.
      *
+     * @param poses ordered list of [FacePose]s to capture during the session. Defaults to `[FacePose.FRONT]`.
      * @return a new [FaceMatcherLivenessSession] instance for this liveness verification and capture session.
+     * @throws IllegalArgumentException if [poses] is empty.
      * @throws UnsupportedOperationException if this matcher does not support liveness detection ([supportsLiveness] is `false`).
      */
-    @Throws(UnsupportedOperationException::class)
-    fun createLivenessSession(): FaceMatcherLivenessSession {
+    @Throws(UnsupportedOperationException::class, IllegalArgumentException::class)
+    fun createLivenessSession(
+        poses: List<FacePose> = listOf(FacePose.FRONT)
+    ): FaceMatcherLivenessSession {
         throw UnsupportedOperationException("$displayName does not support liveness detection")
     }
 }

@@ -4,6 +4,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.facematch.FaceMatcherLivenessSession
 import org.multipaz.facematch.FaceMatcherSession
+import org.multipaz.facematch.FacePose
 import org.multipaz.util.toByteArray
 import platform.CoreGraphics.CGImageRelease
 import platform.UIKit.UIImage
@@ -32,6 +33,7 @@ internal actual fun createFaceNetSession(
 internal actual fun createFaceNetLivenessSession(
     modelBytes: ByteString,
     config: FaceNetModelConfig,
+    poses: List<FacePose>,
     debug: Boolean,
     matcherName: String,
     matcherDisplayName: String
@@ -39,6 +41,7 @@ internal actual fun createFaceNetLivenessSession(
     return IosFaceNetLivenessSession(
         modelBytes = modelBytes,
         config = config,
+        poses = poses,
         debug = debug,
         matcherName = matcherName,
         matcherDisplayName = matcherDisplayName

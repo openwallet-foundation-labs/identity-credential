@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -61,6 +62,7 @@ import org.multipaz.compose.permissions.rememberCameraPermissionState
 import org.multipaz.compose.pickers.rememberImagePicker
 import org.multipaz.facematch.FaceMatcher
 import org.multipaz.facematch.FaceMatcherRepository
+import org.multipaz.facematch.FacePose
 import org.multipaz.facenet.FaceNetFaceMatcher
 import org.multipaz.facenet.testdata.FaceSamplePortrait
 import org.multipaz.facenet.testdata.FaceTestData
@@ -74,6 +76,14 @@ import org.multipaz.testapp.TestAppConfiguration
 import org.multipaz.util.Logger
 
 private const val TAG = "FaceMatcherPromptScreen"
+
+private val defaultLivenessPoses = listOf(
+    FacePose.LOOK_LEFT,
+    FacePose.LOOK_RIGHT,
+    FacePose.LOOK_UP,
+    FacePose.LOOK_DOWN,
+    FacePose.FRONT
+)
 
 val FACE_MATCHER_STORAGE_TABLE_SPEC = StorageTableSpec(
     name = "FaceMatcherPromptData",
@@ -109,7 +119,7 @@ fun FaceMatcherPromptScreen(
     showToast: (message: String) -> Unit,
     faceMatcherRepository: FaceMatcherRepository? = null,
     storage: Storage = TestAppConfiguration.storage,
-    onNavigateToLivenessCaptureComposable: (matcher: FaceMatcher?) -> Unit = {}
+    onNavigateToLivenessCaptureComposable: (matcher: FaceMatcher?, poses: List<FacePose>) -> Unit = { _, _ -> }
 ) {
     val coroutineScope = rememberCoroutineScope()
     var referencePortrait by remember { mutableStateOf<ByteString?>(null) }
@@ -119,6 +129,14 @@ fun FaceMatcherPromptScreen(
     val matchers = faceMatcherRepository?.all ?: emptyList()
     var selectedMatcher by remember { mutableStateOf<FaceMatcher?>(faceMatcherRepository?.defaultMatcher) }
     var selectedLivenessMatcher by remember { mutableStateOf<FaceMatcher?>(faceMatcherRepository?.defaultMatcher) }
+    var posesText by remember {
+        mutableStateOf(defaultLivenessPoses.joinToString(" ") { it.name })
+    }
+    val parsedPosesResult = remember(posesText) {
+        parseLivenessPosesString(posesText)
+    }
+    val parsedPoses = parsedPosesResult.getOrNull()
+    val parseError = parsedPosesResult.exceptionOrNull()?.message
     var detectedFaceCrop by remember { mutableStateOf<ByteString?>(null) }
     var isExtractingCrop by remember { mutableStateOf(false) }
     var cropError by remember { mutableStateOf<String?>(null) }
@@ -676,11 +694,55 @@ fun FaceMatcherPromptScreen(
                         )
                     }
 
+                    OutlinedTextField(
+                        value = posesText,
+                        onValueChange = { posesText = it },
+                        label = { Text("Poses to capture (space-separated)") },
+                        isError = parseError != null,
+                        supportingText = if (parseError != null) {
+                            { Text(parseError) }
+                        } else {
+                            null
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                posesText = FacePose.FRONT.name
+                            }
+                        ) {
+                            Text("Front only")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                posesText = defaultLivenessPoses.joinToString(" ") { it.name }
+                            }
+                        ) {
+                            Text("All")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val directional = defaultLivenessPoses.filter { it != FacePose.FRONT }.shuffled()
+                                posesText = (directional + FacePose.FRONT).joinToString(" ") { it.name }
+                            }
+                        ) {
+                            Text("Random Order")
+                        }
+                    }
+
                     Button(
                         onClick = {
+                            val poses = parsedPoses ?: return@Button
                             val matcherToUse = selectedLivenessMatcher ?: faceMatcherRepository?.defaultMatcher
-                            onNavigateToLivenessCaptureComposable(matcherToUse)
+                            onNavigateToLivenessCaptureComposable(matcherToUse, poses)
                         },
+                        enabled = parsedPoses != null,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Check liveness and capture portrait image")
@@ -689,6 +751,24 @@ fun FaceMatcherPromptScreen(
             }
         }
     }
+}
+
+private fun parseLivenessPosesString(input: String): Result<List<FacePose>> {
+    val tokens = input.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (tokens.isEmpty()) {
+        return Result.failure(IllegalArgumentException("Enter at least one pose (e.g. FRONT)"))
+    }
+    val poses = mutableListOf<FacePose>()
+    for (token in tokens) {
+        val pose = FacePose.entries.find { it.name.equals(token, ignoreCase = true) }
+            ?: return Result.failure(
+                IllegalArgumentException(
+                    "Unknown pose '$token'. Valid poses: ${defaultLivenessPoses.joinToString(" ") { it.name }}"
+                )
+            )
+        poses.add(pose)
+    }
+    return Result.success(poses)
 }
 
 private suspend fun savePortrait(storage: Storage, bytes: ByteString) {

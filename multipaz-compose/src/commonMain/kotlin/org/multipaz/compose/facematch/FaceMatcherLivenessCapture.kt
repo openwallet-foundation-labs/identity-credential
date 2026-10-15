@@ -37,6 +37,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
@@ -49,6 +50,7 @@ import org.multipaz.compose.permissions.rememberCameraPermissionState
 import org.multipaz.compose.prompt.FaceMatcherOverlay
 import org.multipaz.facematch.FaceMatcherLivenessPromptState
 import org.multipaz.facematch.FaceMatcherLivenessSession
+import org.multipaz.facematch.FacePose
 import org.multipaz.multipaz_compose.generated.resources.Res
 import org.multipaz.multipaz_compose.generated.resources.face_matcher_prompt_grant_permission
 import org.multipaz.multipaz_compose.generated.resources.face_matcher_prompt_permission_required
@@ -63,14 +65,14 @@ import org.multipaz.multipaz_compose.generated.resources.face_matcher_prompt_per
  *
  * @param session the [FaceMatcherLivenessSession] driving liveness verification and capture.
  * @param modifier the [Modifier] to be applied to this composable layout.
- * @param onSuccess invoked with the captured portrait photo bytes upon successful liveness verification.
+ * @param onSuccess invoked with the map of captured portrait photo bytes keyed by [FacePose] upon successful liveness verification.
  * @param onFailed optional callback invoked if liveness verification fails or times out.
  */
 @Composable
 fun FaceMatcherLivenessCapture(
     session: FaceMatcherLivenessSession,
     modifier: Modifier = Modifier,
-    onSuccess: (ByteString) -> Unit,
+    onSuccess: (Map<FacePose, ByteString>) -> Unit,
     onFailed: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -94,10 +96,10 @@ fun FaceMatcherLivenessCapture(
     LaunchedEffect(promptState.status) {
         when (promptState.status) {
             FaceMatcherLivenessPromptState.Status.SUCCESS -> {
-                val capturedImage = promptState.capturedImage
-                if (capturedImage != null) {
-                    delay(1200)
-                    onSuccess(capturedImage)
+                val capturedImages = promptState.capturedImages
+                if (capturedImages.isNotEmpty()) {
+                    delay(1200.milliseconds)
+                    onSuccess(capturedImages)
                 }
             }
             FaceMatcherLivenessPromptState.Status.FAILED -> {
