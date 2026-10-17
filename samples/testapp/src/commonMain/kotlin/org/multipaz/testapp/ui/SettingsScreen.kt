@@ -96,6 +96,14 @@ fun SettingsScreen(
             )
         }
         item {
+            SettingToggle(
+                title = "NFCv2: Only Allow NFC Data Transfer",
+                isChecked = app.settingsModel.presentmentNfcV2OnlyAllowNfc.collectAsState().value,
+                onCheckedChange = { app.settingsModel.presentmentNfcV2OnlyAllowNfc.value = it },
+                enabled = nfcAvailable
+            )
+        }
+        item {
             SettingHeadline("ISO mdoc Transports (QR and NFC Static Handover)")
         }
         item {
@@ -120,7 +128,7 @@ fun SettingsScreen(
             )
         }
         item {
-            SettingHeadline("ISO mdoc NFC Negotiated Handover Preferred Order")
+            SettingHeadline("ISO mdoc NFC Negotiated Handover & NFCv2 Preferred Order")
         }
         for (n in negotiatedHandoverOrder.indices) {
             val prefix = negotiatedHandoverOrder[n]

@@ -5,11 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
@@ -31,6 +28,8 @@ import org.multipaz.mdoc.transport.advertise
 import org.multipaz.mdoc.transport.waitForConnection
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.NfcApduRouter
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.presentment.Iso18013Presentment
 import org.multipaz.presentment.PresentmentCanceledException
@@ -46,47 +45,26 @@ import kotlin.time.Instant
 /**
  * Base class for implementing NFC engagement according to ISO/IEC 18013-5:2021.
  *
- * Applications should subclass this and include the appropriate stanzas in its manifest
- * for binding to the NDEF Type 4 tag AID (D2760000850101).
- *
- * @property sendResponse a function to send a response APDU via [CombinedNfcService].
+ * Applications should subclass this and register it in [NfcApduRouter.buildServices]
+ * for the NDEF Type 4 tag AID (`D2760000850101`).
  */
-abstract class MdocNdefService(
-    sendResponse: (ByteArray) -> Unit
-) : NfcApduService(sendResponse) {
+abstract class MdocNdefService : MdocNfcPresentmentService() {
     companion object {
         private const val TAG = "MdocNdefService"
     }
 
-    private fun vibrateError() {
-        vibrateMdocNfcError()
-    }
-
-    private fun vibrateSuccess() {
-        vibrateMdocNfcSuccess()
-    }
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
     @Volatile
     private var pendingEngagementDeviceKey: EcPrivateKey? = null
 
-    override fun onDestroy() {
-        Logger.i(TAG, "onDestroy")
-        super.onDestroy()
+    override fun stop() {
+        Logger.i(TAG, "stop")
+        super.stop()
         engagement = null
         pendingEngagementDeviceKey?.close()
         pendingEngagementDeviceKey = null
-        serviceScope.cancel()
-        engagementJob = null
         listenForCancellationFromUiJob?.cancel()
         listenForCancellationFromUiJob = null
-        channel.close()
     }
-
-    // A job started when onCreate is called and used for dispatching APDUs and onDeactivated events
-    // to a suspend-world. Runs until onDestroy is called.
-    private var engagementJob: Job? = null
 
     // A job started when the reader has selected us and used for listening for
     // a signal from the UI that it wants to cancel during NFC engagement.
@@ -94,19 +72,6 @@ abstract class MdocNdefService(
 
     @Volatile
     private var engagement: MdocNfcEngagementHelper? = null
-
-    // Channel used for bouncing data from processCommandApdu() and onDeactivated() to engagementJob coroutine.
-    private val channel = Channel<Data>(Channel.UNLIMITED)
-
-    private sealed class Data
-
-    private data class CommandApduData(
-        val commandApdu: CommandApdu
-    ): Data()
-
-    private data class DeactivatedData(
-        val reason: Int
-    ): Data()
 
     /**
      * Settings provided by the application for how to configure NFC engagement.
@@ -163,47 +128,10 @@ abstract class MdocNdefService(
      */
     abstract suspend fun getSettings(): Settings
 
-    override fun onCreate() {
-        Logger.i(TAG, "onCreate")
-        super.onCreate()
-
+    override fun start() {
+        Logger.i(TAG, "start")
         engagement = null
-
-        // Start a coroutine on a background thread for handling incoming APDUs and deactivation events
-        // from the OS in processCommandApdu() and onDeactivated() overrides. This is so we can
-        // use suspend functions.
-        //
-        engagementJob = serviceScope.launch(Dispatchers.Default) {
-            for (data in channel) {
-                try {
-                    when (data) {
-                        is CommandApduData -> {
-                            processCommandApdu(data.commandApdu)?.let { responseApdu ->
-                                try {
-                                    sendResponseApdu(responseApdu.encode())
-                                } catch (e: Exception) {
-                                    Logger.w(TAG, "Error sending response APDU", e)
-                                }
-                            }
-                        }
-                        is DeactivatedData -> {
-                            processDeactivated(data.reason)
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) {
-                        if (!isActive) {
-                            // The whole service/job is being shut down, let the exception propagate so the loop dies.
-                            throw e
-                        }
-                        // Only the current sub-task (APDU processing) was aborted, keep the loop alive for the next tap.
-                        Logger.i(TAG, "engagementJob: APDU processing cancelled (likely due to deactivation)")
-                    } else {
-                        Logger.e(TAG, "Error processing data from channel", e)
-                    }
-                }
-            }
-        }
+        super.start()
     }
 
     @Volatile
@@ -479,24 +407,25 @@ abstract class MdocNdefService(
         listenForCancellationFromUiJob = null
     }
 
-    private val CommandApdu.isApplicationSelect: Boolean
-        get() = ins == Nfc.INS_SELECT && p1 == Nfc.INS_SELECT_P1_APPLICATION
-
     private var numApdusReceived = 0
     private var firstCommandApdu: CommandApdu? = null
 
-    // Called by coroutine running in background thread, see onCreate() for details
-    private suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu? {
-        if (commandApdu.isApplicationSelect && numApdusReceived > 0) {
-            Logger.i(TAG, "Received SELECT APPLICATION while engagement already in progress; resetting for new engagement")
-            engagement?.processDeactivated(0)
-            engagement = null
-            pendingEngagementDeviceKey?.close()
-            pendingEngagementDeviceKey = null
-            engagementStarted = false
+    override suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu {
+        if (commandApdu.isApplicationSelect) {
             engagementComplete = false
-            cancelEngagementJobs()
-            numApdusReceived = 0
+            if (numApdusReceived > 0) {
+                Logger.i(TAG, "Received SELECT APPLICATION while engagement already in progress; resetting for new engagement")
+                engagement?.processDeactivated(NfcDeactivationReason.DESELECTED)
+                engagement = null
+                pendingEngagementDeviceKey?.close()
+                pendingEngagementDeviceKey = null
+                engagementStarted = false
+                cancelEngagementJobs()
+                numApdusReceived = 0
+            }
+        } else if (engagementComplete) {
+            Logger.w(TAG, "Engagement complete but received APDU $commandApdu")
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
         }
 
         // Recent Android versions seems to want a super-fast response to the SELECT APPLICATION
@@ -526,24 +455,22 @@ abstract class MdocNdefService(
                                 " got $responseApdu")
                     }
                 }
-                val responseApdu = it.processApdu(commandApdu)
-                return responseApdu
+                return it.processApdu(commandApdu)
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logger.e(TAG, "Error processing APDU in MdocNfcEngagementHelper", e)
         }
-        return null
+        return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
     }
 
-    // Called by coroutine running in background thread, see onCreate() for details
-    private suspend fun processDeactivated(reason: Int) {
+    override suspend fun processDeactivated(reason: NfcDeactivationReason) {
+        Logger.i(TAG, "processDeactivated: reason=$reason")
         try {
             engagement?.processDeactivated(reason)
 
-            // Android might reuse this service for the next tap. That is, we can't rely on onDestroy()
-            // firing right after this, then onCreate(). So reset everything so next time processCommandApdu()
-            // is called we're ready to go with a new engagement...
+            // The service might be reused for the next tap. So reset everything so next time
+            // processCommandApdu() is called we're ready to go with a new engagement.
             engagement = null
             pendingEngagementDeviceKey?.close()
             pendingEngagementDeviceKey = null
@@ -556,37 +483,5 @@ abstract class MdocNdefService(
             if (e is CancellationException) throw e
             Logger.e(TAG, "Error processing deactivation event in MdocNfcEngagementHelper", e)
         }
-    }
-
-    // Called by OS when an APDU arrives
-    override fun processCommandApdu(encodedCommandApdu: ByteArray): ByteArray? {
-        // Bounce the APDU to processCommandApdu() above via the coroutine in background thread set up in onCreate()
-        //
-        // With Extended APDUs it's possible we get a partial APDU so gracefully handle if decoding fails. Simply
-        // log and discard, we'll likely get hit with an onDeactivated call soon anyway.
-        //
-        val commandApdu = try {
-            CommandApdu.decode(encodedCommandApdu)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Logger.w(TAG, "Error decoding APDU", e)
-            return null
-        }
-        if (commandApdu.isApplicationSelect) {
-            engagementComplete = false
-        }
-        if (!engagementComplete) {
-            val unused = channel.trySend(CommandApduData(commandApdu))
-        } else {
-            Logger.w(TAG, "Engagement complete but received APDU $commandApdu")
-        }
-        return null
-    }
-
-    // Called by OS when NFC tag reader deactivates
-    override fun onDeactivated(reason: Int) {
-        Logger.i(TAG, "onDeactivated: reason=$reason")
-        // Bounce the event to processDeactivated() above via the coroutine in background thread set up in onCreate()
-        val unused = channel.trySend(DeactivatedData(reason))
     }
 }

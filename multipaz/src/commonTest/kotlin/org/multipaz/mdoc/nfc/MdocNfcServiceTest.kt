@@ -46,6 +46,7 @@ import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfcV2
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.engagement.DeviceEngagement
@@ -61,9 +62,14 @@ import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.NfcHybridTransportMdoc
 import org.multipaz.mdoc.transport.NfcHybridTransportMdocReader
+import org.multipaz.mdoc.transport.NfcTransportMdoc
+import org.multipaz.mdoc.transport.NfcTransportMdocReader
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.NfcApduRouter
+import org.multipaz.nfc.NfcApduService
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.NfcIsoTag
 import org.multipaz.nfc.NfcTagLostException
 import org.multipaz.nfc.ResponseApdu
@@ -170,13 +176,13 @@ class MdocNfcServiceTest {
     fun tearDown() = runTest {
         withContext(Dispatchers.Default) {
             try {
-                NfcApduService.transactionJob?.let { job ->
+                MdocNfcPresentmentService.transactionJob?.let { job ->
                     withTimeout(5.seconds) {
                         job.join()
                     }
                     assertTrue(
                         job.isCompleted,
-                        "Expected NfcApduService.transactionJob to be completed at end of test"
+                        "Expected MdocNfcPresentmentService.transactionJob to be completed at end of test"
                     )
                 }
                 allCreatedBleTransports.toList().forEach { transport ->
@@ -238,8 +244,8 @@ class MdocNfcServiceTest {
                 MdocNfcV2Service.activeEngagementParamsFlow = null
                 MdocNfcV2Service.activeDeviceRequest = null
                 MdocNfcV2Service.activeEngagement = null
-                NfcApduService.transactionJob?.cancel()
-                NfcApduService.transactionJob = null
+                MdocNfcPresentmentService.transactionJob?.cancel()
+                MdocNfcPresentmentService.transactionJob = null
                 Dispatchers.resetMain()
             }
         }
@@ -270,9 +276,9 @@ class MdocNfcServiceTest {
     private class ServiceLoopbackIsoTag(
         override val maxTransceiveLength: Int = 65536
     ) : NfcIsoTag() {
-        val responseChannel = Channel<ByteArray>(Channel.UNLIMITED)
+        val responseChannel = Channel<ResponseApdu>(Channel.UNLIMITED)
         var service: NfcApduService? = null
-        var combinedService: CombinedNfcService? = null
+        var combinedService: NfcApduRouter? = null
 
         @Volatile
         var chainedEnvelopeCount: Int = 0
@@ -291,18 +297,19 @@ class MdocNfcServiceTest {
             if (command.ins == Nfc.INS_GET_RESPONSE) {
                 getResponseCount += 1
             }
-            val encodedCommand = command.encode()
-            val syncResponse = combinedService?.processCommandApdu(encodedCommand)
-                ?: service?.processCommandApdu(encodedCommand)
-            val encodedResponse = syncResponse ?: withTimeout(5.seconds) {
+            val syncResponse = combinedService?.processCommandApdu(command)
+                ?: service?.let {
+                    it.receiveCommandApdu(command)
+                    null
+                }
+            return syncResponse ?: withTimeout(5.seconds) {
                 responseChannel.receive()
             }
-            return ResponseApdu.decode(encodedResponse)
         }
 
-        fun deactivate(reason: Int = 0) {
-            combinedService?.onDeactivated(reason)
-            service?.onDeactivated(reason)
+        fun deactivate(reason: NfcDeactivationReason = NfcDeactivationReason.LINK_LOSS) {
+            combinedService?.deactivate(reason)
+            service?.deactivate(reason)
             responseChannel.close(NfcTagLostException("NFC tag left the field"))
         }
     }
@@ -399,10 +406,10 @@ class MdocNfcServiceTest {
         tag: ServiceLoopbackIsoTag,
         settingsProvider: suspend () -> MdocNdefService.Settings,
     ): MdocNdefService {
-        return object : MdocNdefService(
-            sendResponse = { bytes -> tag.responseChannel.trySend(bytes) }
-        ) {
+        return object : MdocNdefService() {
             override suspend fun getSettings(): Settings = settingsProvider()
+        }.apply {
+            sendResponseCallback = { responseApdu -> tag.responseChannel.trySend(responseApdu) }
         }
     }
 
@@ -410,10 +417,10 @@ class MdocNfcServiceTest {
         tag: ServiceLoopbackIsoTag,
         settingsProvider: suspend () -> MdocNfcV2Service.Settings,
     ): MdocNfcV2Service {
-        return object : MdocNfcV2Service(
-            sendResponse = { bytes -> tag.responseChannel.trySend(bytes) }
-        ) {
+        return object : MdocNfcV2Service() {
             override suspend fun getSettings(): Settings = settingsProvider()
+        }.apply {
+            sendResponseCallback = { responseApdu -> tag.responseChannel.trySend(responseApdu) }
         }
     }
 
@@ -479,7 +486,7 @@ class MdocNfcServiceTest {
                 )
             }
             tag.service = service
-            service.onCreate()
+            service.start()
 
             try {
                 val handoverResult = mdocReaderNfcHandover(
@@ -498,7 +505,7 @@ class MdocNfcServiceTest {
                 assertEquals(MdocTransport.State.CLOSED, firstTransport.state.value)
                 assertEquals(1, secondTransport.closeCalls)
             } finally {
-                service.onDestroy()
+                service.stop()
                 promptModel.cancel()
             }
         }
@@ -508,11 +515,11 @@ class MdocNfcServiceTest {
      * Verifies Bug 2 of issue #2056 across recreated `HostApduService` instances:
      * 1. Tap 1 completes NFC static handover on `service1` and starts a detached BLE session
      *    (`transport1` suspended in `open()`).
-     * 2. The phone leaves the NFC field (`service1.onDeactivated(0)`) and Android destroys
-     *    `service1` (`service1.onDestroy()`), while `transport1` continues waiting for a BLE
+     * 2. The phone leaves the NFC field (`service1.deactivate(NfcDeactivationReason.LINK_LOSS)`) and Android destroys
+     *    `service1` (`service1.stop()`), while `transport1` continues waiting for a BLE
      *    connection in the background.
      * 3. The user taps the reader a second time, causing Android to instantiate `service2`
-     *    (`service2.onCreate()`).
+     *    (`service2.start()`).
      * 4. Because `transactionJob` is tracked in [NfcApduService]'s companion object, `service2`
      *    cancels and joins Tap 1's `transactionJob` before starting Tap 2:
      *    - `transport1.open()` is cancelled and `transport1.close()` completes *before*
@@ -562,7 +569,7 @@ class MdocNfcServiceTest {
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNdefService(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             val handover1 = mdocReaderNfcHandover(tag1, emptyList())
             assertNotNull(handover1)
@@ -575,14 +582,14 @@ class MdocNfcServiceTest {
             withTimeout(5.seconds) { transport1.openStarted.await() }
 
             // Simulate NFC deactivation and Android destroying service1
-            service1.onDeactivated(0)
-            service1.onDestroy()
+            service1.deactivate(NfcDeactivationReason.LINK_LOSS)
+            service1.stop()
 
             // Tap 2 on newly created service2
             val tag2 = ServiceLoopbackIsoTag()
             val service2 = createNdefService(tag2) { buildSettings() }
             tag2.service = service2
-            service2.onCreate()
+            service2.start()
 
             try {
                 val handover2 = mdocReaderNfcHandover(tag2, emptyList())
@@ -610,7 +617,7 @@ class MdocNfcServiceTest {
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { transport2.closedDeferred.await() }
             } finally {
-                service2.onDestroy()
+                service2.stop()
                 promptModel.cancel()
             }
         }
@@ -670,7 +677,7 @@ class MdocNfcServiceTest {
                 )
             }
             tag.service = service
-            service.onCreate()
+            service.start()
 
             try {
                 // Tap 1
@@ -684,7 +691,7 @@ class MdocNfcServiceTest {
                 withTimeout(5.seconds) { transport1.openStarted.await() }
 
                 // Deactivate without destroying service (same instance reused by Android for Tap 2)
-                service.onDeactivated(0)
+                service.deactivate(NfcDeactivationReason.LINK_LOSS)
 
                 // Tap 2 on the same service instance
                 assertNotNull(mdocReaderNfcHandover(tag, emptyList()))
@@ -717,7 +724,7 @@ class MdocNfcServiceTest {
                 assertEquals(PresentmentModel.State.Connecting, presentmentModel.state.value)
 
                 // Verify UI cancellation still works after NFC deactivation
-                service.onDeactivated(0)
+                service.deactivate(NfcDeactivationReason.LINK_LOSS)
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { transport3.closedDeferred.await() }
                 val completed = withTimeout(5.seconds) {
@@ -725,7 +732,7 @@ class MdocNfcServiceTest {
                 } as PresentmentModel.State.Completed
                 assertTrue(completed.error is PresentmentCanceledException)
             } finally {
-                service.onDestroy()
+                service.stop()
                 promptModel.cancel()
             }
         }
@@ -779,8 +786,8 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = true,
-                negotiatedHandoverPreferredOrder = listOf("ble:"),
+                onlyAllowNfc = false,
+                handoverPreferredOrder = listOf("ble:"),
                 transportOptions = MdocTransportOptions(),
                 transportFactory = transportFactory,
             )
@@ -788,7 +795,7 @@ class MdocNfcServiceTest {
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             // Tap 1 (Negotiated BLE handover over NFCv2)
             val handover1 = mdocReaderNfcHandover(
@@ -806,13 +813,13 @@ class MdocNfcServiceTest {
             withTimeout(5.seconds) { transport1.openStarted.await() }
 
             // Deactivate and recreate service for Tap 2
-            service1.onDeactivated(0)
-            service1.onDestroy()
+            service1.deactivate(NfcDeactivationReason.LINK_LOSS)
+            service1.stop()
 
             val tag2 = ServiceLoopbackIsoTag()
             val service2 = createNfcV2Service(tag2) { buildSettings() }
             tag2.service = service2
-            service2.onCreate()
+            service2.start()
 
             try {
                 val handover2 = mdocReaderNfcHandover(
@@ -860,7 +867,7 @@ class MdocNfcServiceTest {
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { transport3.closedDeferred.await() }
             } finally {
-                service2.onDestroy()
+                service2.stop()
                 promptModel.cancel()
             }
         }
@@ -918,7 +925,7 @@ class MdocNfcServiceTest {
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNdefService(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 assertNotNull(mdocReaderNfcHandover(tag1, listOf(bleMethod)))
@@ -931,7 +938,7 @@ class MdocNfcServiceTest {
                 withTimeout(5.seconds) { transport1.openStarted.await() }
 
                 // Re-tap on the same service instance after deactivation
-                service1.onDeactivated(0)
+                service1.deactivate(NfcDeactivationReason.LINK_LOSS)
                 assertNotNull(mdocReaderNfcHandover(tag1, listOf(bleMethod)))
                 val transport2 = withTimeout(5.seconds) {
                     while (createdTransports.size < 2) {
@@ -951,7 +958,7 @@ class MdocNfcServiceTest {
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { transport2.closedDeferred.await() }
             } finally {
-                service1.onDestroy()
+                service1.stop()
                 promptModel.cancel()
             }
         }
@@ -1010,7 +1017,7 @@ class MdocNfcServiceTest {
                 )
             }
             tag.service = service
-            service.onCreate()
+            service.start()
 
             try {
                 // Tap 1 connects and enters Iso18013Presentment (WaitingForReader)
@@ -1029,7 +1036,7 @@ class MdocNfcServiceTest {
                 }
 
                 // Reader deactivates NFC and taps a second time
-                service.onDeactivated(0)
+                service.deactivate(NfcDeactivationReason.LINK_LOSS)
                 assertNotNull(mdocReaderNfcHandover(tag, emptyList()))
                 val transport2 = withTimeout(5.seconds) {
                     while (createdTransports.size < 2) {
@@ -1055,7 +1062,7 @@ class MdocNfcServiceTest {
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { transport2.closedDeferred.await() }
             } finally {
-                service.onDestroy()
+                service.stop()
                 promptModel.cancel()
             }
         }
@@ -1098,8 +1105,8 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = true,
-                negotiatedHandoverPreferredOrder = listOf("ble:", "nfcv2"),
+                onlyAllowNfc = false,
+                handoverPreferredOrder = listOf("ble:", "nfcv2"),
                 transportOptions = MdocTransportOptions(),
                 transportFactory = transportFactory,
             )
@@ -1107,7 +1114,7 @@ class MdocNfcServiceTest {
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             // Tap 1: Reader only offers NFCv2 data transfer -> starts NFC-only session
             val nfcV2Method = MdocConnectionMethodNfcV2()
@@ -1123,14 +1130,14 @@ class MdocNfcServiceTest {
             assertTrue(presentmentModel.isNfcOnly.value)
 
             // Deactivate and destroy service1
-            service1.onDeactivated(0)
-            service1.onDestroy()
+            service1.deactivate(NfcDeactivationReason.LINK_LOSS)
+            service1.stop()
 
             // Tap 2 on recreated service2: Reader offers BLE handover -> supersedes NFC-only session
             val tag2 = ServiceLoopbackIsoTag()
             val service2 = createNfcV2Service(tag2) { buildSettings() }
             tag2.service = service2
-            service2.onCreate()
+            service2.start()
 
             val bleMethod = MdocConnectionMethodBle(
                 supportsPeripheralServerMode = false,
@@ -1164,7 +1171,7 @@ class MdocNfcServiceTest {
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { bleTransport.closedDeferred.await() }
             } finally {
-                service2.onDestroy()
+                service2.stop()
                 promptModel.cancel()
             }
         }
@@ -1443,15 +1450,15 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = false,
-                negotiatedHandoverPreferredOrder = emptyList(),
+                onlyAllowNfc = true,
+                handoverPreferredOrder = emptyList(),
                 transportOptions = MdocTransportOptions(),
             )
 
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 // 1. Tap 1: NFCv2 handover + send initial DeviceRequest for given_name
@@ -1472,8 +1479,8 @@ class MdocNfcServiceTest {
                 assertTrue(presentmentModel.isNfcConnected.value)
 
                 // 2. Pull phone away from NFC reader while user is looking at consent prompt
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 readerTransport1.close()
                 withTimeout(5.seconds) {
                     presentmentModel.isNfcConnected.first { !it }
@@ -1497,7 +1504,7 @@ class MdocNfcServiceTest {
                 val tag2 = ServiceLoopbackIsoTag()
                 val service2 = createNfcV2Service(tag2) { buildSettings() }
                 tag2.service = service2
-                service2.onCreate()
+                service2.start()
 
                 try {
                     val handover2 = mdocReaderNfcHandover(
@@ -1550,7 +1557,7 @@ class MdocNfcServiceTest {
                     assertNull(completedState.error)
                     readerTransport2.close()
                 } finally {
-                    service2.onDestroy()
+                    service2.stop()
                 }
             } finally {
                 fixture.close()
@@ -1583,15 +1590,15 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = false,
-                negotiatedHandoverPreferredOrder = emptyList(),
+                onlyAllowNfc = true,
+                handoverPreferredOrder = emptyList(),
                 transportOptions = MdocTransportOptions(),
             )
 
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 // 1. Tap 1: NFCv2 handover + send initial DeviceRequest for given_name
@@ -1610,8 +1617,8 @@ class MdocNfcServiceTest {
                 assertEquals(PresentmentModel.State.WaitingForUserInput, presentmentModel.state.value)
 
                 // 2. Pull phone away from NFC reader
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 readerTransport1.close()
                 withTimeout(5.seconds) {
                     presentmentModel.isNfcConnected.first { !it }
@@ -1629,7 +1636,7 @@ class MdocNfcServiceTest {
                 val tag2 = ServiceLoopbackIsoTag()
                 val service2 = createNfcV2Service(tag2) { buildSettings() }
                 tag2.service = service2
-                service2.onCreate()
+                service2.start()
 
                 try {
                     val handover2 = mdocReaderNfcHandover(
@@ -1660,7 +1667,7 @@ class MdocNfcServiceTest {
                     assertIs<PresentmentCanceledException>(completedState.error)
 
                     // Wait for the killed transactionJob to finish cleanup and verify hybrid transport is closed
-                    NfcApduService.transactionJob?.let { job ->
+                    MdocNfcPresentmentService.transactionJob?.let { job ->
                         withTimeout(5.seconds) { job.join() }
                     }
                     val killedHybridTransport = allCreatedHybridTransports.single()
@@ -1671,7 +1678,7 @@ class MdocNfcServiceTest {
                     assertEquals(1, fixture.biometricPromptCalls)
                     readerTransport2.close()
                 } finally {
-                    service2.onDestroy()
+                    service2.stop()
                 }
             } finally {
                 fixture.close()
@@ -1707,15 +1714,15 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = false,
-                negotiatedHandoverPreferredOrder = emptyList(),
+                onlyAllowNfc = true,
+                handoverPreferredOrder = emptyList(),
                 transportOptions = MdocTransportOptions(),
             )
 
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 // 1. Tap 1: NFCv2 handover + send initial DeviceRequest for given_name
@@ -1734,8 +1741,8 @@ class MdocNfcServiceTest {
                 assertEquals(PresentmentModel.State.WaitingForUserInput, presentmentModel.state.value)
 
                 // 2. Pull phone away and user cancels the first transaction
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 readerTransport1.close()
                 withTimeout(5.seconds) {
                     presentmentModel.isNfcConnected.first { !it }
@@ -1756,7 +1763,7 @@ class MdocNfcServiceTest {
                 val tag2 = ServiceLoopbackIsoTag()
                 val service2 = createNfcV2Service(tag2) { buildSettings() }
                 tag2.service = service2
-                service2.onCreate()
+                service2.start()
 
                 try {
                     val handover2 = mdocReaderNfcHandover(
@@ -1820,7 +1827,7 @@ class MdocNfcServiceTest {
                     assertNull(completedState.error)
                     readerTransport2.close()
                 } finally {
-                    service2.onDestroy()
+                    service2.stop()
                 }
             } finally {
                 fixture.close()
@@ -1829,7 +1836,7 @@ class MdocNfcServiceTest {
     }
 
     /**
-     * Verifies [CombinedNfcService] AID routing and cross-protocol session superseding between
+     * Verifies [NfcApduRouter] AID routing and cross-protocol session superseding between
      * [MdocNdefService] (NFCv1 `D2760000850101`) and [MdocNfcV2Service] (NFCv2 `A0000002480401`):
      * 1. Selecting an unknown AID returns `6a82` (`RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND`).
      * 2. **Tap 1 (NFCv1 NDEF):** Reader selects `NDEF_APPLICATION_ID` and performs static handover,
@@ -1864,10 +1871,14 @@ class MdocNfcServiceTest {
             }
 
             val tag = ServiceLoopbackIsoTag()
-            val combinedService = object : CombinedNfcService() {
+            val combinedService = object : NfcApduRouter() {
+                override fun sendResponseApdu(responseApdu: ResponseApdu) {
+                    tag.responseChannel.trySend(responseApdu)
+                }
+
                 override fun buildServices(): Map<ByteString, NfcApduService> {
-                    val ndefService = createNdefService(tag) {
-                        MdocNdefService.Settings(
+                    val ndefService = object : MdocNdefService() {
+                        override suspend fun getSettings() = MdocNdefService.Settings(
                             source = source,
                             promptModel = promptModel,
                             presentmentModel = presentmentModel,
@@ -1882,29 +1893,42 @@ class MdocNfcServiceTest {
                             transportFactory = transportFactory,
                         )
                     }
-                    val nfcV2Service = createNfcV2Service(tag) {
-                        MdocNfcV2Service.Settings(
+                    val nfcV2Service = object : MdocNfcV2Service() {
+                        override suspend fun getSettings() = MdocNfcV2Service.Settings(
                             source = source,
                             promptModel = promptModel,
                             presentmentModel = presentmentModel,
                             launchUi = null,
                             sessionEncryptionCurve = EcCurve.P256,
-                            useNegotiatedHandover = true,
-                            negotiatedHandoverPreferredOrder = listOf("ble:"),
+                            onlyAllowNfc = false,
+                            handoverPreferredOrder = listOf("ble:"),
                             transportOptions = MdocTransportOptions(),
                             transportFactory = transportFactory,
                         )
                     }
                     return mapOf(
                         Nfc.NDEF_APPLICATION_ID to ndefService,
-                        Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID to nfcV2Service,
+                        Nfc.MDOC_NFC_ENGAGEMENT_V2_AID to nfcV2Service,
                     )
                 }
             }
             tag.combinedService = combinedService
-            combinedService.onCreate()
+            combinedService.start()
 
             try {
+                // 0. Sending a non-SELECT APDU before any AID is selected returns 6a82
+                val noAidSelectedResponse = tag.transceive(
+                    CommandApdu(
+                        cla = 0x00,
+                        ins = Nfc.INS_READ_BINARY,
+                        p1 = 0x00,
+                        p2 = 0x00,
+                        payload = ByteString(),
+                        le = 15,
+                    )
+                )
+                assertEquals(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND, noAidSelectedResponse.status)
+
                 // 1. Selecting an unknown AID returns 6a82
                 val unknownAidResponse = tag.transceive(
                     CommandApdu(
@@ -1917,7 +1941,7 @@ class MdocNfcServiceTest {
                     )
                 )
                 assertEquals(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND, unknownAidResponse.status)
-                combinedService.onDeactivated(0)
+                combinedService.deactivate(NfcDeactivationReason.LINK_LOSS)
 
                 // 2. Tap 1 (NFCv1 NDEF static handover) -> opens cross1 in MdocNdefService
                 assertNotNull(mdocReaderNfcHandover(tag, emptyList()))
@@ -1928,7 +1952,7 @@ class MdocNfcServiceTest {
                     createdTransports[0]
                 }
                 withTimeout(5.seconds) { transport1.openStarted.await() }
-                combinedService.onDeactivated(0)
+                combinedService.deactivate(NfcDeactivationReason.LINK_LOSS)
 
                 // 3. Tap 2 (NFCv2 BLE handover) -> supersedes cross1 and opens cross2 in MdocNfcV2Service
                 val bleMethod = MdocConnectionMethodBle(
@@ -1957,7 +1981,7 @@ class MdocNfcServiceTest {
                 val close1Idx = events.indexOf("cross1.close")
                 val open2Idx = events.indexOf("cross2.open")
                 assertTrue(close1Idx in 0..<open2Idx, "Expected cross1.close before cross2.open in $events")
-                combinedService.onDeactivated(0)
+                combinedService.deactivate(NfcDeactivationReason.LINK_LOSS)
 
                 // 4. Tap 3 (NFCv1 NDEF static handover) -> supersedes cross2 and opens cross3 in MdocNdefService
                 assertNotNull(mdocReaderNfcHandover(tag, emptyList()))
@@ -1979,7 +2003,7 @@ class MdocNfcServiceTest {
                 presentmentModel.setCanceledByUser()
                 withTimeout(5.seconds) { transport3.closedDeferred.await() }
             } finally {
-                combinedService.onDestroy()
+                combinedService.stop()
                 promptModel.cancel()
             }
         }
@@ -1990,7 +2014,7 @@ class MdocNfcServiceTest {
      * but the phone is pulled away **before** the reader sends the initial [DeviceRequest]:
      * 1. **Tap 1 (handover only):** Reader performs [mdocReaderNfcHandover] on `tag1`, starting
      *    `transactionJob` which enters [PresentmentModel.State.WaitingForReader]. The phone is
-     *    pulled away (`tag1.deactivate()`, `service1.onDestroy()`) before any `ENVELOPE` with a
+     *    pulled away (`tag1.deactivate()`, `service1.stop()`) before any `ENVELOPE` with a
      *    [DeviceRequest] is sent, so [org.multipaz.presentment.Iso18013Presentment] suspends at
      *    `transport.isNfcConnected.first { it }`.
      * 2. **Tap 2 (handover + request + response):** On `service2`, the reader performs a fresh
@@ -2011,15 +2035,15 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = false,
-                negotiatedHandoverPreferredOrder = emptyList(),
+                onlyAllowNfc = true,
+                handoverPreferredOrder = emptyList(),
                 transportOptions = MdocTransportOptions(),
             )
 
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 // 1. Tap 1: handover completes, then phone is pulled away before DeviceRequest arrives
@@ -2033,8 +2057,8 @@ class MdocNfcServiceTest {
                     presentmentModel.state.first { it == PresentmentModel.State.WaitingForReader }
                 }
 
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 withTimeout(5.seconds) {
                     presentmentModel.isNfcConnected.first { !it }
                 }
@@ -2043,7 +2067,7 @@ class MdocNfcServiceTest {
                 val tag2 = ServiceLoopbackIsoTag()
                 val service2 = createNfcV2Service(tag2) { buildSettings() }
                 tag2.service = service2
-                service2.onCreate()
+                service2.start()
 
                 try {
                     val handover2 = mdocReaderNfcHandover(
@@ -2086,7 +2110,7 @@ class MdocNfcServiceTest {
                     assertNull(completedState.error)
                     readerTransport2.close()
                 } finally {
-                    service2.onDestroy()
+                    service2.stop()
                 }
             } finally {
                 fixture.close()
@@ -2103,7 +2127,7 @@ class MdocNfcServiceTest {
      * 2. While the secondary BLE transport (`hybridBle`) is still in `open()`, the reader sends the
      *    encrypted [DeviceRequest] (`given_name`) over NFC (`tag1`).
      * 3. The mdoc receives the request via NFC and enters the consent prompt. The user pulls the
-     *    phone away from the NFC reader (`tag1.deactivate()`, `service1.onDestroy()`) and approves
+     *    phone away from the NFC reader (`tag1.deactivate()`, `service1.stop()`) and approves
      *    the consent and auth prompts.
      * 4. Because NFC is now disconnected, [org.multipaz.mdoc.transport.NfcHybridTransportMdoc]
      *    queues the encrypted [DeviceResponse] in its transport backlog.
@@ -2141,14 +2165,14 @@ class MdocNfcServiceTest {
                     presentmentModel = presentmentModel,
                     launchUi = null,
                     sessionEncryptionCurve = EcCurve.P256,
-                    useNegotiatedHandover = true,
-                    negotiatedHandoverPreferredOrder = listOf("ble:"),
+                    onlyAllowNfc = false,
+                    handoverPreferredOrder = listOf("ble:"),
                     transportOptions = MdocTransportOptions(),
                     transportFactory = transportFactory,
                 )
             }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 val bleMethod = MdocConnectionMethodBle(
@@ -2182,8 +2206,8 @@ class MdocNfcServiceTest {
                 assertEquals(PresentmentModel.State.WaitingForUserInput, presentmentModel.state.value)
 
                 // Phone is pulled away from NFC reader before consent/auth approval
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 readerTransport.close()
 
                 fixture.approveConsent.complete(Unit)
@@ -2253,13 +2277,13 @@ class MdocNfcServiceTest {
                     presentmentModel = presentmentModel,
                     launchUi = null,
                     sessionEncryptionCurve = EcCurve.P256,
-                    useNegotiatedHandover = false,
-                    negotiatedHandoverPreferredOrder = emptyList(),
+                    onlyAllowNfc = true,
+                    handoverPreferredOrder = emptyList(),
                     transportOptions = MdocTransportOptions(),
                 )
             }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 val handover = mdocReaderNfcHandover(
@@ -2285,7 +2309,7 @@ class MdocNfcServiceTest {
                 assertNotNull(encryptedResponse)
 
                 // Phone is pulled away before the reader sends session termination
-                tag1.deactivate(0)
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
                 readerTransport.close()
 
                 val completedState = withTimeout(5.seconds) {
@@ -2293,7 +2317,7 @@ class MdocNfcServiceTest {
                 } as PresentmentModel.State.Completed
                 assertIs<Iso18013PresentmentNfcDisconnectedException>(completedState.error)
             } finally {
-                service1.onDestroy()
+                service1.stop()
                 fixture.close()
             }
         }
@@ -2331,15 +2355,15 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = false,
-                negotiatedHandoverPreferredOrder = emptyList(),
+                onlyAllowNfc = true,
+                handoverPreferredOrder = emptyList(),
                 transportOptions = MdocTransportOptions(),
             )
 
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 // 1. Tap 1: handover + DeviceRequest -> enters WaitingForUserInput
@@ -2358,8 +2382,8 @@ class MdocNfcServiceTest {
                 assertEquals(PresentmentModel.State.WaitingForUserInput, presentmentModel.state.value)
 
                 // 2. Phone is lifted while consent prompt is still showing
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 readerTransport1.close()
                 withTimeout(5.seconds) {
                     presentmentModel.isNfcConnected.first { !it }
@@ -2369,7 +2393,7 @@ class MdocNfcServiceTest {
                 val tag2 = ServiceLoopbackIsoTag()
                 val service2 = createNfcV2Service(tag2) { buildSettings() }
                 tag2.service = service2
-                service2.onCreate()
+                service2.start()
 
                 try {
                     val handover2 = mdocReaderNfcHandover(
@@ -2420,7 +2444,7 @@ class MdocNfcServiceTest {
                     assertNull(completedState.error)
                     readerTransport2.close()
                 } finally {
-                    service2.onDestroy()
+                    service2.stop()
                 }
             } finally {
                 fixture.close()
@@ -2454,13 +2478,13 @@ class MdocNfcServiceTest {
                     presentmentModel = presentmentModel,
                     launchUi = null,
                     sessionEncryptionCurve = EcCurve.P256,
-                    useNegotiatedHandover = false,
-                    negotiatedHandoverPreferredOrder = emptyList(),
+                    onlyAllowNfc = true,
+                    handoverPreferredOrder = emptyList(),
                     transportOptions = MdocTransportOptions(),
                 )
             }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 val handover = mdocReaderNfcHandover(
@@ -2550,7 +2574,7 @@ class MdocNfcServiceTest {
                 assertNull(completedState.error)
                 readerTransport.close()
             } finally {
-                service1.onDestroy()
+                service1.stop()
                 fixture.close()
             }
         }
@@ -2581,13 +2605,13 @@ class MdocNfcServiceTest {
                     presentmentModel = presentmentModel,
                     launchUi = null,
                     sessionEncryptionCurve = EcCurve.P256,
-                    useNegotiatedHandover = false,
-                    negotiatedHandoverPreferredOrder = emptyList(),
+                    onlyAllowNfc = true,
+                    handoverPreferredOrder = emptyList(),
                     transportOptions = MdocTransportOptions(),
                 )
             }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 val handover = mdocReaderNfcHandover(
@@ -2634,8 +2658,8 @@ class MdocNfcServiceTest {
                 assertNull(completedState.error)
                 readerTransport.close()
             } finally {
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 fixture.close()
             }
         }
@@ -2665,15 +2689,15 @@ class MdocNfcServiceTest {
                 presentmentModel = presentmentModel,
                 launchUi = null,
                 sessionEncryptionCurve = EcCurve.P256,
-                useNegotiatedHandover = false,
-                negotiatedHandoverPreferredOrder = emptyList(),
+                onlyAllowNfc = true,
+                handoverPreferredOrder = emptyList(),
                 transportOptions = MdocTransportOptions(),
             )
 
             val tag1 = ServiceLoopbackIsoTag()
             val service1 = createNfcV2Service(tag1) { buildSettings() }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 // 1. Tap 1: real reader performs handover and sends DeviceRequest; user approves while away from field
@@ -2689,8 +2713,8 @@ class MdocNfcServiceTest {
                 readerTransport1.sendMessage(readerSession1.encryptedDeviceRequest)
 
                 withTimeout(5.seconds) { fixture.consentPromptShown.await() }
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 readerTransport1.close()
 
                 fixture.approveConsent.complete(Unit)
@@ -2704,7 +2728,7 @@ class MdocNfcServiceTest {
                 val strayTag = ServiceLoopbackIsoTag()
                 val strayService = createNfcV2Service(strayTag) { buildSettings() }
                 strayTag.service = strayService
-                strayService.onCreate()
+                strayService.start()
                 try {
                     val selectResp = strayTag.transceive(
                         CommandApdu(
@@ -2730,8 +2754,8 @@ class MdocNfcServiceTest {
                     )
                     assertEquals(Nfc.RESPONSE_STATUS_ERROR_INSTRUCTION_NOT_SUPPORTED_OR_INVALID, invalidResp.status)
                 } finally {
-                    strayTag.deactivate(0)
-                    strayService.onDestroy()
+                    strayTag.deactivate(NfcDeactivationReason.LINK_LOSS)
+                    strayService.stop()
                 }
 
                 // Active presentment session must still be in Sending state (not Completed with error)
@@ -2741,7 +2765,7 @@ class MdocNfcServiceTest {
                 val tag2 = ServiceLoopbackIsoTag()
                 val service2 = createNfcV2Service(tag2) { buildSettings() }
                 tag2.service = service2
-                service2.onCreate()
+                service2.start()
 
                 try {
                     val handover2 = mdocReaderNfcHandover(
@@ -2778,7 +2802,7 @@ class MdocNfcServiceTest {
                     assertNull(completedState.error)
                     readerTransport2.close()
                 } finally {
-                    service2.onDestroy()
+                    service2.stop()
                 }
             } finally {
                 fixture.close()
@@ -2815,13 +2839,13 @@ class MdocNfcServiceTest {
                     presentmentModel = presentmentModel,
                     launchUi = null,
                     sessionEncryptionCurve = EcCurve.P256,
-                    useNegotiatedHandover = false,
-                    negotiatedHandoverPreferredOrder = emptyList(),
+                    onlyAllowNfc = true,
+                    handoverPreferredOrder = emptyList(),
                     transportOptions = MdocTransportOptions(),
                 )
             }
             tag1.service = service1
-            service1.onCreate()
+            service1.start()
 
             try {
                 val handover = mdocReaderNfcHandover(
@@ -2848,9 +2872,164 @@ class MdocNfcServiceTest {
                 assertIs<PresentmentCannotSatisfyRequestException>(completedState.error)
                 readerTransport.close()
             } finally {
-                tag1.deactivate(0)
-                service1.onDestroy()
+                tag1.deactivate(NfcDeactivationReason.LINK_LOSS)
+                service1.stop()
                 promptModel.cancel()
+            }
+        }
+    }
+
+    /**
+     * Verifies a single-tap ISO/IEC 18013-5:2021 NDEF engagement ([MdocNdefService]) followed
+     * immediately by NFC data transfer ([MdocNfcDataTransferService]) routed through
+     * [NfcApduRouter] without dropping the RF field between the two AIDs:
+     * 1. Reader selects `D2760000850101` ([Nfc.NDEF_APPLICATION_ID]) and performs static handover
+     *    offering [MdocConnectionMethodNfc].
+     * 2. Reader immediately selects `A0000002480400` ([Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID])
+     *    in the same tap.
+     * 3. [NfcApduRouter] deactivates [MdocNdefService] with [NfcDeactivationReason.DESELECTED]
+     *    and routes the `SELECT APPLICATION` and subsequent `ENVELOPE` / `GET RESPONSE` APDUs
+     *    to [MdocNfcDataTransferService].
+     * 4. [org.multipaz.mdoc.transport.NfcTransportMdoc.processCommandApdu] waits for `startTransaction()`
+     *    to open the [org.multipaz.mdoc.transport.NfcTransportMdoc] instance if needed, and
+     *    delivers the verified [DeviceResponse] over NFC.
+     */
+    @Test
+    fun nfcApduRouterNdefToNfcDataTransferMidTapDeselectsNdefAndCompletesPresentment() = runTest {
+        withContext(Dispatchers.Default) {
+            val fixture = createDoubleTapFixture(this)
+            val presentmentModel = PresentmentModel()
+            val ndefDeactivationReasons = mutableListOf<NfcDeactivationReason>()
+
+            val tag = ServiceLoopbackIsoTag()
+            val router = object : NfcApduRouter() {
+                override fun sendResponseApdu(responseApdu: ResponseApdu) {
+                    tag.responseChannel.trySend(responseApdu)
+                }
+
+                override fun buildServices(): Map<ByteString, NfcApduService> {
+                    val ndefService = object : MdocNdefService() {
+                        override suspend fun getSettings() = MdocNdefService.Settings(
+                            source = fixture.source,
+                            promptModel = fixture.promptModel,
+                            presentmentModel = presentmentModel,
+                            launchUi = null,
+                            sessionEncryptionCurve = EcCurve.P256,
+                            useNegotiatedHandover = false,
+                            negotiatedHandoverPreferredOrder = emptyList(),
+                            staticHandoverBleCentralClientModeEnabled = false,
+                            staticHandoverBlePeripheralServerModeEnabled = false,
+                            staticHandoverNfcDataTransferEnabled = true,
+                            transportOptions = MdocTransportOptions(),
+                            transportFactory = object : MdocTransportFactory {
+                                override fun createTransport(
+                                    connectionMethod: MdocConnectionMethod,
+                                    role: MdocRole,
+                                    options: MdocTransportOptions
+                                ): MdocTransport = NfcTransportMdoc(role, options, connectionMethod)
+                            },
+                        )
+
+                        override suspend fun processDeactivated(reason: NfcDeactivationReason) {
+                            ndefDeactivationReasons.add(reason)
+                            super.processDeactivated(reason)
+                        }
+                    }
+                    return mapOf(
+                        Nfc.NDEF_APPLICATION_ID to ndefService,
+                        Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID to MdocNfcDataTransferService(),
+                    )
+                }
+            }
+            tag.combinedService = router
+            router.start()
+
+            try {
+                val handover = mdocReaderNfcHandover(
+                    tag = tag,
+                    negotiatedHandoverConnectionMethods = emptyList(),
+                )
+                assertNotNull(handover)
+                val nfcMethod = handover.connectionMethods.filterIsInstance<MdocConnectionMethodNfc>().single()
+
+                val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
+                val deviceEngagementItem = Cbor.decode(handover.encodedDeviceEngagement.toByteArray())
+                val deviceEngagement = DeviceEngagement.fromDataItem(deviceEngagementItem)
+                val encodedEReaderKey = Cbor.encode(eReaderKey.publicKey.toCoseKey().toDataItem())
+                val sessionTranscript = buildCborArray {
+                    add(Tagged(Tagged.ENCODED_CBOR, Bstr(Cbor.encode(deviceEngagementItem))))
+                    add(Tagged(Tagged.ENCODED_CBOR, Bstr(encodedEReaderKey)))
+                    add(handover.handover)
+                }
+                val sessionEncryption = SessionEncryption(
+                    role = MdocRole.MDOC_READER,
+                    eSelfKey = eReaderKey,
+                    remotePublicKey = deviceEngagement.eDeviceKey,
+                    encodedSessionTranscript = Cbor.encode(sessionTranscript),
+                )
+                val deviceRequest = buildDeviceRequest(sessionTranscript = sessionTranscript) {
+                    addDocRequest(
+                        docType = DrivingLicense.MDL_DOCTYPE,
+                        nameSpaces = mapOf(
+                            DrivingLicense.MDL_NAMESPACE to mapOf("given_name" to false)
+                        )
+                    )
+                }
+                val encryptedDeviceRequest = sessionEncryption.encryptMessage(
+                    messagePlaintext = Cbor.encode(deviceRequest.toDataItem()),
+                    statusCode = null,
+                )
+
+                val readerTransport = NfcTransportMdocReader(
+                    role = MdocRole.MDOC_READER,
+                    options = MdocTransportOptions(),
+                    connectionMethod = nfcMethod,
+                )
+                readerTransport.setTag(tag)
+                readerTransport.open(deviceEngagement.eDeviceKey)
+                try {
+                    // Selecting A0000002480400 in readerTransport.open() must have deselected MdocNdefService
+                    withTimeout(5.seconds) {
+                        while (ndefDeactivationReasons.isEmpty()) {
+                            delay(10.milliseconds)
+                        }
+                    }
+                    assertEquals(listOf(NfcDeactivationReason.DESELECTED), ndefDeactivationReasons)
+
+                    readerTransport.sendMessage(encryptedDeviceRequest)
+
+                    withTimeout(5.seconds) { fixture.consentPromptShown.await() }
+                    fixture.approveConsent.complete(Unit)
+                    withTimeout(5.seconds) { fixture.biometricPromptShown.await() }
+                    fixture.approveBiometric.complete(Unit)
+
+                    val encryptedResponse = withTimeout(5.seconds) {
+                        readerTransport.waitForMessage()
+                    }
+                    val (encodedDeviceResponse, status) = sessionEncryption.decryptMessage(encryptedResponse)
+                    assertNull(status)
+                    assertNotNull(encodedDeviceResponse)
+
+                    val deviceResponse = DeviceResponse.fromDataItem(Cbor.decode(encodedDeviceResponse))
+                    deviceResponse.verify(sessionTranscript = sessionTranscript)
+                    assertEquals(1, deviceResponse.documents.size)
+
+                    readerTransport.sendMessage(
+                        SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                    )
+                    val completedState = withTimeout(5.seconds) {
+                        presentmentModel.state.first { it is PresentmentModel.State.Completed }
+                    } as PresentmentModel.State.Completed
+                    assertNull(completedState.error)
+                } finally {
+                    readerTransport.close()
+                    sessionEncryption.close()
+                    eReaderKey.close()
+                }
+            } finally {
+                tag.deactivate(NfcDeactivationReason.LINK_LOSS)
+                router.stop()
+                fixture.close()
             }
         }
     }

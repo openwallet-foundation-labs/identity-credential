@@ -28,6 +28,13 @@ data class CommandApdu(
     val le: Int
 ) {
     /**
+     * `true` if this command is an ISO/IEC 7816-4 `SELECT APPLICATION` (by DF/AID name) command
+     * (`INS = 0xA4`, `P1 = 0x04`).
+     */
+    val isApplicationSelect: Boolean
+        get() = ins == Nfc.INS_SELECT && p1 == Nfc.INS_SELECT_P1_APPLICATION
+
+    /**
      * Encodes the APDU as bytes.
      *
      * @return the bytes of the APDU.

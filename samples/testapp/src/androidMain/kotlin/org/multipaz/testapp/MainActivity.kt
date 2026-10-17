@@ -37,7 +37,7 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         NfcAdapter.getDefaultAdapter(this)?.let { adapter ->
             val cardEmulation = CardEmulation.getInstance(adapter)
-            val componentName = ComponentName(this, TestAppCombinedNfcService::class.java)
+            val componentName = ComponentName(this, TestAppNfcApduRouter::class.java)
             if (!cardEmulation.unsetPreferredService(this)) {
                 Logger.w(TAG, "CardEmulation.unsetPreferredService() returned false")
             }

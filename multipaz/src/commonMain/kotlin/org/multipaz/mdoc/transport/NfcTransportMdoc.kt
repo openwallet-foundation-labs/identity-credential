@@ -1,28 +1,31 @@
 package org.multipaz.mdoc.transport
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.ByteStringBuilder
+import kotlinx.io.bytestring.append
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
+import org.multipaz.mdoc.nfc.MdocNfcPresentmentService
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.io.bytestring.ByteString
-import kotlinx.io.bytestring.ByteStringBuilder
-import kotlinx.io.bytestring.append
-import org.multipaz.mdoc.role.MdocRole
 import kotlin.math.min
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 class NfcTransportMdoc(
     override val role: MdocRole,
@@ -32,52 +35,53 @@ class NfcTransportMdoc(
     companion object {
         private const val TAG = "NfcTransportMdoc"
 
-        // Must be called by platform when receiving APDUs for Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID
-        //
-        fun processCommandApdu(
-            commandApdu: ByteArray,
-            sendResponse: (responseApdu: ByteArray) -> Unit,
-        ) {
-            val command = CommandApdu.decode(commandApdu)
-            if (instances.isEmpty()) {
-                Logger.w(TAG, "No NfcTransportMdoc instances")
-            } else {
-                if (instances.size > 1) {
-                    Logger.w(TAG, "${instances.size} NfcTransportMdoc instances, expected just one")
-                }
-                CoroutineScope(Dispatchers.Default).launch {
-                    instances.forEach { instance ->
-                        instance.processApdu(
-                            command = command,
-                            sendResponse = { response ->
-                                sendResponse(response.encode())
-                            }
-                        )
-                    }
-                }
+        /**
+         * Processes a [CommandApdu] received for [Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID].
+         *
+         * @param commandApdu the command APDU to process.
+         * @return the [ResponseApdu] to send back to the NFC reader.
+         */
+        suspend fun processCommandApdu(
+            commandApdu: CommandApdu,
+        ): ResponseApdu {
+            var currentInstances = instances.value
+            if (currentInstances.isEmpty() &&
+                commandApdu.isApplicationSelect &&
+                MdocNfcPresentmentService.transactionJob?.isActive == true
+            ) {
+                currentInstances = withTimeoutOrNull(500.milliseconds) {
+                    instances.first { it.isNotEmpty() }
+                } ?: emptyList()
             }
+            if (currentInstances.isEmpty()) {
+                Logger.w(TAG, "No NfcTransportMdoc instances, returning 6a82")
+                return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND)
+            }
+            if (currentInstances.size > 1) {
+                Logger.w(TAG, "${currentInstances.size} NfcTransportMdoc instances, expected just one")
+            }
+            return currentInstances.first().processApdu(commandApdu)
         }
 
-        // Must be called by platform for deactivation event for Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID
-        //
-        fun onDeactivated() {
+        /**
+         * Must be called when NFC is deactivated for [Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID].
+         */
+        suspend fun onDeactivated() {
             Logger.i(TAG, "onDeactivated")
-            if (instances.isEmpty()) {
+            val currentInstances = instances.value
+            if (currentInstances.isEmpty()) {
                 Logger.w(TAG, "No NfcTransportMdoc instances")
             } else {
-                if (instances.size > 1) {
-                    Logger.w(TAG, "${instances.size} NfcTransportMdoc instances, expected just one")
+                if (currentInstances.size > 1) {
+                    Logger.w(TAG, "${currentInstances.size} NfcTransportMdoc instances, expected just one")
                 }
-                CoroutineScope(Dispatchers.Default).launch {
-                    // Get a read-only copy since the caller may modify `instances` variable.
-                    instances.toList().forEach { instance ->
-                        instance.onDeactivated()
-                    }
+                currentInstances.forEach { instance ->
+                    instance.onDeactivated()
                 }
             }
         }
 
-        private val instances = mutableListOf<NfcTransportMdoc>()
+        private val instances = MutableStateFlow<List<NfcTransportMdoc>>(emptyList())
     }
 
     private val mutex = Mutex()
@@ -94,7 +98,7 @@ class NfcTransportMdoc(
     private var leReceived = 0
     private val outgoingChunks = mutableListOf<ByteString>()
     private var outgoingChunksRemainingBytesAvailable = 0
-    private var envelopeResponseDeferred = false
+    private var deferredEnvelopeResponse: CompletableDeferred<ResponseApdu>? = null
 
     private fun getNextOutgoingChunkResponse(): ResponseApdu? {
         if (outgoingChunks.isEmpty()) {
@@ -148,7 +152,7 @@ class NfcTransportMdoc(
         mutex.withLock {
             check(_state.value == State.IDLE) { "Expected state IDLE, got ${_state.value}" }
             Logger.i(TAG, "open")
-            instances.add(this)
+            instances.update { it + this }
         }
     }
 
@@ -173,10 +177,10 @@ class NfcTransportMdoc(
             }
             outgoingChunksRemainingBytesAvailable += encapsulatedMessage.size
 
-            if (envelopeResponseDeferred) {
-                Logger.i(TAG, "envelopeResponseDeferred = true, sending")
-                sendResponse(getNextOutgoingChunkResponse()!!)
-                envelopeResponseDeferred = false
+            deferredEnvelopeResponse?.let { deferred ->
+                Logger.i(TAG, "deferredEnvelopeResponse != null, completing")
+                deferredEnvelopeResponse = null
+                deferred.complete(getNextOutgoingChunkResponse()!!)
             }
         }
     }
@@ -191,7 +195,14 @@ class NfcTransportMdoc(
 
     override suspend fun close() {
         mutex.withLock {
-            instances.remove(this)
+            instances.update { it - this }
+            deferredEnvelopeResponse?.complete(
+                ResponseApdu(
+                    status = Nfc.RESPONSE_STATUS_SUCCESS,
+                    payload = encapsulateInDo53(ByteString())
+                )
+            )
+            deferredEnvelopeResponse = null
             if (_state.value == State.FAILED || _state.value == State.CLOSED) {
                 return
             }
@@ -207,6 +218,8 @@ class NfcTransportMdoc(
     private fun failTransport(error: Throwable) {
         check(mutex.isLocked) { "failTransport called without holding lock" }
         inError = true
+        deferredEnvelopeResponse?.complete(ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS))
+        deferredEnvelopeResponse = null
         if (_state.value == State.FAILED || _state.value == State.CLOSED) {
             return
         }
@@ -220,89 +233,80 @@ class NfcTransportMdoc(
         message: String
     ): Exception(message) {}
 
-    private fun processSelectApplication(command: CommandApdu): ResponseApdu {
-        check(!applicationSelected) { "Application already selected" }
-        val requestedApplicationId = command.payload
-        if (requestedApplicationId != Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID) {
-            throw NfcError(
-                status = Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND,
-                message = "SelectApplication: Expected AID " +
-                        "${Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID.toByteArray().toHex()} but got " +
-                        "${requestedApplicationId.toByteArray().toHex()}"
-            )
+    private suspend fun processSelectApplication(command: CommandApdu): ResponseApdu {
+        return mutex.withLock {
+            check(!applicationSelected) { "Application already selected" }
+            val requestedApplicationId = command.payload
+            if (requestedApplicationId != Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID) {
+                throw NfcError(
+                    status = Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND,
+                    message = "SelectApplication: Expected AID " +
+                            "${Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID.toByteArray().toHex()} but got " +
+                            "${requestedApplicationId.toByteArray().toHex()}"
+                )
+            }
+            applicationSelected = true
+            // We're open for business..
+            _state.value = State.CONNECTED
+            ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
         }
-        applicationSelected = true
-        // We're open for business..
-        _state.value = State.CONNECTED
-        return ResponseApdu(Nfc.RESPONSE_STATUS_SUCCESS)
     }
 
     private var currentIncomingEncapsulatedMessage = ByteStringBuilder()
     private val incomingMessages = Channel<ByteString>(Channel.UNLIMITED)
 
-    private fun processEnvelope(command: CommandApdu): ResponseApdu? {
+    private suspend fun processEnvelope(command: CommandApdu): ResponseApdu {
         Logger.i(TAG, "processEnvelope")
-        check(applicationSelected) { "Application not selected" }
-        currentIncomingEncapsulatedMessage.append(command.payload)
-        if (command.cla == Nfc.CLA_CHAIN_LAST) {
+        val deferred = mutex.withLock {
+            check(applicationSelected) { "Application not selected" }
+            currentIncomingEncapsulatedMessage.append(command.payload)
+            if (command.cla == Nfc.CLA_CHAIN_LAST) {
+                // For the last ENVELOPE command in a chain, Le shall be set to the maximum length
+                // of the response data field that is supported by both the mdoc and the mdoc reader.
+                //
+                // We'll need this for later.
+                if (leReceived == 0) {
+                    leReceived = command.le
+                    Logger.i(TAG, "LE in last ENVELOPE is $leReceived")
+                }
 
-            // For the last ENVELOPE command in a chain, Le shall be set to the maximum length
-            // of the response data field that is supported by both the mdoc and the mdoc reader.
-            //
-            // We'll need this for later.
-            if (leReceived == 0) {
-                leReceived = command.le
-                Logger.i(TAG, "LE in last ENVELOPE is $leReceived")
-            }
+                // No more data coming.
+                val message = extractFromDo53(currentIncomingEncapsulatedMessage.toByteString())
+                currentIncomingEncapsulatedMessage = ByteStringBuilder()
+                incomingMessages.trySend(message)
 
-            // No more data coming.
-            val message = extractFromDo53(currentIncomingEncapsulatedMessage.toByteString())
-            currentIncomingEncapsulatedMessage = ByteStringBuilder()
-            incomingMessages.trySend(message)
-
-            val chunkResponse = getNextOutgoingChunkResponse()
-            if (chunkResponse == null) {
-                envelopeResponseDeferred = true
-                return null
+                val chunkResponse = getNextOutgoingChunkResponse()
+                if (chunkResponse != null) {
+                    return chunkResponse
+                }
+                CompletableDeferred<ResponseApdu>().also {
+                    deferredEnvelopeResponse = it
+                }
+            } else if (command.cla == Nfc.CLA_CHAIN_NOT_LAST) {
+                // More data is coming
+                check(command.le == 0) { "Expected LE 0 for non-last ENVELOPE, got ${command.le}" }
+                Logger.i(TAG, "processEnvelope: returning SUCCESS")
+                return ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS)
             } else {
-                return chunkResponse
+                throw IllegalStateException("Expected CLA 0x00 or 0x10 for ENVELOPE, got ${command.cla}")
             }
-        } else if (command.cla == Nfc.CLA_CHAIN_NOT_LAST) {
-            // More data is coming
-            check(command.le == 0) { "Expected LE 0 for non-last ENVELOPE, got ${command.le}" }
-            Logger.i(TAG, "processEnvelope: returning SUCCESS")
-            return ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS)
-        } else {
-            throw IllegalStateException("Expected CLA 0x00 or 0x10 for ENVELOPE, got ${command.cla}")
+        }
+        return deferred.await()
+    }
+
+    private suspend fun processGetResponse(command: CommandApdu): ResponseApdu {
+        Logger.i(TAG, "processGetResponse")
+        return mutex.withLock {
+            check(applicationSelected) { "Application not selected" }
+            val chunkResponse = getNextOutgoingChunkResponse()
+            check(chunkResponse != null)
+            chunkResponse
         }
     }
-
-    private fun processGetResponse(command: CommandApdu): ResponseApdu {
-        Logger.i(TAG, "processGetResponse")
-        check(applicationSelected) { "Application not selected" }
-        val chunkResponse = getNextOutgoingChunkResponse()
-        check(chunkResponse != null)
-        return chunkResponse
-    }
-
-    private lateinit var sendResponse: (response: ResponseApdu) -> Unit
 
     internal suspend fun processApdu(
         command: CommandApdu,
-        sendResponse: (response: ResponseApdu) -> Unit,
-    ) {
-        this.sendResponse = sendResponse
-        val response = processApdu(command)
-        if (response != null) {
-            mutex.withLock {
-                sendResponse(response)
-            }
-        }
-    }
-
-    private suspend fun processApdu(
-        command: CommandApdu,
-    ): ResponseApdu? {
+    ): ResponseApdu {
         if (inError) {
             Logger.w(TAG, "processApdu: Already in error state, responding to APDU with status 6f00")
             return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
@@ -317,11 +321,16 @@ class NfcTransportMdoc(
                 Nfc.INS_ENVELOPE -> return processEnvelope(command)
                 Nfc.INS_GET_RESPONSE -> return processGetResponse(command)
             }
-            failTransport(IllegalStateException("Command APDU $command not supported, returning 6d00"))
+            mutex.withLock {
+                failTransport(IllegalStateException("Command APDU $command not supported, returning 6d00"))
+            }
             return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_INSTRUCTION_NOT_SUPPORTED_OR_INVALID)
         } catch (error: Exception) {
+            if (error is CancellationException) throw error
             error.printStackTrace()
-            failTransport(IllegalStateException("Error processing APDU: ${error.message}", error))
+            mutex.withLock {
+                failTransport(IllegalStateException("Error processing APDU: ${error.message}", error))
+            }
             val status = if (error is NfcError) {
                 error.status
             } else {
@@ -333,7 +342,7 @@ class NfcTransportMdoc(
 
     internal suspend fun onDeactivated() {
         mutex.withLock {
-            instances.remove(this)
+            instances.update { it - this }
             failTransport(IllegalStateException("onDeactivated"))
         }
     }

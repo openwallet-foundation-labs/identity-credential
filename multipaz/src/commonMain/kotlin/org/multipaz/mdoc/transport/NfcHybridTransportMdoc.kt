@@ -16,6 +16,7 @@ import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.CommandApdu
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.util.Logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -107,7 +108,7 @@ class NfcHybridTransportMdoc(
      *
      * @param reason the reason for the deactivation event.
      */
-    fun onNfcDeactivated(reason: Int) {
+    fun onNfcDeactivated(reason: NfcDeactivationReason) {
         _isNfcConnected.value = false
         // For NFC-only connections, leaving the field is expected during multi-tap presentment.
         // We do not fail the transport so the presentment session can resume when re-tapped.

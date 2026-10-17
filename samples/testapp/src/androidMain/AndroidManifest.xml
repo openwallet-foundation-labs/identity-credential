@@ -188,7 +188,7 @@
         </activity>
 
         <service
-            android:name=".TestAppCombinedNfcService"
+            android:name=".TestAppNfcApduRouter"
             android:exported="true"
             android:label="@string/nfc_ndef_service_description"
             android:permission="android.permission.BIND_NFC_SERVICE">
