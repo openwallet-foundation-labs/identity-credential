@@ -1,19 +1,16 @@
 package org.multipaz.testapp
 
-import android.content.Context
-import org.multipaz.compose.mdoc.MdocNdefService
 import org.multipaz.compose.prompt.PresentmentActivity
+import org.multipaz.mdoc.nfc.MdocNdefService
 import org.multipaz.mdoc.transport.MdocTransportOptions
-import org.multipaz.presentment.PresentmentModel
 import org.multipaz.util.Logger
 import kotlin.time.Clock
 
 private const val TAG = "TestAppMdocNdefService"
 
 class TestAppMdocNdefService(
-    applicationContext: Context,
     sendResponse: (ByteArray) -> Unit
-): MdocNdefService(applicationContext, sendResponse) {
+): MdocNdefService(sendResponse) {
 
     //val promptModel = TransparentActivityPromptModel.Builder(
     //    theme = { content -> AppTheme(content) }
@@ -42,7 +39,7 @@ class TestAppMdocNdefService(
             source = app.getPresentmentSource(),
             promptModel = PresentmentActivity.promptModel,
             presentmentModel = PresentmentActivity.presentmentModel,
-            activityClass = PresentmentActivity::class.java,
+            launchUi = { PresentmentActivity.startActivity() },
             sessionEncryptionCurve = app.settingsModel.presentmentSessionEncryptionCurve.value,
             useNegotiatedHandover = app.settingsModel.presentmentUseNegotiatedHandover.value,
             negotiatedHandoverPreferredOrder = app.settingsModel.presentmentNegotiatedHandoverPreferredOrder.value,

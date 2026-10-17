@@ -1,12 +1,5 @@
-package org.multipaz.compose.mdoc
+package org.multipaz.mdoc.nfc
 
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
-import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,8 +12,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.concurrent.Volatile
-import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
@@ -32,7 +23,6 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.Capability
-import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.MdocTransportFactory
@@ -49,7 +39,8 @@ import org.multipaz.presentment.PresentmentSource
 import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
-import kotlin.time.Duration
+import kotlin.concurrent.Volatile
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
@@ -58,31 +49,21 @@ import kotlin.time.Instant
  * Applications should subclass this and include the appropriate stanzas in its manifest
  * for binding to the NDEF Type 4 tag AID (D2760000850101).
  *
- * @property applicationContext the [Context], passed by [CombinedNfcService].
  * @property sendResponse a function to send a response APDU via [CombinedNfcService].
  */
 abstract class MdocNdefService(
-    applicationContext: Context,
     sendResponse: (ByteArray) -> Unit
-) : NfcApduService(applicationContext, sendResponse) {
+) : NfcApduService(sendResponse) {
     companion object {
         private const val TAG = "MdocNdefService"
     }
 
-    private fun vibrate(pattern: List<Int>) {
-        val vibrator = ContextCompat.getSystemService(applicationContext, Vibrator::class.java)
-        vibrator?.let {
-            val vibrationEffect = VibrationEffect.createWaveform(pattern.map { ms -> ms.toLong() }.toLongArray(), -1)
-            it.vibrate(vibrationEffect)
-        }
-    }
-
     private fun vibrateError() {
-        vibrate(listOf(0, 500))
+        vibrateMdocNfcError()
     }
 
     private fun vibrateSuccess() {
-        vibrate(listOf(0, 100, 50, 100))
+        vibrateMdocNfcSuccess()
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -132,7 +113,8 @@ abstract class MdocNdefService(
      *
      * @property source the [PresentmentSource] to use as the source of truth for what to present.
      * @property promptModel the [PromptModel] to use.
-     * @property activityClass the activity to launch or `null` to not launch an activity.
+     * @property presentmentModel the [PresentmentModel] to update during presentment, or `null`.
+     * @property launchUi a callback invoked when handover completes to launch the presentment UI, or `null`.
      * @property sessionEncryptionCurve the Elliptic Curve Cryptography curve to use for session encryption.
      * @property useNegotiatedHandover if `true` NFC negotiated handover will be used, otherwise NFC static handover.
      * @property negotiatedHandoverPreferredOrder a list of the preferred order for which kind of
@@ -151,7 +133,7 @@ abstract class MdocNdefService(
         val source: PresentmentSource,
         val promptModel: PromptModel,
         val presentmentModel: PresentmentModel?,
-        val activityClass: Class<out Activity>?,
+        val launchUi: (() -> Unit)? = null,
         val sessionEncryptionCurve: EcCurve,
 
         val useNegotiatedHandover: Boolean,
@@ -187,11 +169,11 @@ abstract class MdocNdefService(
 
         engagement = null
 
-        // Start a coroutine on an I/O thread for handling incoming APDUs and deactivation events
+        // Start a coroutine on a background thread for handling incoming APDUs and deactivation events
         // from the OS in processCommandApdu() and onDeactivated() overrides. This is so we can
         // use suspend functions.
         //
-        engagementJob = serviceScope.launch(Dispatchers.IO) {
+        engagementJob = serviceScope.launch(Dispatchers.Default) {
             for (data in channel) {
                 try {
                     when (data) {
@@ -255,7 +237,7 @@ abstract class MdocNdefService(
         }
 
         listenForCancellationFromUiJob?.cancel()
-        listenForCancellationFromUiJob = serviceScope.launch(Dispatchers.IO) {
+        listenForCancellationFromUiJob = serviceScope.launch(Dispatchers.Default) {
             settings.presentmentModel?.state?.collect { state ->
                 if (state == PresentmentModel.State.CanceledByUser) {
                     engagementComplete = true
@@ -340,7 +322,7 @@ abstract class MdocNdefService(
                 // We launch transactionJob in a new detached scope so it survives both
                 // NFC deactivation (the reader moving away) and the Service's onDestroy
                 // (as the transaction may continue over BLE and wait for UI consent).
-                transactionJob = CoroutineScope(Dispatchers.IO + settings.promptModel).launch {
+                transactionJob = CoroutineScope(Dispatchers.Default + settings.promptModel).launch {
                     startTransaction(
                         previousTransactionJob = previousTransactionJob,
                         timeStarted = timeStarted,
@@ -395,16 +377,7 @@ abstract class MdocNdefService(
                 prevJob.join()
             }
 
-            if (settings.activityClass != null) {
-                val intent = Intent(applicationContext, settings.activityClass)
-                intent.addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_NO_HISTORY or
-                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                            Intent.FLAG_ACTIVITY_NO_ANIMATION
-                )
-                applicationContext.startActivity(intent)
-            }
+            settings.launchUi?.invoke()
 
             val engagementDuration = Clock.System.now() - timeStarted
             uiCancelJob = CoroutineScope(context).launch {
@@ -512,7 +485,7 @@ abstract class MdocNdefService(
     private var numApdusReceived = 0
     private var firstCommandApdu: CommandApdu? = null
 
-    // Called by coroutine running in I/O thread, see onCreate() for details
+    // Called by coroutine running in background thread, see onCreate() for details
     private suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu? {
         if (commandApdu.isApplicationSelect && numApdusReceived > 0) {
             Logger.i(TAG, "Received SELECT APPLICATION while engagement already in progress; resetting for new engagement")
@@ -563,7 +536,7 @@ abstract class MdocNdefService(
         return null
     }
 
-    // Called by coroutine running in I/O thread, see onCreate() for details
+    // Called by coroutine running in background thread, see onCreate() for details
     private suspend fun processDeactivated(reason: Int) {
         try {
             engagement?.processDeactivated(reason)
@@ -586,8 +559,8 @@ abstract class MdocNdefService(
     }
 
     // Called by OS when an APDU arrives
-    override fun processCommandApdu(encodedCommandApdu: ByteArray, extras: Bundle?): ByteArray? {
-        // Bounce the APDU to processCommandApdu() above via the coroutine in I/O thread set up in onCreate()
+    override fun processCommandApdu(encodedCommandApdu: ByteArray): ByteArray? {
+        // Bounce the APDU to processCommandApdu() above via the coroutine in background thread set up in onCreate()
         //
         // With Extended APDUs it's possible we get a partial APDU so gracefully handle if decoding fails. Simply
         // log and discard, we'll likely get hit with an onDeactivated call soon anyway.
@@ -613,7 +586,7 @@ abstract class MdocNdefService(
     // Called by OS when NFC tag reader deactivates
     override fun onDeactivated(reason: Int) {
         Logger.i(TAG, "onDeactivated: reason=$reason")
-        // Bounce the event to processDeactivated() above via the coroutine in I/O thread set up in onCreate()
+        // Bounce the event to processDeactivated() above via the coroutine in background thread set up in onCreate()
         val unused = channel.trySend(DeactivatedData(reason))
     }
 }

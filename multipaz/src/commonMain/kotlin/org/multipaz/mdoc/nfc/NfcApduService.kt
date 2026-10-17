@@ -1,7 +1,5 @@
-package org.multipaz.compose.mdoc
+package org.multipaz.mdoc.nfc
 
-import android.content.Context
-import android.os.Bundle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlin.concurrent.Volatile
@@ -9,11 +7,9 @@ import kotlin.concurrent.Volatile
 /**
  * Interface for NFC APDU services orchestrated by [CombinedNfcService].
  *
- * @property applicationContext the [Context], passed by [CombinedNfcService].
  * @property sendResponse a function to send a response APDU via [CombinedNfcService].
  */
 abstract class NfcApduService(
-    protected val applicationContext: Context,
     private val sendResponse: (ByteArray) -> Unit
 ) {
     companion object {
@@ -41,10 +37,9 @@ abstract class NfcApduService(
      * Called when APDUs arrive
      *
      * @param commandApdu the bytes of the command APDU.
-     * @param extras extras.
      * @return the Response APDU or `null`.
      */
-    open fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? { return null }
+    open fun processCommandApdu(commandApdu: ByteArray): ByteArray? { return null }
 
     /**
      * Called when the service is deactivated.

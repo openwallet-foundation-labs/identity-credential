@@ -1,10 +1,7 @@
 package org.multipaz.testapp
 
-import android.content.Context
-import org.multipaz.compose.mdoc.MdocNfcDataTransferService
+import org.multipaz.mdoc.nfc.MdocNfcDataTransferService
 
 class TestAppMdocNfcDataTransferService(
-    applicationContext: Context,
     sendResponse: (ByteArray) -> Unit
-): MdocNfcDataTransferService(applicationContext, sendResponse) {
-}
+): MdocNfcDataTransferService(sendResponse)
