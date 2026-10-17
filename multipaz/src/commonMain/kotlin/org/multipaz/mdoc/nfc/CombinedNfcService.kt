@@ -1,10 +1,7 @@
-package org.multipaz.compose.mdoc
+package org.multipaz.mdoc.nfc
 
-import android.nfc.cardemulation.HostApduService
-import android.os.Bundle
 import kotlinx.coroutines.CancellationException
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.context.initializeApplication
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
@@ -14,12 +11,13 @@ import org.multipaz.util.toHex
 private const val TAG = "CombinedNfcService"
 
 /**
- * A [HostApduService] which can route to multiple other services.
+ * A service which can route NFC APDUs to multiple other [NfcApduService] instances.
  *
- * A router like this is needed because CardEmulation.setPreferredService() can only
- * handle a single service.
+ * On Android, this subclasses `HostApduService` via [CombinedNfcServiceBase] so that a single
+ * OS service can route to multiple handlers (which is required because
+ * `CardEmulation.setPreferredService()` can only handle a single service).
  */
-abstract class CombinedNfcService: HostApduService() {
+abstract class CombinedNfcService : CombinedNfcServiceBase() {
 
     protected lateinit var services: Map<ByteString, NfcApduService>
 
@@ -30,10 +28,6 @@ abstract class CombinedNfcService: HostApduService() {
 
     override fun onCreate() {
         super.onCreate()
-
-        applicationContext?.let {
-            initializeApplication(it)
-        }
 
         services = buildServices()
 
@@ -52,9 +46,7 @@ abstract class CombinedNfcService: HostApduService() {
     // Track which AID the reader selected so subsequent APDUs are routed correctly
     private var activeAid: ByteString? = null
 
-    override fun processCommandApdu(encodedCommandApdu: ByteArray?, extras: Bundle?): ByteArray? {
-        if (encodedCommandApdu == null) return null
-
+    override fun processCommandApdu(encodedCommandApdu: ByteArray): ByteArray? {
         Logger.dHex(TAG, "Handling Command APDU", encodedCommandApdu)
 
         // With Extended APDUs it's possible we get a partial APDU so gracefully handle if decoding fails. Simply
@@ -75,7 +67,7 @@ abstract class CombinedNfcService: HostApduService() {
         // Route the APDU to the appropriate handler based on the active session
         activeAid?.let { activeAid ->
             services[activeAid]?.let { service ->
-                return service.processCommandApdu(encodedCommandApdu, extras)
+                return service.processCommandApdu(encodedCommandApdu)
             }
             Logger.w(TAG, "No handler for AID ${activeAid.toHex()}, returning 6a82")
             return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND).encode()
@@ -91,3 +83,45 @@ abstract class CombinedNfcService: HostApduService() {
         activeAid = null
     }
 }
+
+/**
+ * Platform base class for [CombinedNfcService].
+ *
+ * On Android this extends `android.nfc.cardemulation.HostApduService`.
+ */
+expect abstract class CombinedNfcServiceBase() {
+    /**
+     * Called when the service is first created.
+     */
+    open fun onCreate()
+
+    /**
+     * Called when the service is no longer used and is being destroyed.
+     */
+    open fun onDestroy()
+
+    /**
+     * Called when a command APDU has been received from a remote device.
+     *
+     * @param encodedCommandApdu the command APDU that was received.
+     * @return a response APDU to send back synchronously, or `null` if the response will be sent later via [sendResponseApdu].
+     */
+    abstract fun processCommandApdu(encodedCommandApdu: ByteArray): ByteArray?
+
+    /**
+     * Called when the NFC link has been deactivated or deselected.
+     *
+     * @param reason the reason for deactivation.
+     */
+    abstract fun onDeactivated(reason: Int)
+
+    /**
+     * Sends a response APDU back to the remote device.
+     *
+     * @param responseApdu the response APDU bytes.
+     */
+    fun sendResponseApdu(responseApdu: ByteArray)
+}
+
+internal expect fun vibrateMdocNfcError()
+internal expect fun vibrateMdocNfcSuccess()
