@@ -8,9 +8,7 @@ import kotlin.time.Clock
 
 private const val TAG = "TestAppMdocNfcV2Service"
 
-class TestAppMdocNfcV2Service(
-    sendResponse: (ByteArray) -> Unit
-): MdocNfcV2Service(sendResponse) {
+class TestAppMdocNfcV2Service : MdocNfcV2Service() {
 
     override suspend fun getSettings(): Settings {
         // TODO: optimize initialization of App so we can just get settingsModel and presentmentSource() out
@@ -37,8 +35,8 @@ class TestAppMdocNfcV2Service(
             presentmentModel = PresentmentActivity.presentmentModel,
             launchUi = { PresentmentActivity.startActivity() },
             sessionEncryptionCurve = app.settingsModel.presentmentSessionEncryptionCurve.value,
-            useNegotiatedHandover = app.settingsModel.presentmentUseNegotiatedHandover.value,
-            negotiatedHandoverPreferredOrder = app.settingsModel.presentmentNegotiatedHandoverPreferredOrder.value,
+            onlyAllowNfc = app.settingsModel.presentmentNfcV2OnlyAllowNfc.value,
+            handoverPreferredOrder = app.settingsModel.presentmentNegotiatedHandoverPreferredOrder.value,
             transportOptions = MdocTransportOptions(
                 bleUseL2CAP = app.settingsModel.presentmentBleL2CapEnabled.value,
                 bleUseL2CAPInEngagement = app.settingsModel.presentmentBleL2CapInEngagementEnabled.value

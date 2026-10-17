@@ -111,7 +111,7 @@ class MdocNfcV2EngagementHelperTest {
             onError = { error ->
                 fail("onError should not be called with $error")
             },
-            negotiatedHandoverPicker = { connectionMethods ->
+            handoverPicker = { connectionMethods ->
                 assertEquals(1, connectionMethods.size)
                 assertTrue(connectionMethods.first() is MdocConnectionMethodNfcV2)
                 connectionMethods.first()
@@ -239,7 +239,7 @@ class MdocNfcV2EngagementHelperTest {
             onError = { error ->
                 fail("onError should not be called with $error")
             },
-            negotiatedHandoverPicker = { connectionMethods ->
+            handoverPicker = { connectionMethods ->
                 assertEquals(2, connectionMethods.size)
                 assertTrue(connectionMethods.first() is MdocConnectionMethodNfcV2)
                 assertEquals(methods.first(), connectionMethods[1])
@@ -372,7 +372,7 @@ class MdocNfcV2EngagementHelperTest {
             onError = { error ->
                 fail("onError should not be called with $error")
             },
-            negotiatedHandoverPicker = { connectionMethods ->
+            handoverPicker = { connectionMethods ->
                 assertEquals(2, connectionMethods.size)
                 assertTrue(connectionMethods.first() is MdocConnectionMethodNfcV2)
                 assertEquals(readerMethods.first(), connectionMethods[1])
@@ -495,7 +495,7 @@ class MdocNfcV2EngagementHelperTest {
             onError = { error ->
                 fail("onError should not be called with $error")
             },
-            negotiatedHandoverPicker = { connectionMethods ->
+            handoverPicker = { connectionMethods ->
                 assertEquals(2, connectionMethods.size)
                 assertTrue(connectionMethods.first() is MdocConnectionMethodNfcV2)
                 assertEquals(readerMethods.first(), connectionMethods[1])
@@ -606,7 +606,7 @@ class MdocNfcV2EngagementHelperTest {
             onError = { error ->
                 fail("onError should not be called with $error")
             },
-            negotiatedHandoverPicker = { connectionMethods ->
+            handoverPicker = { connectionMethods ->
                 mdocBleMethodWithoutUuid
             },
         )
@@ -677,7 +677,7 @@ class MdocNfcV2EngagementHelperTest {
             onError = { error ->
                 fail("onError should not be called with $error")
             },
-            negotiatedHandoverPicker = { connectionMethods ->
+            handoverPicker = { connectionMethods ->
                 mdocBleMethodWithUuid
             },
         )

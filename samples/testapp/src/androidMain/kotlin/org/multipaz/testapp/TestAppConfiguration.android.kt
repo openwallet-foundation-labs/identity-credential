@@ -149,7 +149,7 @@ actual object TestAppConfiguration {
                     /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             },
-            preferredService = ComponentName(applicationContext, TestAppCombinedNfcService::class.java),
+            preferredService = ComponentName(applicationContext, TestAppNfcApduRouter::class.java),
             onDocumentSelected = onDocumentSelected,
             documentSelectedContent = documentSelectedContent
         )

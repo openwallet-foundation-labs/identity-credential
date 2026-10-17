@@ -1,15 +1,13 @@
 package org.multipaz.mdoc.transport
 
+import kotlinx.coroutines.test.runTest
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.NfcIsoTag
 import org.multipaz.nfc.ResponseApdu
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.test.runTest
-import org.multipaz.mdoc.role.MdocRole
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -39,19 +37,9 @@ class NfcTransportTests {
 
         override suspend fun updateDialogMessage(message: String) {}
 
-        @OptIn(ExperimentalCoroutinesApi::class)
         override suspend fun transceive(command: CommandApdu): ResponseApdu {
             transcript.appendLine("${command.toString().truncateTo(100)} (${command.encode().size} bytes)")
-            val response = suspendCancellableCoroutine<ResponseApdu> { continuation ->
-                runTest {
-                    transport.processApdu(
-                        command = command,
-                        sendResponse = { response ->
-                            continuation.resume(response, null)
-                        }
-                    )
-                }
-            }
+            val response = transport.processApdu(command)
             transcript.appendLine("${response.toString().truncateTo(100)} (${response.encode().size} bytes)")
             return response
         }

@@ -20,6 +20,7 @@ import org.multipaz.mdoc.transport.encapsulateInDo53
 import org.multipaz.mdoc.transport.extractFromDo53
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.util.Logger
 import org.multipaz.util.toHex
@@ -41,7 +42,7 @@ import kotlin.math.min
  * @param onHandoverComplete the function to call when handover is complete.
  * @param onMessageReceived the function to call when a data message has been received over NFC.
  * @param onError the function to call if an error occurs.
- * @param negotiatedHandoverPicker a function to choose one of the connection methods from the mdoc reader. This
+ * @param handoverPicker a function to choose one of the connection methods from the mdoc reader. This
  * always contain a [MdocConnectionMethodNfcV2] instance and contains others if the mdoc reader is capable of data
  * transfer over e.g. BLE or Wifi Aware. If the mdoc only supports data transfer over NFC, it should return the element
  * for [MdocConnectionMethodNfcV2].
@@ -56,7 +57,7 @@ class MdocNfcV2EngagementHelper(
         handover: DataItem) -> Unit,
     val onMessageReceived: suspend (ByteString) -> Unit,
     val onError: (error: Exception) -> Unit,
-    val negotiatedHandoverPicker: (connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod,
+    val handoverPicker: (connectionMethods: List<MdocConnectionMethod>) -> MdocConnectionMethod,
     val capabilities: Map<Capability, DataItem> = mapOf(
         Capability.READER_AUTH_ALL_SUPPORT to true.toDataItem(),
         Capability.EXTENDED_REQUEST_SUPPORT to true.toDataItem()
@@ -130,7 +131,7 @@ class MdocNfcV2EngagementHelper(
             MdocRole.MDOC
         )
 
-        val selectedMethod = negotiatedHandoverPicker(disambiguatedConnectionMethods)
+        val selectedMethod = handoverPicker(disambiguatedConnectionMethods)
 
         val deviceEngagement = buildDeviceEngagement(eDeviceKey = eDeviceKey) {
             addConnectionMethod(selectedMethod)
@@ -186,7 +187,7 @@ class MdocNfcV2EngagementHelper(
 
     private suspend fun nfcV2Transact(message: ByteString): ByteString {
         return when (handoverState) {
-            HandoverState.NOT_STARTED -> throw IllegalStateException("Unexpected message - Negotiated Handover not started")
+            HandoverState.NOT_STARTED -> throw IllegalStateException("Unexpected message - Handover not started")
             HandoverState.EXPECT_HANDOVER_REQUEST_MESSAGE -> nfcV2TransactHandleHandoverRequest(message)
             HandoverState.EXPECT_PAYLOAD_MESSAGES -> nfcV2TransactHandlePayloadMessages(message)
         }
@@ -324,8 +325,8 @@ class MdocNfcV2EngagementHelper(
     /**
      * Must be called when the session is deactivated, e.g. when the NFC tag reader leaves the field.
      */
-    fun processDeactivated(reason: Int) {
-        queueForPayloadReply.cancel(CancellationException("The session was deactivated"))
+    fun processDeactivated(reason: NfcDeactivationReason) {
+        queueForPayloadReply.cancel(CancellationException("The session was deactivated ($reason)"))
     }
 }
 

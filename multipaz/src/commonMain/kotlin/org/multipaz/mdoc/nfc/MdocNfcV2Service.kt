@@ -5,13 +5,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
@@ -37,6 +34,8 @@ import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.NfcHybridTransportMdoc
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.NfcApduRouter
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.presentment.EngagementParams
 import org.multipaz.presentment.Iso18013Presentment
@@ -53,19 +52,15 @@ import kotlin.time.Instant
 /**
  * Base class for implementing NFCv2 engagement according to ISO/IEC 18013 Second Edition.
  *
- * Applications should subclass this and include the appropriate stanzas in its manifest
- * for binding to the appropriate AID (A0000002480401).
- *
- * @property sendResponse a function to send a response APDU via [CombinedNfcService].
+ * Applications should subclass this and register it in [NfcApduRouter.buildServices]
+ * for the appropriate AID (`A0000002480401`).
  */
-abstract class MdocNfcV2Service(
-    sendResponse: (ByteArray) -> Unit
-) : NfcApduService(sendResponse) {
+abstract class MdocNfcV2Service : MdocNfcPresentmentService() {
     companion object {
         private const val TAG = "MdocNfcV2Service"
 
         // Active multi-tap state stored in companion so that subsequent taps
-        // work regardless of whether Android reuses or recreates the HostApduService instance.
+        // work regardless of whether the service instance is reused or recreated.
         @Volatile
         internal var hybridTransport: NfcHybridTransportMdoc? = null
 
@@ -82,18 +77,6 @@ abstract class MdocNfcV2Service(
         internal var onHybridTransportCreated: ((NfcHybridTransportMdoc) -> Unit)? = null
     }
 
-    private fun vibrateError() {
-        vibrateMdocNfcError()
-    }
-
-    private fun vibrateSuccess() {
-        vibrateMdocNfcSuccess()
-    }
-
-    // A job started when onCreate is called and used for dispatching APDUs and onDeactivated events
-    // to a suspend-world. Runs until onDestroy is called.
-    private var dispatchJob: Job? = null
-
     // A job started when the reader has selected us and used for listening for
     // a signal from the UI that it wants to cancel during NFC engagement.
     private var listenForCancellationFromUiJob: Job? = null
@@ -101,32 +84,18 @@ abstract class MdocNfcV2Service(
     @Volatile
     private var engagement: MdocNfcV2EngagementHelper? = null
 
-    // Channel used for bouncing data from processCommandApdu() and onDeactivated() to dispatchJob coroutine.
-    private val dispatchChannel = Channel<Data>(Channel.UNLIMITED)
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    private sealed class Data
-
-    private data class CommandApduData(
-        val commandApdu: CommandApdu
-    ): Data()
-
-    private data class DeactivatedData(
-        val reason: Int
-    ): Data()
-
     /**
-     * Settings provided by the application for how to configure NFC engagement.
+     * Settings provided by the application for how to configure NFCv2 engagement.
      *
      * @property source the [PresentmentSource] to use as the source of truth for what to present.
      * @property promptModel the [PromptModel] to use.
      * @property presentmentModel the [PresentmentModel] to update during presentment, or `null`.
      * @property launchUi a callback invoked when handover completes to launch the presentment UI, or `null`.
      * @property sessionEncryptionCurve the Elliptic Curve Cryptography curve to use for session encryption.
-     * @property useNegotiatedHandover if `true` NFC negotiated handover will be used, otherwise NFC static handover.
-     * @property negotiatedHandoverPreferredOrder a list of the preferred order for which kind of
-     *   [org.multipaz.mdoc.transport.MdocTransport] to create when using NFC negotiated handover.
+     * @property onlyAllowNfc if `true`, only NFC data transfer ([MdocConnectionMethodNfcV2]) will be used,
+     *   otherwise the connection method is chosen according to [handoverPreferredOrder].
+     * @property handoverPreferredOrder a list of the preferred order for which kind of
+     *   [MdocConnectionMethod] to select during handover when [onlyAllowNfc] is `false`.
      * @property transportOptions the [MdocTransportOptions] to use for newly created connections.
      * @property transportFactory the [MdocTransportFactory] to use for creating transports.
      * @property capabilities the capabilities to convey to the mdoc reader.
@@ -137,8 +106,8 @@ abstract class MdocNfcV2Service(
         val presentmentModel: PresentmentModel?,
         val launchUi: (() -> Unit)? = null,
         val sessionEncryptionCurve: EcCurve,
-        val useNegotiatedHandover: Boolean,
-        val negotiatedHandoverPreferredOrder: List<String>,
+        val onlyAllowNfc: Boolean,
+        val handoverPreferredOrder: List<String> = emptyList(),
         val transportOptions: MdocTransportOptions,
         val transportFactory: MdocTransportFactory = MdocTransportFactory.Default,
         val capabilities: Map<Capability, DataItem> = mapOf(
@@ -159,65 +128,30 @@ abstract class MdocNfcV2Service(
      */
     abstract suspend fun getSettings(): Settings
 
-    override fun onCreate() {
-        Logger.i(TAG, "onCreate")
-        super.onCreate()
-
-        // Start a coroutine on a background thread for handling incoming APDUs and deactivation events
-        // from the OS in processCommandApdu() and onDeactivated() overrides. This is so we can
-        // use suspend functions.
-        //
-        dispatchJob = serviceScope.launch(Dispatchers.Default) {
-            for (data in dispatchChannel) {
-                try {
-                    when (data) {
-                        is CommandApduData -> {
-                            processCommandApdu(data.commandApdu)?.let { responseApdu ->
-                                try {
-                                    sendResponseApdu(responseApdu.encode())
-                                } catch (e: Exception) {
-                                    Logger.w(TAG, "Error sending response APDU", e)
-                                }
-                            }
-                        }
-                        is DeactivatedData -> {
-                            processDeactivated(data.reason)
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) {
-                        if (!isActive) {
-                            // The whole service/job is being shut down, let the exception propagate so the loop dies.
-                            throw e
-                        }
-                        // Only the current sub-task (APDU processing) was aborted, keep the loop alive for the next tap.
-                        Logger.i(TAG, "dispatchJob: APDU processing cancelled (likely due to deactivation)")
-                    } else {
-                        Logger.e(TAG, "Error processing data from channel", e)
-                    }
-                }
-            }
-        }
+    override fun start() {
+        Logger.i(TAG, "start")
+        super.start()
     }
 
     @Volatile
     private var pendingEngagementDeviceKey: EcPrivateKey? = null
 
-    override fun onDestroy() {
-        Logger.i(TAG, "onDestroy")
-        super.onDestroy()
+    override fun stop() {
+        Logger.i(TAG, "stop")
+        super.stop()
         val currentEngagement = engagement
-        if (activeEngagement === currentEngagement) {
-            activeEngagement = null
+        if (currentEngagement != null) {
+            currentEngagement.processDeactivated(NfcDeactivationReason.LINK_LOSS)
+            if (activeEngagement === currentEngagement) {
+                activeEngagement = null
+                hybridTransport?.onNfcDeactivated(NfcDeactivationReason.LINK_LOSS)
+            }
+            engagement = null
         }
-        engagement = null
         pendingEngagementDeviceKey?.close()
         pendingEngagementDeviceKey = null
-        serviceScope.cancel()
-        dispatchJob = null
         listenForCancellationFromUiJob?.cancel()
         listenForCancellationFromUiJob = null
-        dispatchChannel.close()
     }
 
     @Volatile
@@ -260,9 +194,6 @@ abstract class MdocNfcV2Service(
             }
         }
 
-        // TODO: Listen on methods _before_ starting the engagement helper so we can send the PSM
-        //   for mdoc Peripheral Server mode when using NFC Static Handover.
-        //
         lateinit var currentEngagement: MdocNfcV2EngagementHelper
         currentEngagement = MdocNfcV2EngagementHelper(
             eDeviceKey = eDeviceKey.publicKey,
@@ -406,9 +337,11 @@ abstract class MdocNfcV2Service(
                 }
                 Logger.w(TAG, "Engagement failed. Maybe this wasn't an ISO mdoc reader.", error)
             },
-            negotiatedHandoverPicker = { connectionMethods ->
-                if (settings.useNegotiatedHandover) {
-                    for (prefix in settings.negotiatedHandoverPreferredOrder) {
+            handoverPicker = { connectionMethods ->
+                if (settings.onlyAllowNfc) {
+                    connectionMethods.find { it is MdocConnectionMethodNfcV2 }!!
+                } else {
+                    for (prefix in settings.handoverPreferredOrder) {
                         for (connectionMethod in connectionMethods) {
                             if (connectionMethod.toString().startsWith(prefix)) {
                                 return@MdocNfcV2EngagementHelper connectionMethod
@@ -416,8 +349,6 @@ abstract class MdocNfcV2Service(
                         }
                     }
                     return@MdocNfcV2EngagementHelper connectionMethods.first()
-                } else {
-                    connectionMethods.find { it is MdocConnectionMethodNfcV2 }!!
                 }
             },
             capabilities = settings.capabilities
@@ -484,7 +415,7 @@ abstract class MdocNfcV2Service(
                 // Wait for the non-NFC transport in a coroutine so we are not blocking
                 // initiating presentment....
                 waitForTransportJob = CoroutineScope(transactionJobContext).launch(Dispatchers.Default) {
-                    var negotiatedTransport: MdocTransport? = null
+                    var secondaryTransport: MdocTransport? = null
                     var handedOffToHybrid = false
                     try {
                         val createdTransport = settings.transportFactory.createTransport(
@@ -492,7 +423,7 @@ abstract class MdocNfcV2Service(
                             role = MdocRole.MDOC,
                             options = settings.transportOptions
                         )
-                        negotiatedTransport = createdTransport
+                        secondaryTransport = createdTransport
                         createdTransport.open(eSenderKey = eDeviceKey.publicKey)
                         transport.setTransport(createdTransport)
                         handedOffToHybrid = true
@@ -510,10 +441,10 @@ abstract class MdocNfcV2Service(
                         if (!handedOffToHybrid) {
                             withContext(NonCancellable) {
                                 try {
-                                    negotiatedTransport?.close()
+                                    secondaryTransport?.close()
                                 } catch (e: Exception) {
                                     if (e is CancellationException) throw e
-                                    Logger.w(TAG, "Error closing unattached negotiated transport", e)
+                                    Logger.w(TAG, "Error closing unattached secondary transport", e)
                                 }
                             }
                         }
@@ -591,65 +522,75 @@ abstract class MdocNfcV2Service(
         listenForCancellationFromUiJob = null
     }
 
-    private val CommandApdu.isApplicationSelect: Boolean
-        get() = ins == Nfc.INS_SELECT && p1 == Nfc.INS_SELECT_P1_APPLICATION
-
     private val firstCommandResponse = ResponseApdu(
         status = Nfc.RESPONSE_STATUS_SUCCESS,
         payload = ByteString(Cbor.encode(buildCborMap {
             put(0, 65536L /* apduCommandMaxSize */)
         }))
     )
-    private var applicationSelectProcessed = false
 
-    // Called by coroutine running in background thread, see onCreate() for details
-    private suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu? {
-        if (commandApdu.isApplicationSelect && engagementStarted) {
-            Logger.i(TAG, "Received SELECT APPLICATION while engagement already in progress; resetting for new engagement")
-            engagement?.processDeactivated(0)
-            if (activeEngagement === engagement) {
-                activeEngagement = null
-            }
-            engagement = null
-            pendingEngagementDeviceKey?.close()
-            pendingEngagementDeviceKey = null
-            engagementStarted = false
+    private var numApdusReceived = 0
+    private var firstCommandApdu: CommandApdu? = null
+
+    override suspend fun processCommandApdu(commandApdu: CommandApdu): ResponseApdu {
+        if (commandApdu.isApplicationSelect) {
             engagementComplete = false
-            cancelEngagementJobs()
+            if (numApdusReceived > 0) {
+                Logger.i(TAG, "Received SELECT APPLICATION while engagement already in progress; resetting for new engagement")
+                engagement?.processDeactivated(NfcDeactivationReason.DESELECTED)
+                if (activeEngagement === engagement) {
+                    activeEngagement = null
+                }
+                engagement = null
+                pendingEngagementDeviceKey?.close()
+                pendingEngagementDeviceKey = null
+                engagementStarted = false
+                cancelEngagementJobs()
+                numApdusReceived = 0
+            }
+        } else if (engagementComplete) {
+            Logger.w(TAG, "Engagement complete but received APDU $commandApdu")
+            return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
         }
 
-        // TODO: maybe need replay and super-fast response as in mdocReaderNfcHandover.kt function processCommandApdu()
+        if (numApdusReceived == 0) {
+            numApdusReceived = 1
+            firstCommandApdu = commandApdu
+            return firstCommandResponse
+        }
+
         if (!engagementStarted) {
             engagementStarted = true
             startEngagement()
         }
         try {
             engagement?.let {
-                val responseApdu = it.processApdu(commandApdu)
-                if (commandApdu.isApplicationSelect && applicationSelectProcessed) {
-                    Logger.i(TAG, "Skipping response to APPLICATION SELECT since it's already been processed")
-                } else {
-                    return responseApdu
+                // Replay the first APDU
+                if (numApdusReceived++ == 1) {
+                    val responseApdu = it.processApdu(firstCommandApdu!!)
+                    if (responseApdu != firstCommandResponse) {
+                        Logger.w(TAG, "Expected response $firstCommandResponse to SELECT APPLICATION, " +
+                                "got $responseApdu")
+                    }
                 }
+                return it.processApdu(commandApdu)
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Logger.e(TAG, "Error processing APDU in MdocNfcV2EngagementHelper", e)
         }
-        return null
+        return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
     }
 
-    // Called by coroutine running in background thread, see onCreate() for details
-    private suspend fun processDeactivated(reason: Int) {
+    override suspend fun processDeactivated(reason: NfcDeactivationReason) {
+        Logger.i(TAG, "processDeactivated: reason=$reason")
         try {
             val currentEngagement = engagement
             currentEngagement?.processDeactivated(reason)
             hybridTransport?.onNfcDeactivated(reason)
 
-            // Android might reuse this service for the next tap. That is, we can't rely on onDestroy()
-            // firing right after this, then onCreate(). So reset everything so next time the OS calls
-            // processCommandApdu() we'll start processing a new engagement.
-            //
+            // The service might be reused for the next tap. So reset everything so next time
+            // processCommandApdu() is called we'll start processing a new engagement.
             if (activeEngagement === currentEngagement) {
                 activeEngagement = null
             }
@@ -658,7 +599,7 @@ abstract class MdocNfcV2Service(
             pendingEngagementDeviceKey = null
             engagementStarted = false
             engagementComplete = false
-            applicationSelectProcessed = false
+            numApdusReceived = 0
 
             cancelEngagementJobs()
             if (transactionJob?.isActive != true) {
@@ -668,54 +609,5 @@ abstract class MdocNfcV2Service(
             if (e is CancellationException) throw e
             Logger.e(TAG, "Error processing deactivation event in MdocNfcV2EngagementHelper", e)
         }
-    }
-
-    // Called by OS when an APDU arrives
-    override fun processCommandApdu(encodedCommandApdu: ByteArray): ByteArray? {
-        // Bounce the APDU to processCommandApdu() above via the coroutine in background thread set up in onCreate().
-        //
-        // With Extended APDUs it's possible we get a partial APDU so gracefully handle if decoding fails. Simply
-        // log and discard, we'll likely get hit with an onDeactivated call soon anyway.
-        //
-        val commandApdu = try {
-            CommandApdu.decode(encodedCommandApdu)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Logger.w(TAG, "Error decoding APDU", e)
-            return null
-        }
-        if (commandApdu.isApplicationSelect) {
-            engagementComplete = false
-        }
-        if (!engagementComplete) {
-            if (commandApdu.isApplicationSelect) {
-                applicationSelectProcessed = true
-                Logger.i(TAG, "Processing APPLICATION SELECT synchronously")
-                val unused = dispatchChannel.trySend(CommandApduData(commandApdu))
-                return firstCommandResponse.encode()
-            } else {
-                val unused = dispatchChannel.trySend(CommandApduData(commandApdu))
-            }
-        } else {
-            Logger.w(TAG, "Engagement complete but received APDU $commandApdu")
-        }
-        return null
-    }
-
-    // Called by OS when NFC tag reader deactivates
-    override fun onDeactivated(reason: Int) {
-        Logger.i(TAG, "onDeactivated: reason=$reason")
-        // Important: we must call these here to unblock dispatchJob if it is suspended in
-        // engagement.processApdu() waiting for a response to send back to the reader, and
-        // to ensure hybridTransport is marked disconnected even if onDestroy() runs before
-        // dispatchJob processes DeactivatedData.
-        val currentEngagement = engagement
-        currentEngagement?.processDeactivated(reason)
-        if (activeEngagement === currentEngagement) {
-            activeEngagement = null
-        }
-        hybridTransport?.onNfcDeactivated(reason)
-        // Bounce the event to processDeactivated() above via the coroutine in background thread set up in onCreate()
-        val unused = dispatchChannel.trySend(DeactivatedData(reason))
     }
 }

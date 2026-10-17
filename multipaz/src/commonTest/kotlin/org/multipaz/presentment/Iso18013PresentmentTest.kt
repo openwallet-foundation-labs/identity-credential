@@ -33,6 +33,7 @@ import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.transport.NfcHybridTransportMdoc
 import org.multipaz.mdoc.transport.NfcHybridTransportMdocReader
 import org.multipaz.nfc.CommandApdu
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.NfcIsoTag
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.prompt.promptModelSilentConsent
@@ -108,7 +109,7 @@ class Iso18013PresentmentTest {
             onError = { error ->
                 fail("onError: $error")
             },
-            negotiatedHandoverPicker = { connectionMethods -> connectionMethods.first() }
+            handoverPicker = { connectionMethods -> connectionMethods.first() }
         )
         currentEngagementHelper = engagementHelper
 
@@ -215,7 +216,7 @@ class Iso18013PresentmentTest {
                 mdocTransport.onMessageReceivedViaNfc(message)
             },
             onError = { error -> fail("Engagement 1 error: $error") },
-            negotiatedHandoverPicker = { connectionMethods -> connectionMethods.first() }
+            handoverPicker = { connectionMethods -> connectionMethods.first() }
         )
         currentEngagementHelper = engagementHelper1
 
@@ -243,7 +244,7 @@ class Iso18013PresentmentTest {
         }
 
         // Tap 1 disconnect
-        mdocTransport.onNfcDeactivated(0)
+        mdocTransport.onNfcDeactivated(NfcDeactivationReason.LINK_LOSS)
 
         // Tap 2 re-tap setup
         val engagementHelper2 = MdocNfcV2EngagementHelper(
@@ -260,7 +261,7 @@ class Iso18013PresentmentTest {
                 mdocTransport.onMessageReceivedViaNfc(message)
             },
             onError = { error -> fail("Engagement 2 error: $error") },
-            negotiatedHandoverPicker = { connectionMethods -> connectionMethods.first() }
+            handoverPicker = { connectionMethods -> connectionMethods.first() }
         )
         currentEngagementHelper = engagementHelper2
 
@@ -336,7 +337,7 @@ class Iso18013PresentmentTest {
                 mdocTransport.onMessageReceivedViaNfc(message)
             },
             onError = { error -> fail("Engagement 1 error: $error") },
-            negotiatedHandoverPicker = { connectionMethods -> connectionMethods.first() }
+            handoverPicker = { connectionMethods -> connectionMethods.first() }
         )
         currentEngagementHelper = engagementHelper1
 
@@ -369,7 +370,7 @@ class Iso18013PresentmentTest {
         }
 
         // Tap 1 disconnect
-        mdocTransport.onNfcDeactivated(0)
+        mdocTransport.onNfcDeactivated(NfcDeactivationReason.LINK_LOSS)
 
         // Tap 2 re-tap
         val engagementHelper2 = MdocNfcV2EngagementHelper(
@@ -386,7 +387,7 @@ class Iso18013PresentmentTest {
                 mdocTransport.onMessageReceivedViaNfc(message)
             },
             onError = { error -> fail("Engagement 2 error: $error") },
-            negotiatedHandoverPicker = { connectionMethods -> connectionMethods.first() }
+            handoverPicker = { connectionMethods -> connectionMethods.first() }
         )
         currentEngagementHelper = engagementHelper2
 
@@ -424,7 +425,7 @@ class Iso18013PresentmentTest {
         assertNotNull(encryptedResponse)
 
         // Wallet is removed too fast before reader sends session termination
-        mdocTransport.onNfcDeactivated(0)
+        mdocTransport.onNfcDeactivated(NfcDeactivationReason.LINK_LOSS)
 
         presentmentJob.join()
         assertTrue(

@@ -154,7 +154,7 @@ class ConnectionHelperTest {
             assertFalse(deferred.isCompleted)
             assertEquals(MdocTransport.State.IDLE, nfc.state.value)
 
-            nfc.processApdu(
+            val response = nfc.processApdu(
                 CommandApdu(
                     0,
                     Nfc.INS_SELECT,
@@ -162,9 +162,9 @@ class ConnectionHelperTest {
                     0,
                     Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID,
                     0
-                ),
-                sendResponse = {}
+                )
             )
+            assertEquals(Nfc.RESPONSE_STATUS_SUCCESS, response.status)
             runCurrent()
 
             assertTrue(deferred.isCompleted)

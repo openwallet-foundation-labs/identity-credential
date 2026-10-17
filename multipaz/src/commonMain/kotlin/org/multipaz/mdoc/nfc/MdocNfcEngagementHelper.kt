@@ -12,6 +12,7 @@ import org.multipaz.nfc.HandoverSelectRecord
 import org.multipaz.nfc.NdefMessage
 import org.multipaz.nfc.NdefRecord
 import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.NfcDeactivationReason
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.nfc.ServiceParameterRecord
 import org.multipaz.nfc.ServiceSelectRecord
@@ -487,7 +488,7 @@ class MdocNfcEngagementHelper(
      *
      * @param reason the reason.
      */
-    fun processDeactivated(reason: Int) {
+    fun processDeactivated(reason: NfcDeactivationReason) {
         if (raisedHandoverComplete || raisedError) {
             return
         } else {

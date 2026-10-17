@@ -8,9 +8,7 @@ import kotlin.time.Clock
 
 private const val TAG = "TestAppMdocNdefService"
 
-class TestAppMdocNdefService(
-    sendResponse: (ByteArray) -> Unit
-): MdocNdefService(sendResponse) {
+class TestAppMdocNdefService : MdocNdefService() {
 
     //val promptModel = TransparentActivityPromptModel.Builder(
     //    theme = { content -> AppTheme(content) }
