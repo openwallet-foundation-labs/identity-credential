@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +48,8 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.document.DocumentModel
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
+import org.multipaz.testapp.TestAppConfiguration
+import org.multipaz.testapp.TestAppPlatform
 import org.multipaz.testapp.rememberInhibitNfcObserveMode
 import org.multipaz.util.fromHexByteString
 import org.multipaz.util.toHex
@@ -146,6 +149,32 @@ fun DocumentViewerScreen(
                         }
                     }
                 )
+                if (TestAppConfiguration.platform == TestAppPlatform.ANDROID) {
+                    var omitClaims by remember(document) {
+                        mutableStateOf(TestAppConfiguration.getAndroidCredmanOmitClaims(document))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            modifier = Modifier.weight(1.0f),
+                            text = "Omit Claims in Credential Manager",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Switch(
+                            checked = omitClaims,
+                            onCheckedChange = { newValue ->
+                                omitClaims = newValue
+                                coroutineScope.launch {
+                                    TestAppConfiguration.setAndroidCredmanOmitClaims(document, newValue)
+                                }
+                            }
+                        )
+                    }
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

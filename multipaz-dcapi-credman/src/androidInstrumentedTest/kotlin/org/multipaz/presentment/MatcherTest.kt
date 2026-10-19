@@ -53,7 +53,9 @@ import org.multipaz.utopia.knowntypes.DigitalPaymentCredential
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.digitalcredentials.DigitalCredentialsCredman
 import org.multipaz.digitalcredentials.calculateCredentialDatabase
+import org.multipaz.document.androidCredmanOmitClaims
 import org.multipaz.document.setAndroidCredmanExchangeProtocols
+import org.multipaz.document.setAndroidCredmanOmitClaims
 import org.multipaz.mdoc.request.buildDeviceRequestFromDcql
 import org.multipaz.openid.OpenID4VP
 import org.multipaz.util.Logger
@@ -5497,5 +5499,409 @@ class MatcherTest {
             """.trimIndent().trim() + "\n",
             matcherResult
         )
+    }
+
+    @Test
+    fun testMatcher_androidCredmanOmitClaims_property_and_export() = runTest {
+        val harness = DocumentStoreTestHarness()
+        harness.initialize()
+        harness.provisionStandardDocuments()
+
+        Assert.assertFalse(harness.docMdl.androidCredmanOmitClaims)
+        harness.docMdl.setAndroidCredmanOmitClaims(true)
+        Assert.assertTrue(harness.docMdl.androidCredmanOmitClaims)
+        harness.docMdl.setAndroidCredmanOmitClaims(false)
+        Assert.assertFalse(harness.docMdl.androidCredmanOmitClaims)
+
+        for (doc in harness.documentStore.listDocuments()) {
+            doc.setAndroidCredmanOmitClaims(true)
+        }
+
+        val credentialDatabase = calculateCredentialDatabase(
+            appName = "Test App",
+            documentStore = harness.documentStore,
+            documentTypeRepository = harness.documentTypeRepository,
+            selectedProtocols = DigitalCredentialsCredman.create().supportedProtocols
+        )
+        val credentialsArray = credentialDatabase["credentials"].asArray
+        Assert.assertTrue(credentialsArray.isNotEmpty())
+        var sawMdoc = false
+        var sawSdJwt = false
+        for (credItem in credentialsArray) {
+            val mdocMap = credItem.getOrNull("mdoc")
+            if (mdocMap != null) {
+                sawMdoc = true
+                Assert.assertTrue(mdocMap["omitClaims"].asBoolean)
+                Assert.assertNull(mdocMap.getOrNull("namespaces"))
+                val displayNames = mdocMap["claimDisplayNames"]
+                if (mdocMap["docType"].asTstr == DrivingLicense.MDL_DOCTYPE) {
+                    Assert.assertEquals(
+                        "Given names",
+                        displayNames["org.iso.18013.5.1.given_name"].asTstr
+                    )
+                    Assert.assertEquals(
+                        "Family name",
+                        displayNames["org.iso.18013.5.1.family_name"].asTstr
+                    )
+                }
+            }
+            val sdjwtMap = credItem.getOrNull("sdjwt")
+            if (sdjwtMap != null) {
+                sawSdJwt = true
+                Assert.assertTrue(sdjwtMap["omitClaims"].asBoolean)
+                Assert.assertNull(sdjwtMap.getOrNull("claims"))
+                val displayNames = sdjwtMap["claimDisplayNames"]
+                if (sdjwtMap["vct"].asTstr == EUPersonalID.EUPID_VCT) {
+                    Assert.assertEquals(
+                        "Given names",
+                        displayNames["given_name"].asTstr
+                    )
+                    Assert.assertEquals(
+                        "Resident street",
+                        displayNames["address.street_address"].asTstr
+                    )
+                    Assert.assertEquals(
+                        "Older than 18",
+                        displayNames["age_equal_or_over.18"].asTstr
+                    )
+                }
+            }
+        }
+        Assert.assertTrue(sawMdoc)
+        Assert.assertTrue(sawSdJwt)
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_mdoc_omitClaims() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                harness.provisionStandardDocuments()
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "mDL",
+                          "format": "mso_mdoc",
+                          "meta": { "doctype_value": "org.iso.18013.5.1.mDL" },
+                          "claims": [
+                            { "path": ["org.iso.18013.5.1", "family_name"] },
+                            { "path": ["org.iso.18013.5.1", "given_name"] },
+                            { "path": ["org.iso.18013.5.1", "age_over_18"], "values": [true] },
+                            { "path": ["org.iso.18013.5.1", "unknown_custom_element"] },
+                            { "path": ["org.iso.23220.5.1", "CHV_1"] },
+                            { "path": ["org.iso.transactiondata", "ping"] }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 openid4vp-v1-signed
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __mDL__
+                    Family name
+                    Given names
+                    Older than 18 years
+                    unknown_custom_element
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_mdoc_omitClaims_claimSets() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                harness.provisionStandardDocuments()
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "mDL",
+                          "format": "mso_mdoc",
+                          "meta": { "doctype_value": "org.iso.18013.5.1.mDL" },
+                          "claims": [
+                            { "id": "c_age", "path": ["org.iso.18013.5.1", "age_over_21"], "values": [true] },
+                            { "id": "c_bdate", "path": ["org.iso.18013.5.1", "birth_date"] },
+                            { "id": "c_portrait", "path": ["org.iso.18013.5.1", "portrait"] }
+                          ],
+                          "claim_sets": [
+                            ["c_age", "c_portrait"],
+                            ["c_bdate", "c_portrait"]
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 openid4vp-v1-signed
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __mDL__
+                    Older than 21 years
+                    Photo of holder
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_sdjwt_omitClaims() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["address", "street_address"]},
+                            {"path": ["age_equal_or_over", "18"], "values": [true]},
+                            {"path": ["nationalities", null]},
+                            {"path": ["nationalities", 0], "values": ["DK"]},
+                            {"path": ["degrees", null, "type"]},
+                            {"path": ["custom_claim"]},
+                            {"path": ["org.iso.transactiondata", "ping"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 openid4vp-v1-signed
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __EU PID Erika__
+                    Given names
+                    Resident street
+                    Older than 18
+                    Nationality
+                    Nationality
+                    type
+                    custom_claim
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __EU PID Max__
+                    Given names
+                    Resident street
+                    Older than 18
+                    Nationality
+                    Nationality
+                    type
+                    custom_claim
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_sdjwt_omitClaims_allClaims() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          }
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 openid4vp-v1-signed
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __EU PID Erika__
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __EU PID Max__
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    @Test
+    fun testMatcher_Iso18013_mdoc_omitClaims() = runTest {
+        val matcherResult = testMatcherIso18013(
+            signRequest = true,
+            harnessInitializer = { harness ->
+                harness.provisionStandardDocuments()
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "mDL",
+                          "format": "mso_mdoc",
+                          "meta": { "doctype_value": "org.iso.18013.5.1.mDL" },
+                          "claims": [
+                            { "path": ["org.iso.18013.5.1", "given_name"] },
+                            { "path": ["org.iso.18013.5.1", "age_over_21"] },
+                            { "path": ["org.iso.18013.5.1", "portrait"] }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 org-iso-mdoc
+                  SetEntry set_index 0
+                    cred_id 0 org-iso-mdoc __mDL__
+                    Given names
+                    Older than 21 years
+                    Photo of holder
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_mdoc_omitClaims_wrongDocType() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                harness.provisionStandardDocuments()
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "mDL",
+                          "format": "mso_mdoc",
+                          "meta": { "doctype_value": "org.example.nonexistent.doctype" },
+                          "claims": [
+                            { "path": ["org.iso.18013.5.1", "given_name"] }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals("", matcherResult)
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_sdjwt_omitClaims_wrongVct() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:example:nonexistent:vct:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals("", matcherResult)
+    }
+
+    @Test
+    fun testMatcher_Iso18013_mdoc_omitClaims_wrongDocType() = runTest {
+        val matcherResult = testMatcherIso18013(
+            signRequest = true,
+            harnessInitializer = { harness ->
+                harness.provisionStandardDocuments()
+                for (doc in harness.documentStore.listDocuments()) {
+                    doc.setAndroidCredmanOmitClaims(true)
+                }
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "mDL",
+                          "format": "mso_mdoc",
+                          "meta": { "doctype_value": "org.example.nonexistent.doctype" },
+                          "claims": [
+                            { "path": ["org.iso.18013.5.1", "given_name"] }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals("", matcherResult)
     }
 }

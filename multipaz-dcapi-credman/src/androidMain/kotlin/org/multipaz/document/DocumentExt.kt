@@ -6,6 +6,7 @@ private const val TAG_ANDROID_CREDMAN_TITLE = "org.multipaz.document.androidCred
 private const val TAG_ANDROID_CREDMAN_SUBTITLE = "org.multipaz.document.androidCredman.Subtitle"
 private const val TAG_ANDROID_CREDMAN_BITMAP = "org.multipaz.document.androidCredman.Bitmap"
 private const val TAG_ANDROID_CREDMAN_EXCHANGE_PROTOCOLS = "org.multipaz.document.androidCredman.ExchangeProtocols"
+private const val TAG_ANDROID_CREDMAN_OMIT_CLAIMS = "org.multipaz.document.androidCredman.OmitClaims"
 
 /**
  * The title for a document in Android Credential Manager or `null` if not configured.
@@ -82,4 +83,28 @@ suspend fun Document.setAndroidCredmanExchangeProtocols(value: List<String>?) {
         } ?: tags.remove(TAG_ANDROID_CREDMAN_EXCHANGE_PROTOCOLS)
     }
 }
+
+/**
+ * Whether claims and their values should be omitted when registering the document with
+ * Android Credential Manager. Defaults to `false` if not configured.
+ */
+val Document.androidCredmanOmitClaims: Boolean
+    get() = tags.getBoolean(TAG_ANDROID_CREDMAN_OMIT_CLAIMS) ?: false
+
+/**
+ * Sets whether claims and their values should be omitted when registering the document with
+ * Android Credential Manager.
+ *
+ * @param value whether to omit claims and their values.
+ */
+suspend fun Document.setAndroidCredmanOmitClaims(value: Boolean) {
+    edit {
+        if (value) {
+            tags.setBoolean(TAG_ANDROID_CREDMAN_OMIT_CLAIMS, true)
+        } else {
+            tags.remove(TAG_ANDROID_CREDMAN_OMIT_CLAIMS)
+        }
+    }
+}
+
 
