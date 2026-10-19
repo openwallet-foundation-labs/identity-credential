@@ -139,4 +139,13 @@ actual object TestAppConfiguration {
     actual suspend fun getDigitalCredentials(): DigitalCredentials? {
         return DigitalCredentialsIos.create()
     }
+
+    actual fun getAndroidCredmanOmitClaims(document: Document): Boolean {
+        return false
+    }
+
+    actual suspend fun setAndroidCredmanOmitClaims(document: Document, value: Boolean) {
+        throw NotImplementedError("Not implemented on this platform")
+    }
 }
+

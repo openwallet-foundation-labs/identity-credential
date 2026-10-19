@@ -46,4 +46,8 @@ expect object TestAppConfiguration {
     )
 
     suspend fun getDigitalCredentials(): DigitalCredentials?
+
+    fun getAndroidCredmanOmitClaims(document: Document): Boolean
+
+    suspend fun setAndroidCredmanOmitClaims(document: Document, value: Boolean)
 }

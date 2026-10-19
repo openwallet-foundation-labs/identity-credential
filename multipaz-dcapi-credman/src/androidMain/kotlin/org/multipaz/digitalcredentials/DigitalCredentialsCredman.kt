@@ -43,6 +43,7 @@ import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.androidCredmanBitmap
 import org.multipaz.document.androidCredmanExchangeProtocols
+import org.multipaz.document.androidCredmanOmitClaims
 import org.multipaz.document.androidCredmanSubtitle
 import org.multipaz.document.androidCredmanTitle
 import org.multipaz.documenttype.DocumentAttribute
@@ -226,16 +227,10 @@ private suspend fun exportMdocCredential(
     val displayName = document.androidCredmanTitle ?: document.displayName ?: "Unnamed Document"
     val displayNameSub = document.androidCredmanSubtitle ?: document.typeDisplayName ?: "Unknown Document Type"
     val exchangeProtocols = document.androidCredmanExchangeProtocols
+    val omitClaims = document.androidCredmanOmitClaims
 
     val cardArtResized = resizedCardArt(cardArt)
 
-    val claims = try {
-        credential.getClaims(documentTypeRepository)
-    } catch (err: IllegalStateException) {
-        Logger.e(TAG,
-            "Error reading claims: '${credential.document.identifier}.${credential.identifier}'", err)
-        emptyList()
-    }
     val issuerIdentifiers = credential.issuerCertChain.certificates.mapNotNull {
         it.authorityKeyIdentifier
     }
@@ -251,13 +246,6 @@ private suspend fun exportMdocCredential(
         putCborMap("mdoc") {
             put("documentId", document.identifier)
             put("docType", credential.docType)
-            val peData = credentialType?.mdocDocumentType?.supportsPortraitImageEquivalence
-            val hasPortrait = peData != null && claims.any {
-                it.namespaceName == peData.namespace && it.dataElementName == peData.dataElementName
-            }
-            if (hasPortrait) {
-                put("supportsPortraitImageEquivalence", true)
-            }
             if (issuerIdentifiers.isNotEmpty()) {
                 putCborArray("issuerIdentifiers") {
                     issuerIdentifiers.forEach { add(it) }
@@ -268,52 +256,77 @@ private suspend fun exportMdocCredential(
                     document.readerIdentifiers.forEach { add(it.toByteArray()) }
                 }
             }
-            if (credential.mso.deviceKeyAuthorizedNamespaces.isNotEmpty() ||
-                credential.mso.deviceKeyAuthorizedDataElements.isNotEmpty()
-            ) {
-                putCborMap("keyAuthorizations") {
-                    if (credential.mso.deviceKeyAuthorizedNamespaces.isNotEmpty()) {
-                        putCborArray("nameSpaces") {
-                            credential.mso.deviceKeyAuthorizedNamespaces.forEach { add(it) }
+            if (omitClaims) {
+                put("omitClaims", true)
+                putCborMap("claimDisplayNames") {
+                    credentialType?.mdocDocumentType?.namespaces?.forEach { (namespaceName, mdocNamespace) ->
+                        mdocNamespace.dataElements.forEach { (dataElementName, mdocDataElement) ->
+                            put("$namespaceName.$dataElementName", mdocDataElement.attribute.displayName)
                         }
                     }
-                    if (credential.mso.deviceKeyAuthorizedDataElements.isNotEmpty()) {
-                        putCborMap("dataElements") {
-                            credential.mso.deviceKeyAuthorizedDataElements.forEach { (namespace, dataElementList) ->
-                                putCborArray(namespace) {
-                                    dataElementList.forEach { add(it) }
+                }
+            } else {
+                val claims = try {
+                    credential.getClaims(documentTypeRepository)
+                } catch (err: IllegalStateException) {
+                    Logger.e(TAG,
+                        "Error reading claims: '${credential.document.identifier}.${credential.identifier}'", err)
+                    emptyList()
+                }
+                val peData = credentialType?.mdocDocumentType?.supportsPortraitImageEquivalence
+                val hasPortrait = peData != null && claims.any {
+                    it.namespaceName == peData.namespace && it.dataElementName == peData.dataElementName
+                }
+                if (hasPortrait) {
+                    put("supportsPortraitImageEquivalence", true)
+                }
+                if (credential.mso.deviceKeyAuthorizedNamespaces.isNotEmpty() ||
+                    credential.mso.deviceKeyAuthorizedDataElements.isNotEmpty()
+                ) {
+                    putCborMap("keyAuthorizations") {
+                        if (credential.mso.deviceKeyAuthorizedNamespaces.isNotEmpty()) {
+                            putCborArray("nameSpaces") {
+                                credential.mso.deviceKeyAuthorizedNamespaces.forEach { add(it) }
+                            }
+                        }
+                        if (credential.mso.deviceKeyAuthorizedDataElements.isNotEmpty()) {
+                            putCborMap("dataElements") {
+                                credential.mso.deviceKeyAuthorizedDataElements.forEach { (namespace, dataElementList) ->
+                                    putCborArray(namespace) {
+                                        dataElementList.forEach { add(it) }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            putCborMap("namespaces") {
-                for ((namespace, claimsInNamespace) in claims.organizeByNamespace()) {
-                    putCborMap(namespace) {
-                        for (claim in claimsInNamespace) {
-                            val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
-                                ?.get(namespace)?.dataElements?.get(claim.dataElementName)
-                            val valueString = mdocDataElement
-                                ?.renderValue(claim.value)
-                                ?: Cbor.toDiagnostics(claim.value)
+                putCborMap("namespaces") {
+                    for ((namespace, claimsInNamespace) in claims.organizeByNamespace()) {
+                        putCborMap(namespace) {
+                            for (claim in claimsInNamespace) {
+                                val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
+                                    ?.get(namespace)?.dataElements?.get(claim.dataElementName)
+                                val valueString = mdocDataElement
+                                    ?.renderValue(claim.value)
+                                    ?: Cbor.toDiagnostics(claim.value)
 
-                            val dataElementDisplayName = getDataElementDisplayName(
-                                documentTypeRepository,
-                                credential.docType,
-                                claim.namespaceName,
-                                claim.dataElementName
-                            )
-                            putCborArray(claim.dataElementName) {
-                                add(dataElementDisplayName)
-                                add(valueString)
-                                // Need the raw value (converted to JSON then converted to a string) for matching but
-                                // skip if 128 characters or more since e.g. portrait photos can be quite large...
-                                val asString = when (val asJson = claim.value.toJson()) {
-                                    is JsonPrimitive -> asJson.content
-                                    else -> asJson.toString()
+                                val dataElementDisplayName = getDataElementDisplayName(
+                                    documentTypeRepository,
+                                    credential.docType,
+                                    claim.namespaceName,
+                                    claim.dataElementName
+                                )
+                                putCborArray(claim.dataElementName) {
+                                    add(dataElementDisplayName)
+                                    add(valueString)
+                                    // Need the raw value (converted to JSON then converted to a string) for matching but
+                                    // skip if 128 characters or more since e.g. portrait photos can be quite large...
+                                    val asString = when (val asJson = claim.value.toJson()) {
+                                        is JsonPrimitive -> asJson.content
+                                        else -> asJson.toString()
+                                    }
+                                    add(asString.let { if (it.length < 128) it else "" })
                                 }
-                                add(asString.let { if (it.length < 128) it else "" })
                             }
                         }
                     }
@@ -333,17 +346,10 @@ private suspend fun exportSdJwtVcCredential(
     val displayName = document.androidCredmanTitle ?: document.displayName ?: "Unnamed Document"
     val displayNameSub = document.androidCredmanSubtitle ?: document.typeDisplayName ?: "Unknown Document Type"
     val exchangeProtocols = document.androidCredmanExchangeProtocols
+    val omitClaims = document.androidCredmanOmitClaims
 
     val cardArtResized = resizedCardArt(cardArt)
 
-    val claims = try {
-        credential.getClaimsImpl(documentTypeRepository)
-    } catch (err: IllegalStateException) {
-        val cred = credential as Credential
-        Logger.e(TAG,
-            "Error reading claims: '${cred.document.identifier}.${credential.identifier}'", err)
-        emptyList()
-    }
     val issuerIdentifiers = credential.getIssuerCertChain()?.certificates?.mapNotNull {
         it.authorityKeyIdentifier
     } ?: emptyList()
@@ -369,36 +375,68 @@ private suspend fun exportSdJwtVcCredential(
                     document.readerIdentifiers.forEach { add(it.toByteArray()) }
                 }
             }
-            putCborMap("claims") {
-                for (claim in claims) {
-                    val claimName = claim.claimPath[0].jsonPrimitive.content
-                    val claimAttr = getAttributeForJsonClaim(
-                        documentTypeRepository,
-                        credential.vct,
-                        claim.claimPath,
-                    )
-                    val claimDisplayName = claimAttr?.displayName ?: claimName
-                    putCborArray(claimName) {
-                        add(claimDisplayName)
-                        add(claim.render())
-                        // Need the raw value (converted to a string) for matching but skip if 128
-                        // characters or more since e.g. portrait photos can be quite large...
-                        val asString = when (claim.value) {
-                            is JsonPrimitive -> (claim.value as JsonPrimitive).content
-                            else -> claim.value.toString()
-                        }
-                        add(asString.let { if (it.length < 128) it else "" })
+            if (omitClaims) {
+                put("omitClaims", true)
+                putCborMap("claimDisplayNames") {
+                    val jsonDocumentType = documentTypeRepository
+                        .getDocumentTypeForJson(credential.vct)?.jsonDocumentType
+                    jsonDocumentType?.claims?.forEach { (claimName, attribute) ->
+                        exportJsonAttributeDisplayNames(claimName, attribute)
                     }
-                    exportSubClaims(
-                        pathPrefix = claimName,
-                        currentValue = claim.value,
-                        currentAttr = claimAttr,
-                        displayName = claimDisplayName,
-                        isWildcardSelection = false,
-                    )
+                }
+            } else {
+                val claims = try {
+                    credential.getClaimsImpl(documentTypeRepository)
+                } catch (err: IllegalStateException) {
+                    val cred = credential as Credential
+                    Logger.e(TAG,
+                        "Error reading claims: '${cred.document.identifier}.${credential.identifier}'", err)
+                    emptyList()
+                }
+                putCborMap("claims") {
+                    for (claim in claims) {
+                        val claimName = claim.claimPath[0].jsonPrimitive.content
+                        val claimAttr = getAttributeForJsonClaim(
+                            documentTypeRepository,
+                            credential.vct,
+                            claim.claimPath,
+                        )
+                        val claimDisplayName = claimAttr?.displayName ?: claimName
+                        putCborArray(claimName) {
+                            add(claimDisplayName)
+                            add(claim.render())
+                            // Need the raw value (converted to a string) for matching but skip if 128
+                            // characters or more since e.g. portrait photos can be quite large...
+                            val asString = when (claim.value) {
+                                is JsonPrimitive -> (claim.value as JsonPrimitive).content
+                                else -> claim.value.toString()
+                            }
+                            add(asString.let { if (it.length < 128) it else "" })
+                        }
+                        exportSubClaims(
+                            pathPrefix = claimName,
+                            currentValue = claim.value,
+                            currentAttr = claimAttr,
+                            displayName = claimDisplayName,
+                            isWildcardSelection = false,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+private fun MapBuilder<*>.exportJsonAttributeDisplayNames(
+    pathPrefix: String,
+    attribute: DocumentAttribute,
+) {
+    put(pathPrefix, attribute.displayName)
+    for (embeddedAttribute in attribute.embeddedAttributes) {
+        exportJsonAttributeDisplayNames(
+            pathPrefix = "$pathPrefix.${embeddedAttribute.identifier}",
+            attribute = embeddedAttribute,
+        )
     }
 }
 
