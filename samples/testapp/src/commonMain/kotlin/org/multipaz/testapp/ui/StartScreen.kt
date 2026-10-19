@@ -27,7 +27,7 @@ import org.multipaz.testapp.TestAppPlatform
 @Composable
 fun StartScreen(
     documentModel: DocumentModel,
-    digitalCredentials: DigitalCredentials,
+    digitalCredentials: DigitalCredentials?,
     onDigitalCredentialsReregister: suspend () -> Unit = {},
     onClickAbout: () -> Unit = {},
     onClickDocumentStore: () -> Unit = {},
@@ -64,7 +64,7 @@ fun StartScreen(
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
     val documentInfos = documentModel.documentInfos.collectAsState().value
-    val dcAuthorizationState = digitalCredentials.authorizationState.collectAsState().value
+    val dcAuthorizationState = digitalCredentials?.authorizationState?.collectAsState()?.value
 
     Surface(
         modifier = Modifier.fillMaxSize(),

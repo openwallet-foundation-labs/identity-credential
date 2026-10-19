@@ -80,7 +80,7 @@ kotlin {
             export(project(":multipaz-doctypes"))
             export(project(":multipaz-utopia"))
             export(project(":multipaz-longfellow"))
-            export(project(":multipaz-dcapi"))
+            export(project(":multipaz-dcapi-ios"))
             export(project(":multipaz-swiftui"))
             export(libs.ktor.client.darwin)
             export(libs.kotlinx.io.bytestring)
@@ -106,7 +106,7 @@ kotlin {
                 api(project(":multipaz-doctypes"))
                 api(project(":multipaz-utopia"))
                 api(project(":multipaz-longfellow"))
-                api(project(":multipaz-dcapi"))
+                api(project(":multipaz-dcapi-ios"))
                 api(project(":multipaz-swiftui"))
                 api(libs.ktor.client.darwin)
                 api(libs.kotlinx.io.bytestring)
@@ -131,6 +131,7 @@ kotlin {
 
         val androidMain by getting {
             dependencies {
+                implementation(project(":multipaz-dcapi-credman"))
                 implementation(compose.preview)
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.bouncy.castle.bcprov)
@@ -171,7 +172,6 @@ kotlin {
                 implementation(project(":multipaz-facenet"))
                 implementation(project(":multipaz-facenet-test-data"))
                 implementation(project(":multipaz-compose"))
-                implementation(project(":multipaz-dcapi"))
                 implementation(project(":multipaz-doctypes"))
                 implementation(project(":multipaz-utopia"))
                 implementation(project(":multipaz-longfellow"))

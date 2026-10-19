@@ -22,9 +22,9 @@ You should also be familiar with the project's [README.md](README.md) and [CODIN
 *   **Data Types & ZKP (`multipaz-doctypes/`, `multipaz-utopia/`, `multipaz-longfellow/`)**:
     *   **Tech:** Kotlin Multiplatform.
     *   **Rule:** Standardized credentials (e.g. mDL, EU PID) in `multipaz-doctypes/`, custom Utopia formats in `multipaz-utopia/`, and Zero-Knowledge Proof (ZKP) integrations using Google's Longfellow in `multipaz-longfellow/`.
-*   **Client Protocols & RPC (`multipaz-csa/`, `multipaz-openid4vci/`, `multipaz-verifier/`, `multipaz-cbor-rpc/`, `multipaz-dcapi/`)**:
-    *   **Tech:** Kotlin Multiplatform / Android.
-    *   **Rule:** Implementations of Cloud Secure Area (CSA), OpenID4VCI, OpenID4VP/Verifier client protocols, multiplatform CBOR-RPC, and Android Digital Credentials API.
+*   **Client Protocols & RPC (`multipaz-csa/`, `multipaz-openid4vci/`, `multipaz-verifier/`, `multipaz-cbor-rpc/`, `multipaz-dcapi-credman/`, `multipaz-dcapi-ios/`)**:
+    *   **Tech:** Kotlin Multiplatform / Android / iOS.
+    *   **Rule:** Implementations of Cloud Secure Area (CSA), OpenID4VCI, OpenID4VP/Verifier client protocols, multiplatform CBOR-RPC, and Android/iOS Digital Credentials API.
 
 ### Command-line Tool (`multipazctl/`)
 *   **Tech:** Kotlin JVM.

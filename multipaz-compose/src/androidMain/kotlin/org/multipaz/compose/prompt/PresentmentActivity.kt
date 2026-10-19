@@ -331,7 +331,7 @@ class PresentmentActivity: FragmentActivity() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PresentmentActivityContent(
+fun PresentmentActivityContent(
     window: Window,
     getPresentmentModel: suspend () -> PresentmentModel,
     onFadedIn: () -> Unit,

@@ -4,6 +4,7 @@ import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.js.Js
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.app_icon
+import org.multipaz.digitalcredentials.DigitalCredentials
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentBadge
 import org.multipaz.presentment.PresentmentSource
@@ -53,5 +54,9 @@ actual object TestAppConfiguration {
         initiallySelectedDocumentId: String?
     ) {
         throw NotImplementedError("Not implemented on this platform")
+    }
+
+    actual suspend fun getDigitalCredentials(): DigitalCredentials? {
+        return null
     }
 }

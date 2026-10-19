@@ -202,7 +202,7 @@ struct DocumentProviderExtension: IdentityDocumentProvider {
         Logger.shared.d(tag: TAG, msg: "in performRegistrationUpdates")
         let source = await getPresentmentSource()
         do {
-            let dcApi = try await DigitalCredentialsCompanion.shared.getDefault()
+            let dcApi = try await DigitalCredentialsIos.companion.create()
             try await dcApi.register(
                 documentStore: source.documentStore,
                 documentTypeRepository: source.documentTypeRepository,

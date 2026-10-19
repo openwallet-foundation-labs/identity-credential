@@ -240,7 +240,7 @@ class ViewModel {
         )
         await self.provisioningSupport.initialize()
         
-        let dcApi = try! await DigitalCredentialsCompanion.shared.getDefault()
+        let dcApi = try! await DigitalCredentialsIos.companion.create()
         if dcApi.registerAvailable {
             // Keep in sync with samples/SwiftTestApp/SwiftTestApp/SwiftTestApp.entitlements
             try! await documentStore.setIosMdocDoctypes(value: [
