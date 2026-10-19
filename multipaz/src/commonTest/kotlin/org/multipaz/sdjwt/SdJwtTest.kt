@@ -7,6 +7,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
@@ -2770,6 +2771,89 @@ class SdJwtTest {
             """.trimIndent(),
             ageEqualOrOver16FilteredSdJwt.disclosures[0].fromBase64Url().decodeToString()
         )
+    }
+
+    @Test
+    fun testFilterOnPathsIntoArrayWildcard() = runTest {
+        val filteredSdJwt =
+            SdJwt.fromCompactSerialization(sdJwtRfcSection51SdJwtCompactSerialization)
+                .filter(
+                    listOf(
+                        JsonArray(listOf(JsonPrimitive("given_name"))),
+                        JsonArray(listOf(JsonPrimitive("nationalities"), JsonNull)),
+                    )
+                )
+        assertEquals(
+            """
+                [
+                  [
+                    "2GLC42sKQveCfGfryNRN9w",
+                    "given_name",
+                    "John"
+                  ],
+                  [
+                    "lklxF5jMYlGTPUovMNIvCA",
+                    "US"
+                  ],
+                  [
+                    "nPuoQnkRFq3BIeAm7AnXFA",
+                    "DE"
+                  ]
+                ]
+            """.trimIndent().trim(),
+            prettyPrintDisclosures(filteredSdJwt.disclosures)
+        )
+        assertEquals(
+            """
+                {
+                  "iss": "https://issuer.example.com",
+                  "iat": 1683000000,
+                  "exp": 1883000000,
+                  "sub": "user_42",
+                  "nationalities": [
+                    "US",
+                    "DE"
+                  ],
+                  "cnf": {
+                    "jwk": {
+                      "kty": "EC",
+                      "crv": "P-256",
+                      "x": "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
+                      "y": "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ"
+                    }
+                  },
+                  "given_name": "John"
+                }
+            """.trimIndent().trim(),
+            prettyJson.encodeToString(filteredSdJwt.verify(sdJwtRfcIssuerKey))
+        )
+    }
+
+    @Test
+    fun testFilterArrayDisclosureTopOff() = runTest {
+        // In Appendix A.3, "nationalities" is a selectively-disclosable top-level claim ["DE"].
+        // Filtering on ["nationalities", null] or ["nationalities", 0] should retain the "nationalities" disclosure.
+        val sdJwtA3 = SdJwt.fromCompactSerialization(sdJwtRfcAppendixA3SdJwtCompactSerialization)
+        for (path in listOf(
+            JsonArray(listOf(JsonPrimitive("nationalities"), JsonNull)),
+            JsonArray(listOf(JsonPrimitive("nationalities"), JsonPrimitive(0)))
+        )) {
+            val filtered = sdJwtA3.filter(listOf(path))
+            assertEquals(
+                """
+                    [
+                      [
+                        "lklxF5jMYlGTPUovMNIvCA",
+                        "nationalities",
+                        [
+                          "DE"
+                        ]
+                      ]
+                    ]
+                """.trimIndent().trim(),
+                prettyPrintDisclosures(filtered.disclosures)
+            )
+        }
     }
 
     @Test

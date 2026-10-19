@@ -34,26 +34,28 @@ Java_org_multipaz_presentment_MatcherDcqlQueryExecuteTest_executeDcqlQuery(
     auto dcqlResponse = openid4vpRequest->dclqQuery.execute(db, protocolValue);
 
     std::string output;
-    output.append("DcqlResponse\n");
-    for (auto const& credentialSet : dcqlResponse->credentialSets) {
-        output.append("  CredentialSet\n");
-        output.append("    optional " + std::string(credentialSet.optional ? "true" : "false") + "\n");
-        output.append("    options\n");
-        for (auto const& option : credentialSet.options) {
-            output.append("      option\n");
-            output.append("        members\n");
-            for (auto const& member : option.members) {
-                output.append("          member\n");
-                output.append("            matches\n");
-                for (auto const& match : member.matches) {
-                    output.append("              match\n");
-                    output.append("                credential " + match.credential->title + "\n");
-                    output.append("                claims\n");
-                    for (auto const &claim: match.claims) {
-                        output.append("                  claim\n");
-                        output.append("                    claimName " + claim->claimName + "\n");
-                        output.append("                    displayName " + claim->displayName + "\n");
-                        output.append("                    value " + claim->value + "\n");
+    if (dcqlResponse.has_value()) {
+        output.append("DcqlResponse\n");
+        for (auto const& credentialSet : dcqlResponse->credentialSets) {
+            output.append("  CredentialSet\n");
+            output.append("    optional " + std::string(credentialSet.optional ? "true" : "false") + "\n");
+            output.append("    options\n");
+            for (auto const& option : credentialSet.options) {
+                output.append("      option\n");
+                output.append("        members\n");
+                for (auto const& member : option.members) {
+                    output.append("          member\n");
+                    output.append("            matches\n");
+                    for (auto const& match : member.matches) {
+                        output.append("              match\n");
+                        output.append("                credential " + match.credential->title + "\n");
+                        output.append("                claims\n");
+                        for (auto const &claim: match.claims) {
+                            output.append("                  claim\n");
+                            output.append("                    claimName " + claim->claimName + "\n");
+                            output.append("                    displayName " + claim->displayName + "\n");
+                            output.append("                    value " + claim->value + "\n");
+                        }
                     }
                 }
             }

@@ -263,6 +263,8 @@ std::unique_ptr<MdocRequest> MdocRequest::parseMdocApi(const std::string& protoc
                                     path.push_back(std::to_string(pElem->asUint()->value()));
                                 } else if (pElem->asInt()) {
                                     path.push_back(std::to_string(pElem->asInt()->value()));
+                                } else if (pElem->asNull()) {
+                                    path.push_back("null");
                                 }
                             }
                             dataElementIdentifierMapping[deName] = path;

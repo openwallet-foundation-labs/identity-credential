@@ -46,7 +46,16 @@ DcqlQuery DcqlQuery::parse(cJSON* dcqlQuery) {
             std::vector<std::string> path;
             cJSON* pathElem;
             cJSON_ArrayForEach(pathElem, cJSON_GetObjectItem(claim, "path")) {
-                path.push_back(std::string(cJSON_GetStringValue(pathElem)));
+                if (cJSON_IsString(pathElem)) {
+                    path.push_back(std::string(cJSON_GetStringValue(pathElem)));
+                } else if (cJSON_IsNull(pathElem)) {
+                    path.push_back("null");
+                } else if (cJSON_IsNumber(pathElem)) {
+                    path.push_back(std::to_string(pathElem->valueint));
+                } else {
+                    LOG("Warning: unhandled JSON type for claim path element");
+                    path.push_back("<invalid>");
+                }
             }
 
             std::vector<std::string> values;

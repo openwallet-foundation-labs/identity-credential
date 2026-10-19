@@ -3,6 +3,8 @@ package org.multipaz.openid.dcql
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import org.multipaz.documenttype.knowntypes.EUPersonalID
@@ -21,6 +23,10 @@ class TestSingleSdJwtVcQuery {
                 data = listOf(
                     "given_name" to JsonPrimitive("Erika"),
                     "family_name" to JsonPrimitive("Mustermann"),
+                    "nationalities" to buildJsonArray {
+                        add("DE")
+                        add("US")
+                    },
                     "address" to buildJsonObject {
                         put("country", JsonPrimitive("US"))
                         put("state", JsonPrimitive("CA"))
@@ -306,6 +312,69 @@ class TestSingleSdJwtVcQuery {
                                       value: {"country":"US","state":"CA","postal_code":"90210","street_address":"Sample Street 123"}
             """.trimIndent().trim(),
             singlePidQueryForEntireAddress().execute(
+                presentmentSource = harness.presentmentSource
+            ).prettyPrint().trim()
+        )
+    }
+
+    @Test
+    fun singlePidQueryNationalitiesArrayPaths() = runTest {
+        val harness = DocumentStoreTestHarness()
+        harness.initialize()
+        addPidErika(harness)
+
+        val queryAll = DcqlQuery.fromJson(
+            Json.parseToJsonElement(
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "my_credential",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["${EUPersonalID.EUPID_VCT}"]
+                          },
+                          "claims": [
+                            {"path": ["nationalities"]},
+                            {"path": ["nationalities", null]},
+                            {"path": ["nationalities", 0]}
+                          ]
+                        }
+                      ]
+                    }
+                """
+            ).jsonObject
+        )
+
+        assertEquals(
+            """
+                credentialSets:
+                  credentialSet:
+                    optional: false
+                    options:
+                      option:
+                        members:
+                          member:
+                            matches:
+                              match:
+                                credential:
+                                  type: KeyBoundSdJwtVcCredential
+                                  docId: my-PID-Erika
+                                  claims:
+                                    claim:
+                                      path: ["nationalities"]
+                                      displayName: Nationality
+                                      value: ["DE","US"]
+                                    claim:
+                                      path: ["nationalities",null]
+                                      displayName: Nationality
+                                      value: ["DE","US"]
+                                    claim:
+                                      path: ["nationalities",0]
+                                      displayName: Nationality
+                                      value: DE
+            """.trimIndent().trim(),
+            queryAll.execute(
                 presentmentSource = harness.presentmentSource
             ).prettyPrint().trim()
         )

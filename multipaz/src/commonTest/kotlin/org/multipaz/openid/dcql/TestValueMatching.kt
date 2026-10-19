@@ -4,11 +4,16 @@ import kotlinx.coroutines.test.runTest
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.Uint
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonObject
+import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.presentment.DocumentStoreTestHarness
 import org.multipaz.presentment.prettyPrint
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 // This checks matching against booleans and numbers, see TestValueMatchingClaimSet which matches against booleans
 class TestValueMatching {
@@ -608,5 +613,112 @@ class TestValueMatching {
                 presentmentSource = harness.presentmentSource
             ).prettyPrint().trim()
         )
+    }
+
+    @Test
+    fun matchSdJwtArrayIndex() = runTest {
+        val harness = DocumentStoreTestHarness()
+        harness.initialize()
+        harness.provisionSdJwtVc(
+            displayName = "my-PID-DE-US",
+            vct = EUPersonalID.EUPID_VCT,
+            data = listOf(
+                "given_name" to JsonPrimitive("Erika"),
+                "nationalities" to buildJsonArray {
+                    add("DE")
+                    add("US")
+                }
+            )
+        )
+        harness.provisionSdJwtVc(
+            displayName = "my-PID-FR",
+            vct = EUPersonalID.EUPID_VCT,
+            data = listOf(
+                "given_name" to JsonPrimitive("Jean"),
+                "nationalities" to buildJsonArray {
+                    add("FR")
+                }
+            )
+        )
+
+        // Index ["nationalities", 0] with values ["DE"] matches my-PID-DE-US
+        val indexQueryMatch = DcqlQuery.fromJson(
+            Json.parseToJsonElement(
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "my_credential",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["${EUPersonalID.EUPID_VCT}"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {
+                              "path": ["nationalities", 0],
+                              "values": ["DE"]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                """
+            ).jsonObject
+        )
+        assertEquals(
+            """
+                credentialSets:
+                  credentialSet:
+                    optional: false
+                    options:
+                      option:
+                        members:
+                          member:
+                            matches:
+                              match:
+                                credential:
+                                  type: KeyBoundSdJwtVcCredential
+                                  docId: my-PID-DE-US
+                                  claims:
+                                    claim:
+                                      path: ["given_name"]
+                                      displayName: Given names
+                                      value: Erika
+                                    claim:
+                                      path: ["nationalities",0]
+                                      displayName: Nationality
+                                      value: DE
+            """.trimIndent().trim(),
+            indexQueryMatch.execute(presentmentSource = harness.presentmentSource).prettyPrint().trim()
+        )
+
+        // Index ["nationalities", 0] with values ["US"] fails to match because "US" is at index 1
+        val indexQueryNoMatch = DcqlQuery.fromJson(
+            Json.parseToJsonElement(
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "my_credential",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["${EUPersonalID.EUPID_VCT}"]
+                          },
+                          "claims": [
+                            {
+                              "path": ["nationalities", 0],
+                              "values": ["US"]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                """
+            ).jsonObject
+        )
+        assertFailsWith(DcqlCredentialQueryException::class) {
+            indexQueryNoMatch.execute(presentmentSource = harness.presentmentSource)
+        }
     }
 }
