@@ -417,7 +417,7 @@ private suspend fun doDcRequestFlow(
     Logger.i(TAG, "origin: $origin")
     Logger.iJson(TAG, "Request", dcRequestObject)
     val t0 = Clock.System.now()
-    val dcResponseObject = app.digitalCredentials.request(dcRequestObject)
+    val dcResponseObject = app.digitalCredentials!!.request(dcRequestObject)
     val durationRequestSentToResponseReceived = Clock.System.now() - t0
     Logger.iJson(TAG, "Response", dcResponseObject)
 

@@ -203,8 +203,6 @@ kotlin {
                 implementation(libs.bouncy.castle.bcprov)
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(project(":multipaz-doctypes"))
-                implementation(project(":multipaz-dcapi"))
-                implementation(project(":multipaz-dcapi:matcherTest"))
                 implementation(libs.androidx.sqlite)
                 implementation(libs.androidx.sqlite.framework)
                 implementation(libs.androidx.sqlite.bundled)

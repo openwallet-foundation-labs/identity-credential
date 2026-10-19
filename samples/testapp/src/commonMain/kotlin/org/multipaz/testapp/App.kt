@@ -85,7 +85,6 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.digitalcredentials.DigitalCredentials
-import org.multipaz.digitalcredentials.getDefault
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentBadge
 import org.multipaz.document.DocumentBadgeColor
@@ -849,7 +848,7 @@ class App private constructor (val promptModel: PromptModel) {
     private lateinit var builtInIssuerTrustManagerModel: TrustManagerModel
     private lateinit var userIssuerTrustManagerModel: TrustManagerModel
 
-    lateinit var digitalCredentials: DigitalCredentials
+    var digitalCredentials: DigitalCredentials? = null
 
     /**
      * Starts exporting documents via the W3C Digital Credentials API on the platform, if available.
@@ -857,8 +856,9 @@ class App private constructor (val promptModel: PromptModel) {
      * This should be called when the main wallet application UI is running.
      */
     private suspend fun digitalCredentialsInit() {
-        digitalCredentials = DigitalCredentials.getDefault()
-        if (digitalCredentials.registerAvailable) {
+        val dc = TestAppConfiguration.getDigitalCredentials()
+        digitalCredentials = dc
+        if (dc != null && dc.registerAvailable) {
             // Keep in sync with samples/testapp/iosApp/TestApp/TestApp.entitlements
             documentStore.setIosMdocDoctypes(
                 listOf(
@@ -869,7 +869,7 @@ class App private constructor (val promptModel: PromptModel) {
                 )
             )
             try {
-                digitalCredentials.register(
+                dc.register(
                     documentStore = documentStore,
                     documentTypeRepository = documentTypeRepository,
                     selectedProtocols = settingsModel.dcApiProtocols.value
@@ -885,7 +885,7 @@ class App private constructor (val promptModel: PromptModel) {
                     .onEach { event ->
                         Logger.i(TAG, "DocumentStore event ${event::class.simpleName} ${event.documentId}")
                         try {
-                            digitalCredentials.register(
+                            dc.register(
                                 documentStore = documentStore,
                                 documentTypeRepository = documentTypeRepository,
                                 selectedProtocols = settingsModel.dcApiProtocols.value
@@ -905,7 +905,7 @@ class App private constructor (val promptModel: PromptModel) {
                     .collect {
                         Logger.i(TAG, "DC protocols changed: $it")
                         try {
-                            digitalCredentials.register(
+                            dc.register(
                                 documentStore = documentStore,
                                 documentTypeRepository = documentTypeRepository,
                                 selectedProtocols = settingsModel.dcApiProtocols.value
@@ -932,7 +932,7 @@ class App private constructor (val promptModel: PromptModel) {
 
     private suspend fun digitalCredentialsReregister() {
         try {
-            digitalCredentials.register(
+            digitalCredentials?.register(
                 documentStore = documentStore,
                 documentTypeRepository = documentTypeRepository,
                 selectedProtocols = settingsModel.dcApiProtocols.value,

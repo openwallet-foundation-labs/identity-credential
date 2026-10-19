@@ -264,8 +264,9 @@ fun SettingsScreen(
         item {
             SettingHeadline("Digital Credentials API Options")
         }
-        if (app.digitalCredentials.registerAvailable) {
-            for (protocol in app.digitalCredentials.supportedProtocols.sorted()) {
+        val dc = app.digitalCredentials
+        if (dc != null && dc.registerAvailable) {
+            for (protocol in dc.supportedProtocols.sorted()) {
                 item {
                     SettingToggle(
                         title = "Protocol: $protocol",

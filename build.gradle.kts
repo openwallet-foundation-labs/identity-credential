@@ -157,7 +157,8 @@ subprojects {
 val detektModules = listOf(
     ":multipaz",
     ":multipaz-compose",
-    ":multipaz-dcapi",
+    ":multipaz-dcapi-credman",
+    ":multipaz-dcapi-ios",
     ":multipaz-doctypes",
     ":multipaz-longfellow",
 )
@@ -176,7 +177,8 @@ subprojects {
 dependencies {
     dokka(project(":multipaz"))
     dokka(project(":multipaz-compose"))
-    dokka(project(":multipaz-dcapi"))
+    dokka(project(":multipaz-dcapi-credman"))
+    dokka(project(":multipaz-dcapi-ios"))
     dokka(project(":multipaz-doctypes"))
     dokka(project(":multipaz-utopia"))
     dokka(project(":multipaz-longfellow"))

@@ -107,7 +107,6 @@ kotlin {
                 api(libs.jetbrains.navigationevent.compose)
 
                 implementation(project(":multipaz"))
-                implementation(project(":multipaz-dcapi"))
                 implementation(project(":multipaz-doctypes"))
                 implementation(project(":multipaz-utopia"))
                 implementation(libs.kotlinx.datetime)
@@ -138,9 +137,6 @@ kotlin {
                 implementation(libs.androidx.camera.view)
                 implementation(libs.androidx.lifecycle.extensions)
                 implementation(libs.zxing.core)
-                implementation(libs.play.services.identity.credentials)
-                implementation(libs.androidx.credentials)
-                implementation(libs.androidx.credentials.registry.provider)
                 implementation(libs.ktor.client.android)
                 implementation(libs.androidx.browser)
                 implementation(libs.jj2000)

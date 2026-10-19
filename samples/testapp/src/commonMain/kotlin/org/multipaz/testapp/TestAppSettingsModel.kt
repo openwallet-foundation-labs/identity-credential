@@ -16,7 +16,6 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.digitalcredentials.DigitalCredentials
-import org.multipaz.digitalcredentials.getDefault
 import org.multipaz.util.Logger
 import kotlin.Boolean
 
@@ -31,7 +30,7 @@ class TestAppSettingsModel private constructor(
 
     private lateinit var settingsTable: StorageTable
 
-    private lateinit var digitalCredentials: DigitalCredentials
+    private var digitalCredentials: DigitalCredentials? = null
 
     companion object {
         private val tableSpec = StorageTableSpec(
@@ -52,7 +51,7 @@ class TestAppSettingsModel private constructor(
         ): TestAppSettingsModel {
             val instance = TestAppSettingsModel(readOnly)
             instance.settingsTable = storage.getTable(tableSpec)
-            instance.digitalCredentials = DigitalCredentials.getDefault()
+            instance.digitalCredentials = TestAppConfiguration.getDigitalCredentials()
             instance.init()
             return instance
         }
@@ -177,7 +176,7 @@ class TestAppSettingsModel private constructor(
         bind(readerIssuerIdentifiers, "readerIssuerIdentifiers", "")
 
         bind(cloudSecureAreaUrl, "cloudSecureAreaUrl", CSA_URL_DEFAULT)
-        bind(dcApiProtocols, "dcApiProtocols", digitalCredentials.supportedProtocols)
+        bind(dcApiProtocols, "dcApiProtocols", digitalCredentials?.supportedProtocols ?: emptySet())
         bind(dcRequestIssuerIdentifiers, "dcRequestIssuerIdentifiers", "")
         bind(dcRequestLastSelectedRequestId, "dcRequestLastSelectedRequestId", null)
 

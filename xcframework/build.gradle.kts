@@ -19,7 +19,7 @@ kotlin {
     ).forEach {
         it.binaries.framework {
             export(project(":multipaz"))
-            export(project(":multipaz-dcapi"))
+            export(project(":multipaz-dcapi-ios"))
             export(project(":multipaz-doctypes"))
             export(project(":multipaz-longfellow"))
             export(project(":multipaz-swiftui"))
@@ -53,7 +53,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 api(project(":multipaz"))
-                api(project(":multipaz-dcapi"))
+                api(project(":multipaz-dcapi-ios"))
                 api(project(":multipaz-doctypes"))
                 api(project(":multipaz-longfellow"))
                 api(project(":multipaz-swiftui"))

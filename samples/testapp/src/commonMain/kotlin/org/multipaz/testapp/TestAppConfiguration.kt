@@ -2,6 +2,7 @@ package org.multipaz.testapp
 
 import io.ktor.client.engine.HttpClientEngineFactory
 import org.jetbrains.compose.resources.DrawableResource
+import org.multipaz.digitalcredentials.DigitalCredentials
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentBadge
 import org.multipaz.presentment.PresentmentSource
@@ -43,4 +44,6 @@ expect object TestAppConfiguration {
         source: PresentmentSource,
         initiallySelectedDocumentId: String?
     )
+
+    suspend fun getDigitalCredentials(): DigitalCredentials?
 }

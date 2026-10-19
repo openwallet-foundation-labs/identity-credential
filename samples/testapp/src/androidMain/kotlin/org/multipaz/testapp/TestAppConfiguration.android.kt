@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.compose.notifications.NotificationManagerAndroid
 import org.multipaz.compose.prompt.PresentmentActivity
+import org.multipaz.digitalcredentials.DigitalCredentials
+import org.multipaz.digitalcredentials.DigitalCredentialsCredman
 import org.multipaz.digitalcredentials.getAppOrigin
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentBadge
@@ -160,5 +162,9 @@ actual object TestAppConfiguration {
         initiallySelectedDocumentId: String?
     ) {
         getPendingIntentForLaunchingQuickAccessWallet(source, initiallySelectedDocumentId).send()
+    }
+
+    actual suspend fun getDigitalCredentials(): DigitalCredentials? {
+        return DigitalCredentialsCredman.create()
     }
 }

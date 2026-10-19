@@ -9,9 +9,10 @@ import org.multipaz.verification.VerifiedPresentation
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * An interface for interacting with the W3C Digital Credentials API provider on the platform.
+ * An interface for interacting with a W3C Digital Credentials API provider.
  *
- * Use [DigitalCredentials.Companion.getDefault] from the `multipaz-dcapi` library to obtain an instance.
+ * Implementations include `DigitalCredentialsCredman` from the `multipaz-dcapi-credman` library
+ * and `DigitalCredentialsIos` from the `multipaz-dcapi-ios` library.
  */
 interface DigitalCredentials {
     /**
@@ -80,6 +81,4 @@ interface DigitalCredentials {
      */
     @Throws(IllegalStateException::class, NotImplementedError::class, CancellationException::class)
     suspend fun request(request: JsonObject): JsonObject
-
-    companion object
 }
