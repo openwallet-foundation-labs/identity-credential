@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -20,6 +21,7 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.digitalcredentials.DigitalCredentialsCredman
 import org.multipaz.digitalcredentials.calculateCredentialDatabase
+import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.openid.OpenID4VP
 import org.multipaz.util.toBase64Url
@@ -643,6 +645,263 @@ class MatcherDcqlQueryExecuteTest {
                                     value 24601
             """.trimIndent().trim() + "\n",
             dcqlExecutionDump
+        )
+    }
+
+    private suspend fun addArrayClaimsPidDocs(harness: DocumentStoreTestHarness) {
+        harness.provisionSdJwtVc(
+            displayName = "EU PID Erika",
+            vct = EUPersonalID.EUPID_VCT,
+            data = listOf(
+                "given_name" to JsonPrimitive("Erika"),
+                "nationalities" to buildJsonArray {
+                    add(JsonPrimitive("DE"))
+                    add(JsonPrimitive("DK"))
+                },
+                "degrees" to buildJsonArray {
+                    addJsonObject {
+                        put("type", JsonPrimitive("Bachelor of Science"))
+                    }
+                    addJsonObject {
+                        put("type", JsonPrimitive("Master of Science"))
+                    }
+                }
+            )
+        )
+        harness.provisionSdJwtVc(
+            displayName = "EU PID Max",
+            vct = EUPersonalID.EUPID_VCT,
+            data = listOf(
+                "given_name" to JsonPrimitive("Max"),
+                "nationalities" to buildJsonArray {
+                    add(JsonPrimitive("AT"))
+                },
+                "degrees" to buildJsonArray {
+                    addJsonObject {
+                        put("type", JsonPrimitive("Doctor of Philosophy"))
+                    }
+                }
+            )
+        )
+    }
+
+    @Test
+    fun test_OpenID4VP_sdjwt_array_claims() = runTest {
+        val dcqlExecutionDump = testExecuteDcqlQuery(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["nationalities", null]},
+                            {"path": ["nationalities", 0]},
+                            {"path": ["degrees", null, "type"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                DcqlResponse
+                  CredentialSet
+                    optional false
+                    options
+                      option
+                        members
+                          member
+                            matches
+                              match
+                                credential EU PID Erika
+                                claims
+                                  claim
+                                    claimName given_name
+                                    displayName Given names
+                                    value Erika
+                                  claim
+                                    claimName nationalities.null
+                                    displayName Nationality
+                                    value ["DE","DK"]
+                                  claim
+                                    claimName nationalities.0
+                                    displayName Nationality
+                                    value DE
+                                  claim
+                                    claimName degrees.null.type
+                                    displayName type
+                                    value ["Bachelor of Science","Master of Science"]
+                              match
+                                credential EU PID Max
+                                claims
+                                  claim
+                                    claimName given_name
+                                    displayName Given names
+                                    value Max
+                                  claim
+                                    claimName nationalities.null
+                                    displayName Nationality
+                                    value ["AT"]
+                                  claim
+                                    claimName nationalities.0
+                                    displayName Nationality
+                                    value AT
+                                  claim
+                                    claimName degrees.null.type
+                                    displayName type
+                                    value ["Doctor of Philosophy"]
+            """.trimIndent().trim() + "\n",
+            dcqlExecutionDump
+        )
+    }
+
+    @Test
+    fun test_OpenID4VP_sdjwt_array_value_matching() = runTest {
+        val matchIndex1Dump = testExecuteDcqlQuery(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["nationalities", 1], "values": ["DK"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                DcqlResponse
+                  CredentialSet
+                    optional false
+                    options
+                      option
+                        members
+                          member
+                            matches
+                              match
+                                credential EU PID Erika
+                                claims
+                                  claim
+                                    claimName given_name
+                                    displayName Given names
+                                    value Erika
+                                  claim
+                                    claimName nationalities.1
+                                    displayName Nationality
+                                    value DK
+            """.trimIndent().trim() + "\n",
+            matchIndex1Dump
+        )
+
+        val matchIndex0Dump = testExecuteDcqlQuery(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["nationalities", 0], "values": ["AT"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                DcqlResponse
+                  CredentialSet
+                    optional false
+                    options
+                      option
+                        members
+                          member
+                            matches
+                              match
+                                credential EU PID Max
+                                claims
+                                  claim
+                                    claimName given_name
+                                    displayName Given names
+                                    value Max
+                                  claim
+                                    claimName nationalities.0
+                                    displayName Nationality
+                                    value AT
+            """.trimIndent().trim() + "\n",
+            matchIndex0Dump
+        )
+
+        // Value matching is not defined on array wildcard selections
+        val matchWildcardNoResultDump = testExecuteDcqlQuery(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["nationalities", null], "values": ["DK"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            "",
+            matchWildcardNoResultDump
         )
     }
 }

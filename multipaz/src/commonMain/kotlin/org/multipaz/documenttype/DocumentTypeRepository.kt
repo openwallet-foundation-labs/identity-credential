@@ -145,9 +145,9 @@ class DocumentTypeRepository {
                     val documentType = getDocumentTypeForJson(vct)
                         ?: return null
                     val jsonDocumentType = documentType.jsonDocumentType!!
-                    val identifier = requestedClaim.claimPath.toList().joinToString(".") {
-                        it.jsonPrimitive.content
-                    }
+                    val identifier = requestedClaim.claimPath
+                        .filter { it is JsonPrimitive && it.isString }
+                        .joinToString(".") { it.jsonPrimitive.content }
                     return jsonDocumentType.getDocumentAttribute(identifier)
                 }
             }

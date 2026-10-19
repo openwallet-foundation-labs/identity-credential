@@ -2,6 +2,7 @@ package org.multipaz.openid.dcql
 
 import kotlinx.coroutines.test.runTest
 import org.multipaz.cbor.Tstr
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
@@ -18,6 +19,7 @@ import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class TestPathSelection {
@@ -197,6 +199,16 @@ class TestPathSelection {
         )
 
         assertEquals(
+            JsonPrimitive("German"),
+            (pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("nationalities"); add(0) },
+                )
+            )!! as JsonClaim).value
+        )
+
+        assertEquals(
             JsonPrimitive("American"),
             (pidErikaClaims.findMatchingClaim(
                 requestedClaim = JsonRequestedClaim(
@@ -205,6 +217,48 @@ class TestPathSelection {
                 )
             )!! as JsonClaim).value
         )
+
+        // Out-of-bounds array index returns null
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("nationalities"); add(2) },
+                )
+            )
+        )
+
+        // Wildcard (null) selects all elements of the array
+        assertEquals(
+            buildJsonArray { add("German"); add("American") },
+            (pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("nationalities"); add(JsonNull) },
+                )
+            )!! as JsonClaim).value
+        )
+
+        // Attribute and displayName resolution with DocumentTypeRepository
+        val pidErikaClaimsWithRepo = pidErika.getCertifiedCredentials()[0].getClaims(harness.documentTypeRepository)
+        val nationalitiesNullClaim = pidErikaClaimsWithRepo.findMatchingClaim(
+            requestedClaim = JsonRequestedClaim(
+                vctValues = listOf(EUPersonalID.EUPID_VCT),
+                claimPath = buildJsonArray { add("nationalities"); add(JsonNull) },
+            )
+        ) as JsonClaim
+        assertEquals("Nationality", nationalitiesNullClaim.displayName)
+        assertNotNull(nationalitiesNullClaim.attribute)
+        assertEquals("nationalities", nationalitiesNullClaim.attribute.identifier)
+
+        val nationalitiesIndexClaim = pidErikaClaimsWithRepo.findMatchingClaim(
+            requestedClaim = JsonRequestedClaim(
+                vctValues = listOf(EUPersonalID.EUPID_VCT),
+                claimPath = buildJsonArray { add("nationalities"); add(0) },
+            )
+        ) as JsonClaim
+        assertEquals("Nationality", nationalitiesIndexClaim.displayName)
+        assertEquals("German", nationalitiesIndexClaim.render())
 
         assertEquals(
             buildJsonArray {
@@ -219,6 +273,54 @@ class TestPathSelection {
             )!! as JsonClaim).value
         )
 
+        assertEquals(
+            buildJsonArray {
+                add("Bachelor of Science")
+                add("Master of Science")
+            },
+            (pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("degrees"); add(JsonNull); add("type") },
+                )
+            )!! as JsonClaim).value
+        )
+
+        // Invalid path traversals return null without throwing
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("given_name"); add(0) },
+                )
+            )
+        )
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("address"); add(JsonNull) },
+                )
+            )
+        )
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("given_name"); add("sub") },
+                )
+            )
+        )
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("address"); add("does-not-exist"); add("sub") },
+                )
+            )
+        )
+
+        // Value matching on primitive claim
         assertEquals(
             JsonPrimitive("Erika"),
             (pidErikaClaims.findMatchingClaim(
@@ -237,6 +339,47 @@ class TestPathSelection {
                     vctValues = listOf(EUPersonalID.EUPID_VCT),
                     claimPath = buildJsonArray { add("given_name") },
                     values = buildJsonArray { add("Max") }
+                )
+            )
+        )
+
+        // Value matching on array index path ["nationalities", 1]
+        assertEquals(
+            JsonPrimitive("American"),
+            (pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("nationalities"); add(1) },
+                    values = buildJsonArray { add("American") }
+                )
+            )!! as JsonClaim).value
+        )
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("nationalities"); add(1) },
+                    values = buildJsonArray { add("German") }
+                )
+            )
+        )
+
+        // Value matching is not defined on array wildcard selections (returns null)
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("nationalities"); add(JsonNull) },
+                    values = buildJsonArray { add("German") }
+                )
+            )
+        )
+        assertNull(
+            pidErikaClaims.findMatchingClaim(
+                requestedClaim = JsonRequestedClaim(
+                    vctValues = listOf(EUPersonalID.EUPID_VCT),
+                    claimPath = buildJsonArray { add("degrees"); add(JsonNull); add("type") },
+                    values = buildJsonArray { add("Master of Science") }
                 )
             )
         )

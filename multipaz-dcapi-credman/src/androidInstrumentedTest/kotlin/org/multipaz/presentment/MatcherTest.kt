@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -5365,6 +5366,134 @@ class MatcherTest {
                   SetEntry set_index 0
                     cred_id 0 org-iso-mdoc __mDL__
                     Older than 18 years: true
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    private suspend fun addArrayClaimsPidDocs(harness: DocumentStoreTestHarness) {
+        harness.provisionSdJwtVc(
+            displayName = "EU PID Erika",
+            vct = EUPersonalID.EUPID_VCT,
+            data = listOf(
+                "given_name" to JsonPrimitive("Erika"),
+                "nationalities" to buildJsonArray {
+                    add(JsonPrimitive("DE"))
+                    add(JsonPrimitive("DK"))
+                },
+                "degrees" to buildJsonArray {
+                    addJsonObject {
+                        put("type", JsonPrimitive("Bachelor of Science"))
+                    }
+                    addJsonObject {
+                        put("type", JsonPrimitive("Master of Science"))
+                    }
+                }
+            )
+        )
+        harness.provisionSdJwtVc(
+            displayName = "EU PID Max",
+            vct = EUPersonalID.EUPID_VCT,
+            data = listOf(
+                "given_name" to JsonPrimitive("Max"),
+                "nationalities" to buildJsonArray {
+                    add(JsonPrimitive("AT"))
+                },
+                "degrees" to buildJsonArray {
+                    addJsonObject {
+                        put("type", JsonPrimitive("Doctor of Philosophy"))
+                    }
+                }
+            )
+        )
+    }
+
+    @Test
+    fun testMatcher_OpenID4VP_sdjwt_array_claims() = runTest {
+        val matcherResult = testMatcherDcql(
+            version = OpenID4VP.Version.DRAFT_29,
+            signRequest = true,
+            encryptionKey = null,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["nationalities", null]},
+                            {"path": ["nationalities", 1], "values": ["DK"]},
+                            {"path": ["degrees", null, "type"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 openid4vp-v1-signed
+                  SetEntry set_index 0
+                    cred_id 0 openid4vp-v1-signed __EU PID Erika__
+                    Given names: Erika
+                    Nationality: ["DE","DK"]
+                    Nationality: DK
+                    type: ["Bachelor of Science","Master of Science"]
+            """.trimIndent().trim() + "\n",
+            matcherResult
+        )
+    }
+
+    @Test
+    fun testMatcher_Iso18013_sdjwt_array_claims() = runTest {
+        val matcherResult = testMatcherIso18013(
+            signRequest = true,
+            harnessInitializer = { harness ->
+                addArrayClaimsPidDocs(harness)
+            },
+            dcql =
+                """
+                    {
+                      "credentials": [
+                        {
+                          "id": "pid",
+                          "format": "dc+sd-jwt",
+                          "meta": {
+                            "vct_values": ["urn:eudi:pid:1"]
+                          },
+                          "claims": [
+                            {"path": ["given_name"]},
+                            {"path": ["nationalities", null]},
+                            {"path": ["degrees", null, "type"]}
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trim(),
+        )
+        Assert.assertEquals(
+            """
+                Set
+                  set_id 0 org-iso-mdoc
+                  SetEntry set_index 0
+                    cred_id 0 org-iso-mdoc __EU PID Erika__
+                    Given names: Erika
+                    Nationality: ["DE","DK"]
+                    type: ["Bachelor of Science","Master of Science"]
+                  SetEntry set_index 0
+                    cred_id 0 org-iso-mdoc __EU PID Max__
+                    Given names: Max
+                    Nationality: ["AT"]
+                    type: ["Doctor of Philosophy"]
             """.trimIndent().trim() + "\n",
             matcherResult
         )

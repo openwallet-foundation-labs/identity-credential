@@ -3,6 +3,7 @@ package org.multipaz.mdoc.request
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArrayBuilder
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonArray
@@ -1601,7 +1602,7 @@ internal fun deviceRequestAddQueries(
                     is JsonRequestedClaim -> {
                         val nsMap = nameSpaces.getOrPut("_") { mutableMapOf() }
                         val elementId = "sdjwtkb_" + requestedClaim.claimPath.joinToString("_") {
-                            it.jsonPrimitive.content
+                            if (it is JsonNull) "null" else it.jsonPrimitive.content
                         }
                         nsMap[elementId] = false
                         dataElementIdentifierMapping[elementId] = requestedClaim.claimPath
@@ -1657,7 +1658,7 @@ internal fun deviceRequestAddQueries(
                                 }
                                 is JsonRequestedClaim -> {
                                     val elementId = claim.claimPath.joinToString(".") {
-                                        it.jsonPrimitive.content
+                                        if (it is JsonNull) "null" else it.jsonPrimitive.content
                                     }
                                     dataElementIdentifierMapping[elementId] = claim.claimPath
                                     ElementReference("_", elementId)
@@ -1681,7 +1682,7 @@ internal fun deviceRequestAddQueries(
                         }
                         is JsonRequestedClaim -> {
                             val elementId = primaryClaim.claimPath.joinToString(".") {
-                                it.jsonPrimitive.content
+                                if (it is JsonNull) "null" else it.jsonPrimitive.content
                             }
                             dataElementIdentifierMapping[elementId] = primaryClaim.claimPath
                             ElementReference("_", elementId)

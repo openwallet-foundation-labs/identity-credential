@@ -55,7 +55,11 @@ data class JsonClaim(
                     }
 
                     DocumentAttributeType.ComplexType -> {
-                        value.toString()
+                        if (value is JsonPrimitive) {
+                            value.jsonPrimitive.content
+                        } else {
+                            value.toString()
+                        }
                     }
 
                     DocumentAttributeType.Date -> {

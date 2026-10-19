@@ -9,10 +9,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import org.multipaz.cbor.DataItem
@@ -90,10 +87,13 @@ sealed class Claim(
                 TYPE_JSON_CLAIM -> {
                     val vct = dataItem["vct"].asTstr
                     val claimPath = Json.decodeFromString<JsonArray>(dataItem["claimPath"].asTstr)
+                    val attributeIdentifier = claimPath
+                        .filter { it.isString }
+                        .joinToString(".") { it.jsonPrimitive.content }
                     val attribute = documentTypeRepository
                         ?.getDocumentTypeForJson(vct)
                         ?.jsonDocumentType
-                        ?.claims[claimPath.joinToString(".") { it.jsonPrimitive.content }]
+                        ?.getDocumentAttribute(attributeIdentifier)
                     return JsonClaim(
                         displayName = displayName,
                         attribute = attribute,
@@ -156,7 +156,7 @@ fun List<Claim>.findMatchingClaims(requestedClaims: List<RequestedClaim>): List<
 
 
 private fun Claim.filterValueMatch(
-    values: JsonArray?,
+    values: JsonArray?
 ): Claim? {
     if (values == null) {
         return this
@@ -192,8 +192,9 @@ private fun jsonFindMatchingClaimValue(
     if (requestedClaim !is JsonRequestedClaim) {
         return null
     }
-    check(requestedClaim.claimPath.isNotEmpty())
-    check(requestedClaim.claimPath[0].isString)
+    if (requestedClaim.claimPath.isEmpty() || !requestedClaim.claimPath[0].isString) {
+        return null
+    }
     var ret: JsonClaim? = null
     for (credentialClaim in claims) {
         credentialClaim as JsonClaim
@@ -216,28 +217,48 @@ private fun jsonFindMatchingClaimValue(
     for (n in IntRange(1, requestedClaim.claimPath.size - 1)) {
         val pathComponent = requestedClaim.claimPath[n]
         if (pathComponent.isString) {
+            val key = pathComponent.jsonPrimitive.content
             if (currentObject is JsonArray) {
-                val newObject = buildJsonArray {
-                    for (element in currentObject.jsonArray) {
-                        add(element.jsonObject[pathComponent.jsonPrimitive.content]!!)
+                val newElements = mutableListOf<JsonElement>()
+                for (element in currentObject) {
+                    if (element !is JsonObject) {
+                        return null
+                    }
+                    val subElement = element[key]
+                    if (subElement != null) {
+                        newElements.add(subElement)
                     }
                 }
-                currentObject = newObject
-                currentAttribute = null
-            } else if (currentObject is JsonObject) {
-                currentObject = currentObject.jsonObject[pathComponent.jsonPrimitive.content]
+                if (newElements.isEmpty()) {
+                    return null
+                }
+                currentObject = JsonArray(newElements)
                 currentAttribute = currentAttribute?.embeddedAttributes?.find {
-                    it.identifier == pathComponent.jsonPrimitive.content
+                    it.identifier == key
+                }
+            } else if (currentObject is JsonObject) {
+                currentObject = currentObject[key] ?: return null
+                currentAttribute = currentAttribute?.embeddedAttributes?.find {
+                    it.identifier == key
                 }
             } else {
-                throw IllegalStateException("Can only select from object or array of objects")
+                return null
             }
         } else if (pathComponent.isNumber) {
-            currentObject = currentObject!!.jsonArray[pathComponent.jsonPrimitive.int]
-            currentAttribute = null
+            val index = pathComponent.jsonPrimitive.intOrNull
+            if (index == null || index < 0) {
+                return null
+            }
+            if (currentObject !is JsonArray || index >= currentObject.size) {
+                return null
+            }
+            currentObject = currentObject[index]
         } else if (pathComponent.isNull) {
-            currentObject = currentObject!!.jsonArray
-            currentAttribute = null
+            if (currentObject !is JsonArray || currentObject.isEmpty()) {
+                return null
+            }
+        } else {
+            return null
         }
     }
     if (currentObject == null) {
@@ -248,7 +269,9 @@ private fun jsonFindMatchingClaimValue(
         Pair(currentAttribute.displayName, currentAttribute)
     } else {
         // Fall back, use path elements as the display name (e.g. address.street_address)
-        val combinedPath = requestedClaim.claimPath.joinToString(".", transform = { it.jsonPrimitive.content })
+        val combinedPath = requestedClaim.claimPath
+            .filter { !it.isNull }
+            .joinToString(".", transform = { it.jsonPrimitive.content })
         Pair(combinedPath, null)
     }
     return JsonClaim(

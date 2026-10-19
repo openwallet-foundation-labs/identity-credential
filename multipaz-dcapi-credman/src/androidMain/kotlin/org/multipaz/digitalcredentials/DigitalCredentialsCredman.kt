@@ -19,14 +19,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.DiagnosticOption
+import org.multipaz.cbor.MapBuilder
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborArray
 import org.multipaz.cbor.putCborMap
@@ -64,8 +67,10 @@ private fun getAttributeForJsonClaim(
 ): DocumentAttribute? {
     val documentType = documentTypeRepository.getDocumentTypeForJson(vct)
     if (documentType != null) {
-        val flattenedPath = path.joinToString(".") { it.jsonPrimitive.content }
-        return documentType.jsonDocumentType?.claims?.get(flattenedPath)
+        val flattenedPath = path
+            .filter { it is JsonPrimitive && it.isString }
+            .joinToString(".") { it.jsonPrimitive.content }
+        return documentType.jsonDocumentType?.getDocumentAttribute(flattenedPath)
     }
     return null
 }
@@ -384,28 +389,120 @@ private suspend fun exportSdJwtVcCredential(
                         }
                         add(asString.let { if (it.length < 128) it else "" })
                     }
-                    // Our matcher currently combines paths to a single string, using `.` as separator. So do
-                    // the same here for all subclaims... yes, we only support a single level of subclaims
-                    // right now. In the future we'll modify the matcher to be smarter about things.
-                    //
-                    if (claim.value is JsonObject) {
-                        for ((subClaimIdentifier, subClaimValue) in claim.value) {
-                            val subClaimAttr = claimAttr?.embeddedAttributes?.find { it.identifier == subClaimIdentifier }
-                            val subClaimDisplayName = subClaimAttr?.displayName ?: subClaimIdentifier
-                            putCborArray("$claimName.$subClaimIdentifier") {
-                                add(subClaimDisplayName)
-                                add(subClaimValue.toString())
-                                // Need the raw value (converted to a string) for matching but skip if 128
-                                // characters or more since e.g. portrait photos can be quite large...
-                                val asString = when (subClaimValue) {
-                                    is JsonPrimitive -> subClaimValue.content
-                                    else -> subClaimValue.toString()
-                                }
-                                add(asString.let { if (it.length < 128) it else "" })
-                            }
+                    exportSubClaims(
+                        pathPrefix = claimName,
+                        currentValue = claim.value,
+                        currentAttr = claimAttr,
+                        displayName = claimDisplayName,
+                        isWildcardSelection = false,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun MapBuilder<*>.exportSubClaims(
+    pathPrefix: String,
+    currentValue: JsonElement,
+    currentAttr: DocumentAttribute?,
+    displayName: String,
+    isWildcardSelection: Boolean,
+) {
+    if (!isWildcardSelection) {
+        when (currentValue) {
+            is JsonObject -> {
+                for ((subClaimIdentifier, subClaimValue) in currentValue) {
+                    val subClaimAttr = currentAttr?.embeddedAttributes?.find { it.identifier == subClaimIdentifier }
+                    val subClaimDisplayName = subClaimAttr?.displayName ?: subClaimIdentifier
+                    val subPath = "$pathPrefix.$subClaimIdentifier"
+                    putCborArray(subPath) {
+                        add(subClaimDisplayName)
+                        add(subClaimValue.toString())
+                        // Need the raw value (converted to a string) for matching but skip if 128
+                        // characters or more since e.g. portrait photos can be quite large...
+                        val asString = when (subClaimValue) {
+                            is JsonPrimitive -> subClaimValue.content
+                            else -> subClaimValue.toString()
                         }
+                        add(asString.let { if (it.length < 128) it else "" })
+                    }
+                    exportSubClaims(
+                        pathPrefix = subPath,
+                        currentValue = subClaimValue,
+                        currentAttr = subClaimAttr,
+                        displayName = subClaimDisplayName,
+                        isWildcardSelection = false,
+                    )
+                }
+            }
+            is JsonArray -> {
+                for ((index, elementValue) in currentValue.withIndex()) {
+                    val indexPath = "$pathPrefix.$index"
+                    val renderedValue = when (elementValue) {
+                        is JsonPrimitive -> elementValue.content
+                        else -> elementValue.toString()
+                    }
+                    putCborArray(indexPath) {
+                        add(displayName)
+                        add(renderedValue)
+                        add(renderedValue.let { if (it.length < 128) it else "" })
+                    }
+                    exportSubClaims(
+                        pathPrefix = indexPath,
+                        currentValue = elementValue,
+                        currentAttr = currentAttr,
+                        displayName = displayName,
+                        isWildcardSelection = false,
+                    )
+                }
+                if (currentValue.isNotEmpty()) {
+                    val wildcardPath = "$pathPrefix.null"
+                    putCborArray(wildcardPath) {
+                        add(displayName)
+                        add(currentValue.toString())
+                        add("")
+                    }
+                    exportSubClaims(
+                        pathPrefix = wildcardPath,
+                        currentValue = currentValue,
+                        currentAttr = currentAttr,
+                        displayName = displayName,
+                        isWildcardSelection = true,
+                    )
+                }
+            }
+            else -> {}
+        }
+    } else if (currentValue is JsonArray) {
+        val objectKeys = currentValue
+            .filterIsInstance<JsonObject>()
+            .flatMap { it.keys }
+            .toSet()
+        for (subKey in objectKeys) {
+            val projected = buildJsonArray {
+                for (elem in currentValue) {
+                    if (elem is JsonObject) {
+                        elem[subKey]?.let { add(it) }
                     }
                 }
+            }
+            if (projected.isNotEmpty()) {
+                val subAttr = currentAttr?.embeddedAttributes?.find { it.identifier == subKey }
+                val subDisplayName = subAttr?.displayName ?: subKey
+                val subPath = "$pathPrefix.$subKey"
+                putCborArray(subPath) {
+                    add(subDisplayName)
+                    add(projected.toString())
+                    add("")
+                }
+                exportSubClaims(
+                    pathPrefix = subPath,
+                    currentValue = projected,
+                    currentAttr = subAttr,
+                    displayName = subDisplayName,
+                    isWildcardSelection = true,
+                )
             }
         }
     }

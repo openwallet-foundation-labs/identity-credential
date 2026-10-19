@@ -608,12 +608,12 @@ class SdJwt private constructor(
                         JsonArray.serializer(),
                         disclosureString.fromBase64Url().decodeToString()
                     ).jsonArray
-                    val value = disclosure[disclosure.size - 1]
-                    if (value is JsonObject && value["_sd"] != null) {
-                        for (hash in value["_sd"]!!.jsonArray.map { it.jsonPrimitive.content }) {
-                            disclosureHashIncludedInDisclosureString[hash] = disclosureString
-                        }
-                    }
+                    val disclosedValue = disclosure[disclosure.size - 1]
+                    collectChildDisclosureHashes(
+                        element = disclosedValue,
+                        parentDisclosureString = disclosureString,
+                        disclosureHashIncludedInDisclosureString = disclosureHashIncludedInDisclosureString
+                    )
                 }
             }
         )
@@ -1310,3 +1310,49 @@ private fun processArray(
         }
     }
 }
+
+private fun collectChildDisclosureHashes(
+    element: JsonElement,
+    parentDisclosureString: String,
+    disclosureHashIncludedInDisclosureString: MutableMap<String, String>
+) {
+    when (element) {
+        is JsonObject -> {
+            if (element.size == 1 && element.containsKey("...")) {
+                val digest = element["..."]
+                if (digest is JsonPrimitive && digest.isString) {
+                    disclosureHashIncludedInDisclosureString[digest.content] = parentDisclosureString
+                }
+            } else {
+                val sd = element["_sd"]
+                if (sd is JsonArray) {
+                    for (digest in sd) {
+                        if (digest is JsonPrimitive && digest.isString) {
+                            disclosureHashIncludedInDisclosureString[digest.content] = parentDisclosureString
+                        }
+                    }
+                }
+                for ((key, value) in element) {
+                    if (key != "_sd" && key != "_sd_alg") {
+                        collectChildDisclosureHashes(
+                            element = value,
+                            parentDisclosureString = parentDisclosureString,
+                            disclosureHashIncludedInDisclosureString = disclosureHashIncludedInDisclosureString
+                        )
+                    }
+                }
+            }
+        }
+        is JsonArray -> {
+            for (item in element) {
+                collectChildDisclosureHashes(
+                    element = item,
+                    parentDisclosureString = parentDisclosureString,
+                    disclosureHashIncludedInDisclosureString = disclosureHashIncludedInDisclosureString
+                )
+            }
+        }
+        else -> {}
+    }
+}
+
