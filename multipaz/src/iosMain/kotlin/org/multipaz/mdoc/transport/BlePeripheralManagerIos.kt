@@ -21,6 +21,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.asSink
@@ -121,6 +122,11 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
             continuation,
             characteristic
         )
+        continuation.invokeOnCancellation {
+            if (waitFor?.continuation === continuation) {
+                waitFor = null
+            }
+        }
     }
 
     private fun resumeWait() {
@@ -445,7 +451,7 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
     private suspend fun writeToCharacteristic(
         characteristic: CBMutableCharacteristic,
         value: ByteArray,
-    ) {
+    ) = withContext(Dispatchers.Main) {
         while (true) {
             val wasSent = peripheralManager.updateValue(
                 value = value.toNSData(),
