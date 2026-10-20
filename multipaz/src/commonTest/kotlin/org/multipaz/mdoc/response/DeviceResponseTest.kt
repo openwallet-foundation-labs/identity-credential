@@ -1100,7 +1100,7 @@ class DeviceResponseTest {
                 pathsToInclude = listOf(
                     buildJsonArray { add(JsonPrimitive("given_name")) },
                     buildJsonArray { add(JsonPrimitive("family_name")) },
-                    buildJsonArray { add(JsonPrimitive("age_equal_or_over")); add(JsonPrimitive("18")) }
+                    buildJsonArray { add(JsonPrimitive("place_of_birth")); add(JsonPrimitive("country")) }
                 )
             )
             .present(
@@ -1192,8 +1192,8 @@ class DeviceResponseTest {
                   },
                   "family_name": "Mustermann",
                   "given_name": "Erika",
-                  "age_equal_or_over": {
-                    "18": true
+                  "place_of_birth": {
+                    "country": "ZZ"
                   }
                 }
             """.trimIndent(),

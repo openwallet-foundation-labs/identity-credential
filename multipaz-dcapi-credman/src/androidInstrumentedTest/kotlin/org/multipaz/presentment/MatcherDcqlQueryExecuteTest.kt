@@ -195,8 +195,8 @@ class MatcherDcqlQueryExecuteTest {
                           "claims": [
                             {
                               "path": [
-                                "age_equal_or_over",
-                                "18"
+                                "place_of_birth",
+                                "locality"
                               ]
                             },
                             {
@@ -224,9 +224,9 @@ class MatcherDcqlQueryExecuteTest {
                                 credential EU PID
                                 claims
                                   claim
-                                    claimName age_equal_or_over.18
-                                    displayName Older than 18
-                                    value true
+                                    claimName place_of_birth.locality
+                                    displayName City of birth
+                                    value "Sample City"
                                   claim
                                     claimName picture
                                     displayName Photo of holder
@@ -235,9 +235,9 @@ class MatcherDcqlQueryExecuteTest {
                                 credential EU PID 2
                                 claims
                                   claim
-                                    claimName age_equal_or_over.18
-                                    displayName Older than 18
-                                    value true
+                                    claimName place_of_birth.locality
+                                    displayName City of birth
+                                    value "Sample City"
                                   claim
                                     claimName picture
                                     displayName Photo of holder

@@ -129,27 +129,46 @@ class TestDocumentTypeRepository {
 
     @Test
     fun testPortraitEquivalenceCannedRequests() {
-        val testCases = listOf(
-            Triple(DrivingLicense.getDocumentType(), DrivingLicense.MDL_NAMESPACE, "portrait"),
-            Triple(PhotoID.getDocumentType(), PhotoID.ISO_23220_2_NAMESPACE, "portrait"),
-            Triple(EUPersonalID.getDocumentType(), EUPersonalID.EUPID_NAMESPACE, "portrait"),
-            Triple(IDPass.getDocumentType(), DrivingLicense.MDL_NAMESPACE, "portrait"),
-            Triple(Aadhaar.getDocumentType(), Aadhaar.AADHAAR_NAMESPACE, "resident_image"),
+        data class TestCase(
+            val dt: DocumentType,
+            val portraitNamespace: String,
+            val portraitDataElement: String,
+            val bothRequestId: String = "age_over_18_and_portrait_or_portrait_equivalence",
+            val chvOnlyRequestId: String = "age_over_18_and_portrait_equivalence",
+            val baseClaimCount: Int = 1,
         )
-        for ((dt, portraitNamespace, portraitDataElement) in testCases) {
-            val requestWithBoth = dt.cannedRequests.find {
-                it.id == "age_over_18_and_portrait_or_portrait_equivalence"
+        val testCases = listOf(
+            TestCase(DrivingLicense.getDocumentType(), DrivingLicense.MDL_NAMESPACE, "portrait"),
+            TestCase(PhotoID.getDocumentType(), PhotoID.ISO_23220_2_NAMESPACE, "portrait"),
+            TestCase(
+                dt = EUPersonalID.getDocumentType(),
+                portraitNamespace = EUPersonalID.EUPID_NAMESPACE,
+                portraitDataElement = "portrait",
+                bothRequestId = "name_and_portrait_or_portrait_equivalence",
+                chvOnlyRequestId = "name_and_portrait_equivalence",
+                baseClaimCount = 2,
+            ),
+            TestCase(IDPass.getDocumentType(), DrivingLicense.MDL_NAMESPACE, "portrait"),
+            TestCase(Aadhaar.getDocumentType(), Aadhaar.AADHAAR_NAMESPACE, "resident_image"),
+        )
+        for (tc in testCases) {
+            val requestWithBoth = tc.dt.cannedRequests.find {
+                it.id == tc.bothRequestId
             }!!.mdocRequest!!
             val dcqlWithBoth = requestWithBoth.toDcql(emptyList())
             val credWithBoth = dcqlWithBoth["credentials"]!!.jsonArray[0].jsonObject
             val claimsWithBoth = credWithBoth["claims"]!!.jsonArray
-            assertEquals(3, claimsWithBoth.size, "Document type ${dt.displayName} claims size mismatch")
+            assertEquals(
+                tc.baseClaimCount + 2,
+                claimsWithBoth.size,
+                "Document type ${tc.dt.displayName} claims size mismatch"
+            )
             val pePortrait = claimsWithBoth.find {
                 it.jsonObject["id"]?.jsonPrimitive?.content == "pe_portrait"
             }!!.jsonObject
             val pePortraitPath = pePortrait["path"]!!.jsonArray
-            assertEquals(portraitNamespace, pePortraitPath[0].jsonPrimitive.content)
-            assertEquals(portraitDataElement, pePortraitPath[1].jsonPrimitive.content)
+            assertEquals(tc.portraitNamespace, pePortraitPath[0].jsonPrimitive.content)
+            assertEquals(tc.portraitDataElement, pePortraitPath[1].jsonPrimitive.content)
 
             val peChv1 = claimsWithBoth.find {
                 it.jsonObject["id"]?.jsonPrimitive?.content == "pe_chv1"
@@ -161,13 +180,17 @@ class TestDocumentTypeRepository {
             val claimSets = credWithBoth["claim_sets"]!!.jsonArray
             assertEquals(2, claimSets.size)
 
-            val requestWithChvOnly = dt.cannedRequests.find {
-                it.id == "age_over_18_and_portrait_equivalence"
+            val requestWithChvOnly = tc.dt.cannedRequests.find {
+                it.id == tc.chvOnlyRequestId
             }!!.mdocRequest!!
             val dcqlWithChvOnly = requestWithChvOnly.toDcql(emptyList())
             val credWithChvOnly = dcqlWithChvOnly["credentials"]!!.jsonArray[0].jsonObject
             val claimsWithChvOnly = credWithChvOnly["claims"]!!.jsonArray
-            assertEquals(2, claimsWithChvOnly.size, "Document type ${dt.displayName} claims size mismatch")
+            assertEquals(
+                tc.baseClaimCount + 1,
+                claimsWithChvOnly.size,
+                "Document type ${tc.dt.displayName} claims size mismatch"
+            )
             assertNull(credWithChvOnly["claim_sets"])
         }
     }
@@ -419,6 +442,78 @@ class TestDocumentTypeRepository {
             val string = value.toString()
             val equals = value.equals(value)
         }
+    }
+
+    @Test
+    fun testEUPidDocumentType() {
+        val documentType = EUPersonalID.getDocumentType()
+        val mdoc = documentType.mdocDocumentType
+        assertNotNull(mdoc)
+        val pidNamespace = mdoc.namespaces[EUPersonalID.EUPID_NAMESPACE]
+        assertNotNull(pidNamespace)
+
+        val expectedMdocElements = setOf(
+            "family_name",
+            "given_name",
+            "birth_date",
+            "family_name_birth",
+            "given_name_birth",
+            "place_of_birth",
+            "resident_address",
+            "resident_country",
+            "resident_state",
+            "resident_city",
+            "resident_postal_code",
+            "resident_street",
+            "sex",
+            "nationality",
+            "issuance_date",
+            "expiry_date",
+            "issuing_authority",
+            "document_number",
+            "personal_administrative_number",
+            "issuing_jurisdiction",
+            "issuing_country",
+            "portrait",
+            "email_address",
+            "mobile_phone_number"
+        )
+        assertEquals(expectedMdocElements, pidNamespace.dataElements.keys)
+        assertEquals(
+            DocumentAttributeType.ComplexType,
+            pidNamespace.dataElements["place_of_birth"]?.attribute?.type
+        )
+        assertEquals(true, pidNamespace.dataElements["place_of_birth"]?.mandatory)
+
+        val mandatoryMdocElements = pidNamespace.dataElements
+            .filter { it.value.mandatory }
+            .keys
+        val expectedMandatoryMdocElements = setOf(
+            "family_name",
+            "given_name",
+            "birth_date",
+            "place_of_birth",
+            "nationality",
+            "expiry_date",
+            "issuing_authority",
+            "issuing_country"
+        )
+        assertEquals(expectedMandatoryMdocElements, mandatoryMdocElements)
+
+        val mandatoryRequest = documentType.cannedRequests.find { it.id == "mandatory" }
+        assertNotNull(mandatoryRequest)
+        val requestedMdocElements = mandatoryRequest.mdocRequest!!.namespacesToRequest
+            .find { it.namespace == EUPersonalID.EUPID_NAMESPACE }!!
+            .dataElementsToRequest.keys.map { it.attribute.identifier }.toSet()
+        assertEquals(expectedMandatoryMdocElements, requestedMdocElements)
+
+        val json = documentType.jsonDocumentType
+        assertNotNull(json)
+        assertNotNull(json.getDocumentAttribute("place_of_birth"))
+        assertNotNull(json.getDocumentAttribute("place_of_birth.country"))
+        assertNotNull(json.getDocumentAttribute("place_of_birth.region"))
+        assertNotNull(json.getDocumentAttribute("place_of_birth.locality"))
+        assertNotNull(json.getDocumentAttribute("address.house_number"))
     }
 
 }

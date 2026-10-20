@@ -177,8 +177,8 @@ class VerificationSessionTest {
         }
         assertEquals("Erika", claims["given_name"]!!.jsonPrimitive.content)
         assertEquals("Mustermann", claims["family_name"]!!.jsonPrimitive.content)
-        // Nested age_equal_or_over claim arrives as the top-level object containing the "18" key.
-        assertEquals(true, claims["age_equal_or_over"]!!.jsonObject["18"]!!.jsonPrimitive.boolean)
+        // Nested place_of_birth claim arrives as the top-level object containing the "country" key.
+        assertEquals("ZZ", claims["place_of_birth"]!!.jsonObject["country"]!!.jsonPrimitive.content)
 
         // Trust check: presented DS cert must match the one the harness signed the credential with.
         assertEquals(
@@ -631,7 +631,7 @@ class VerificationSessionTest {
                   "claims": [
                     { "path": ["given_name"] },
                     { "path": ["family_name"] },
-                    { "path": ["age_equal_or_over", "18"] }
+                    { "path": ["place_of_birth", "country"] }
                   ]
               }]
             }

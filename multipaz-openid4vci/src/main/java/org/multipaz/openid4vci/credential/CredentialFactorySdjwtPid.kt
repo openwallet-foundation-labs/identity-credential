@@ -1,14 +1,7 @@
 package org.multipaz.openid4vci.credential
 
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.yearsUntil
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.CborDouble
 import org.multipaz.cbor.CborFloat
@@ -80,9 +73,6 @@ class CredentialFactorySdjwtPid : CredentialFactory {
         val resources = BackendEnvironment.getInterface(Resources::class)!!
         val now = Clock.System.now()
 
-        val timeZone = TimeZone.currentSystemDefault()
-        val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
-
         val identityAttributes = buildJsonObject {
             put("given_name", coreData["given_name"].asTstr)
             put("family_name", coreData["family_name"].asTstr)
@@ -130,17 +120,6 @@ class CredentialFactorySdjwtPid : CredentialFactory {
                     }
                 }
             }
-
-            // Values derived from the birth_date
-            put("age_in_years", dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date))
-            put("age_birth_year", dateOfBirth.year)
-            putJsonObject("age_equal_or_over") {
-                for (age in listOf(14, 18, 21)) {
-                    val isOver = now > dateOfBirthInstant.plus(age, DateTimeUnit.YEAR, timeZone)
-                    put(age.toString(), isOver)
-                }
-            }
-            added.addAll(listOf("age_in_years", "age_birth_year", "age_equal_or_over"))
 
             // Add all mandatory elements for completeness.
             for ((elementName, data) in documentType.claims) {
