@@ -4,6 +4,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.multipaz.crypto.Crypto
@@ -15,6 +16,7 @@ import org.multipaz.util.UUID
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -184,6 +186,70 @@ class BleTransportTest {
         assertEquals(MdocTransport.State.CLOSED, transport.state.value)
     }
 
+    @Test
+    fun peripheralMdocFailsWaitForMessageWhenCentralDisconnects() = runTest {
+        val manager = FakeBlePeripheralManager().apply {
+            powerOnDeferred.complete(Unit)
+            advertiseServiceDeferred.complete(Unit)
+            waitForClientDeferred.complete(Unit)
+        }
+        val transport = BleTransportPeripheralMdoc(
+            role = MdocRole.MDOC,
+            options = MdocTransportOptions(),
+            peripheralManager = manager,
+            uuid = testUuid,
+        )
+
+        transport.open(senderKey)
+        assertEquals(MdocTransport.State.CONNECTED, transport.state.value)
+
+        supervisorScope {
+            val waitDeferred = async { transport.waitForMessage() }
+            runCurrent()
+            assertFalse(waitDeferred.isCompleted)
+
+            manager.triggerError(IllegalStateException("Central unexpectedly disconnected"))
+
+            assertFailsWith<MdocTransportException> {
+                waitDeferred.await()
+            }
+        }
+        assertTrue(manager.closeCalls > 0)
+        assertEquals(MdocTransport.State.FAILED, transport.state.value)
+    }
+
+    @Test
+    fun centralMdocReaderFailsWaitForMessageWhenCentralDisconnects() = runTest {
+        val manager = FakeBlePeripheralManager().apply {
+            powerOnDeferred.complete(Unit)
+            advertiseServiceDeferred.complete(Unit)
+            waitForClientDeferred.complete(Unit)
+        }
+        val transport = BleTransportCentralMdocReader(
+            role = MdocRole.MDOC_READER,
+            options = MdocTransportOptions(),
+            peripheralManager = manager,
+            uuid = testUuid,
+        )
+
+        transport.open(senderKey)
+        assertEquals(MdocTransport.State.CONNECTED, transport.state.value)
+
+        supervisorScope {
+            val waitDeferred = async { transport.waitForMessage() }
+            runCurrent()
+            assertFalse(waitDeferred.isCompleted)
+
+            manager.triggerError(IllegalStateException("Central unexpectedly disconnected"))
+
+            assertFailsWith<MdocTransportException> {
+                waitDeferred.await()
+            }
+        }
+        assertTrue(manager.closeCalls > 0)
+        assertEquals(MdocTransport.State.FAILED, transport.state.value)
+    }
+
     private class FakeBlePeripheralManager : BlePeripheralManager {
         override val incomingMessages = Channel<ByteArray>(Channel.UNLIMITED)
         override val l2capPsm: Int? = null
@@ -193,6 +259,7 @@ class BleTransportTest {
         val advertiseServiceDeferred = CompletableDeferred<Unit>()
         val waitForClientDeferred = CompletableDeferred<Unit>()
         var closeCalls = 0
+        private var onError: ((Throwable) -> Unit)? = null
 
         override fun setUuids(
             stateCharacteristicUuid: UUID,
@@ -206,7 +273,13 @@ class BleTransportTest {
         override fun setCallbacks(
             onError: (error: Throwable) -> Unit,
             onClosed: () -> Unit
-        ) {}
+        ) {
+            this.onError = onError
+        }
+
+        fun triggerError(error: Throwable) {
+            onError?.invoke(error)
+        }
 
         override suspend fun waitForPowerOn() {
             powerOnDeferred.await()
