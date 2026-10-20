@@ -74,13 +74,17 @@ suspend fun List<MdocConnectionMethod>.advertise(
  * @param eSenderKey This should be set to `EDeviceKey` if using forward engagement or `EReaderKey`
  *   if using reverse engagement.
  * @return the [MdocTransport] a remote peer connected to, will be in [MdocTransport.State.CONNECTED] state.
+ * @throws IllegalArgumentException if the list contains duplicate transports.
  * @throws IllegalStateException if no transport connected or if a transport is not in
  *   [MdocTransport.State.ADVERTISING] or [MdocTransport.State.IDLE] state.
  */
-@Throws(CancellationException::class, IllegalStateException::class)
+@Throws(CancellationException::class, IllegalArgumentException::class, IllegalStateException::class)
 suspend fun List<MdocTransport>.waitForConnection(
     eSenderKey: EcPublicKey
 ): MdocTransport {
+    require(distinct().size == size) {
+        "Transport list must not contain duplicates"
+    }
     val resultingTransportLock = Mutex()
     var resultingTransport: MdocTransport? = null
 

@@ -189,6 +189,17 @@ class ConnectionHelperTest {
     }
 
     @Test
+    fun duplicateTransportsThrowWithoutOpening() = runTest {
+        val first = TestTransport()
+        val second = TestTransport()
+        assertFailsWith<IllegalArgumentException> {
+            listOf(first, second, first).waitForConnection(senderKey)
+        }
+        assertFalse(first.openStarted)
+        assertFalse(second.openStarted)
+    }
+
+    @Test
     fun advertiseFailureClosesPreviouslyCreatedTransports() = runTest {
         val first = TestTransport()
         val second = TestTransport().apply {
