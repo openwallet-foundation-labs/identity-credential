@@ -1,5 +1,6 @@
 package org.multipaz.mdoc.transport
 
+import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.coroutines.CancellationException
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
@@ -31,6 +32,7 @@ import org.multipaz.crypto.Hkdf
 import org.multipaz.crypto.SecretKey
 import platform.CoreBluetooth.CBATTErrorSuccess
 import platform.CoreBluetooth.CBATTRequest
+import platform.CoreBluetooth.CBCentral
 import platform.CoreBluetooth.CBPeripheralManager
 import platform.CoreBluetooth.CBCharacteristic
 import platform.CoreBluetooth.CBPeripheralManagerDelegateProtocol
@@ -170,6 +172,9 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
 
     private val peripheralManager: CBPeripheralManager
 
+    // The central which started the session by writing 0x01 to the State characteristic.
+    private var connectedCentral: CBCentral? = null
+
     private val peripheralManagerDelegate = object : NSObject(), CBPeripheralManagerDelegateProtocol {
         override fun peripheralManagerDidUpdateState(peripheral: CBPeripheralManager) {
             if (waitFor?.state == WaitState.POWER_ON) {
@@ -202,6 +207,7 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
                             val maximumUpdateValueLength = attRequest.central.maximumUpdateValueLength.toInt()
                             maxCharacteristicSize = min(maximumUpdateValueLength, 512)
                             Logger.i(TAG, "Using $maxCharacteristicSize as maximum data size for characteristics")
+                            connectedCentral = attRequest.central
 
                             // Since the central found us, we can stop advertising....
                             peripheralManager.stopAdvertising()
@@ -243,6 +249,26 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
                     peripheralManager.respondToRequest(attRequest, CBATTErrorSuccess)
                 }
             }
+        }
+
+        // CoreBluetooth has no disconnection callback for a peripheral. A central which goes away
+        // unsubscribes from the characteristics it subscribed to, so this is the only sign of it.
+        @ObjCSignatureOverride
+        override fun peripheralManager(
+            peripheral: CBPeripheralManager,
+            central: CBCentral,
+            didUnsubscribeFromCharacteristic: CBCharacteristic
+        ) {
+            if (central.identifier != connectedCentral?.identifier) {
+                return
+            }
+            if (didUnsubscribeFromCharacteristic != stateCharacteristic &&
+                didUnsubscribeFromCharacteristic != writeCharacteristic) {
+                return
+            }
+            Logger.i(TAG, "Central ${central.identifier.UUIDString} unsubscribed from " +
+                    didUnsubscribeFromCharacteristic.UUID.UUIDString)
+            onError(IllegalStateException("Central unexpectedly disconnected"))
         }
 
         override fun peripheralManagerIsReadyToUpdateSubscribers(peripheral: CBPeripheralManager) {
@@ -464,6 +490,7 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
     }
 
     override fun close() {
+        connectedCentral = null
         _l2capPsm?.let {
             peripheralManager.unpublishL2CAPChannel(it.toUShort())
         }

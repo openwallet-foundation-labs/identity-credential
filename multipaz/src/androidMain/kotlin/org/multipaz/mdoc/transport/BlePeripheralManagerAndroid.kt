@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.bluetooth.BluetoothStatusCodes
@@ -200,6 +201,11 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             Logger.d(TAG, "onConnectionStateChange: ${device.address} $status + $newState")
+            if (newState == BluetoothProfile.STATE_DISCONNECTED &&
+                device.address == this@BlePeripheralManagerAndroid.device?.address) {
+                Logger.i(TAG, "Central ${device.address} disconnected")
+                onError(IllegalStateException("Central unexpectedly disconnected"))
+            }
         }
 
         override fun onCharacteristicReadRequest(
