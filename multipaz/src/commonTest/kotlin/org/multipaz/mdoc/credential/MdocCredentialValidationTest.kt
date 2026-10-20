@@ -23,10 +23,12 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.crypto.X509KeyUsage
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObject
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.presentment.DocumentStoreTestHarness
+import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -433,5 +435,44 @@ class MdocCredentialValidationTest {
         val result = credential.validate(now = harness.validFrom + 1.days)
         assertTrue(result.hasErrors)
         assertTrue(result.errors.any { it.message.contains("before DS certificate validity period") })
+    }
+
+    @Test
+    fun testCreateMdocCredentialWithSampleDataDsAlgorithms() = runTest {
+        for (curve in EcCurve.entries) {
+            if (!curve.supportsSigning || !Crypto.supportedCurves.contains(curve)) {
+                continue
+            }
+            val dsKeyPriv = Crypto.createEcPrivateKey(curve)
+            val dsCert = MdocUtil.generateDsCertificate(
+                iacaKey = harness.iacaKey,
+                dsKey = dsKeyPriv.publicKey,
+                subject = X500Name.fromName("C=US,CN=OWF Multipaz TEST DS ($curve)"),
+                serial = ASN1Integer(12345L),
+                validFrom = harness.validFrom,
+                validUntil = harness.validUntil
+            )
+            val dsKey = AsymmetricKey.X509CertifiedExplicit(
+                certChain = X509CertChain(listOf(dsCert, harness.iacaCert)),
+                privateKey = dsKeyPriv
+            )
+            val document = documentStore.createDocument()
+            val credential = DrivingLicense.getDocumentType().createMdocCredentialWithSampleData(
+                document = document,
+                secureArea = secureArea,
+                createKeySettings = CreateKeySettings(),
+                dsKey = dsKey,
+                signedAt = harness.signedAt,
+                validFrom = harness.validFrom,
+                validUntil = harness.validUntil
+            )
+            assertEquals(
+                curve.defaultSigningAlgorithm.coseAlgorithmIdentifier,
+                credential.issuerAuth.protectedHeaders[CoseNumberLabel(Cose.COSE_LABEL_ALG)]!!.asNumber.toInt()
+            )
+            val result = credential.validate(now = harness.validFrom + 1.days)
+            assertFalse(result.hasErrors, "Unexpected errors for $curve: ${result.errors}")
+            assertFalse(result.hasWarnings, "Unexpected warnings for $curve: ${result.warnings}")
+        }
     }
 }

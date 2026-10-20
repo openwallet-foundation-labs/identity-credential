@@ -512,10 +512,12 @@ class DocumentType private constructor(
         //
         // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
         //
+        // ISO 18013-5 requires use of non-fully-specified algorithms, e.g. -7 instead of -9
+        val signatureAlgorithm = dsKey.algorithm.curve?.defaultSigningAlgorithm ?: dsKey.algorithm
         val protectedHeaders = mapOf<CoseLabel, DataItem>(
             Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                Algorithm.ES256.coseAlgorithmIdentifier!!.toDataItem()
+                signatureAlgorithm.coseAlgorithmIdentifier!!.toDataItem()
             )
         )
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
