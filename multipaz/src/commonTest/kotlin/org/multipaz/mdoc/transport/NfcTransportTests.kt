@@ -7,10 +7,12 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.NfcIsoTag
+import org.multipaz.nfc.NfcTagLostException
 import org.multipaz.nfc.ResponseApdu
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 private fun String.truncateTo(maxLength: Int): String {
     if (this.length < maxLength) {
@@ -31,13 +33,20 @@ class NfcTransportTests {
 
         override var maxTransceiveLength = 0xfeff
 
+        var failNextTransceive = false
+        var closeCount = 0
+
         override suspend fun close() {
+            closeCount++
             transcript.appendLine("close")
         }
 
         override suspend fun updateDialogMessage(message: String) {}
 
         override suspend fun transceive(command: CommandApdu): ResponseApdu {
+            if (failNextTransceive) {
+                throw NfcTagLostException("Tag was lost during transceive")
+            }
             transcript.appendLine("${command.toString().truncateTo(100)} (${command.encode().size} bytes)")
             val response = transport.processApdu(command)
             transcript.appendLine("${response.toString().truncateTo(100)} (${response.encode().size} bytes)")
@@ -165,5 +174,67 @@ close
             """.trimIndent().trim(),
             tag.transcript.toString().trim()
         )
+    }
+
+    @Test
+    fun testTagClosedOnTransceiveFailure() = runTest {
+        val mdoc = NfcTransportMdoc(
+            role = MdocRole.MDOC,
+            options = MdocTransportOptions(),
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
+        )
+        val mdocReader = NfcTransportMdocReader(
+            role = MdocRole.MDOC_READER,
+            options = MdocTransportOptions(),
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
+        )
+        val tag = LoopbackIsoTag(mdoc)
+        mdocReader.setTag(tag)
+
+        val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        mdoc.open(eSenderKey = eReaderKey.publicKey)
+        mdocReader.open(eSenderKey = eDeviceKey.publicKey)
+
+        tag.failNextTransceive = true
+        mdocReader.sendMessage(ByteArray(64))
+
+        assertFailsWith<MdocTransportException> {
+            mdocReader.waitForMessage()
+        }
+        assertEquals(MdocTransport.State.FAILED, mdocReader.state.value)
+        assertEquals(1, tag.closeCount)
+
+        // Calling close() after failure must be idempotent and not close the tag a second time.
+        mdocReader.close()
+        assertEquals(1, tag.closeCount)
+        mdoc.close()
+    }
+
+    @Test
+    fun testTagClosedOnOpenFailure() = runTest {
+        val mdoc = NfcTransportMdoc(
+            role = MdocRole.MDOC,
+            options = MdocTransportOptions(),
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
+        )
+        val mdocReader = NfcTransportMdocReader(
+            role = MdocRole.MDOC_READER,
+            options = MdocTransportOptions(),
+            connectionMethod = MdocConnectionMethodNfc(0xffff, 0x10000)
+        )
+        val tag = LoopbackIsoTag(mdoc)
+        tag.failNextTransceive = true
+        mdocReader.setTag(tag)
+
+        val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        assertFailsWith<MdocTransportException> {
+            mdocReader.open(eSenderKey = eDeviceKey.publicKey)
+        }
+        assertEquals(MdocTransport.State.FAILED, mdocReader.state.value)
+        assertEquals(1, tag.closeCount)
+
+        mdocReader.close()
+        assertEquals(1, tag.closeCount)
     }
 }

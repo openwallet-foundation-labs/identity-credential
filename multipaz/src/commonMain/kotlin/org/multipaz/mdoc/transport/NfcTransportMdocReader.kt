@@ -3,6 +3,7 @@ package org.multipaz.mdoc.transport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlinx.io.bytestring.append
@@ -43,6 +45,16 @@ class NfcTransportMdocReader(
     private val mutex = Mutex()
 
     private lateinit var tag: NfcIsoTag
+    private var tagClosed = false
+
+    private suspend fun closeTag() {
+        if (!tagClosed && ::tag.isInitialized) {
+            tagClosed = true
+            withContext(NonCancellable) {
+                tag.close()
+            }
+        }
+    }
 
     private val _state = MutableStateFlow<State>(State.IDLE)
     override val state: StateFlow<State> = _state.asStateFlow()
@@ -63,6 +75,7 @@ class NfcTransportMdocReader(
      */
     fun setTag(tag: NfcIsoTag) {
         this.tag = tag
+        this.tagClosed = false
         commandDataFieldMaxLength = min(
             connectionMethod.commandDataFieldMaxLength.toInt(),
             tag.maxTransceiveLength - 7
@@ -243,6 +256,7 @@ class NfcTransportMdocReader(
     override suspend fun close() {
         mutex.withLock {
             if (_state.value == State.FAILED || _state.value == State.CLOSED) {
+                closeTag()
                 return
             }
             Logger.i(TAG, "close")
@@ -250,16 +264,14 @@ class NfcTransportMdocReader(
             ioJob?.cancel()
             ioJob = null
             incomingMessages.close()
-            if (::tag.isInitialized) {
-                tag.close()
-            }
+            closeTag()
             _state.value = State.CLOSED
         }
     }
 
     private var inError = false
 
-    private fun failTransport(error: Throwable) {
+    private suspend fun failTransport(error: Throwable) {
         check(mutex.isLocked) { "failTransport called without holding lock" }
         inError = true
         if (_state.value == State.FAILED || _state.value == State.CLOSED) {
@@ -268,6 +280,7 @@ class NfcTransportMdocReader(
         Logger.w(TAG, "Failing transport with error", error)
         Error().printStackTrace()
         incomingMessages.close(error)
+        closeTag()
         ioJob?.cancel()
         ioJob = null
         incomingMessages.close()

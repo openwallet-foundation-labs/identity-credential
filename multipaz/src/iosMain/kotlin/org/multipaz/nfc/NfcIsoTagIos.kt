@@ -30,11 +30,14 @@ internal class NfcIsoTagIos(
     internal var invalidateSessionOnClose = false
 
     override suspend fun close() {
+        if (closeCalled) {
+            return
+        }
+        closeCalled = true
         if (invalidateSessionOnClose) {
             Logger.i(TAG, "close: Invalidating session")
             session.invalidateSession()
         }
-        closeCalled = true
     }
 
     override suspend fun updateDialogMessage(message: String) {
