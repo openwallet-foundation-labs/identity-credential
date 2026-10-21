@@ -1,7 +1,9 @@
 @file:OptIn(ExperimentalWasmDsl::class)
 
 import org.gradle.kotlin.dsl.project
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.multipaz.lokalize.util.OutputFormat
 
 plugins {
@@ -20,14 +22,19 @@ val projectVersionName: String by rootProject.extra
 val disableWebTargets = project.properties["disable.web.targets"]?.toString()?.toBoolean() ?: false
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    androidTarget()
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
 
     jvm()
 

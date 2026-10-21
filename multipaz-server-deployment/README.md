@@ -15,7 +15,7 @@ The container bundles:
 
 ## Prerequisites
 
-- Java 17+ (for building)
+- Java 21+ (for building)
 - Podman or Docker (for running containers)
 
 ## Installing Podman

@@ -32,7 +32,7 @@ buildConfig {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
@@ -156,6 +156,7 @@ kotlin {
             dependsOn(javaSharedMain)
             dependencies {
                 implementation(libs.ktor.client.java)
+                implementation(libs.android.keyattestation)
             }
         }
 

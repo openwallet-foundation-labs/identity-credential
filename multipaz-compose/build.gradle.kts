@@ -23,7 +23,7 @@ val projectVersionName: String by rootProject.extra
 val disableWebTargets = project.properties["disable.web.targets"]?.toString()?.toBoolean() ?: false
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
