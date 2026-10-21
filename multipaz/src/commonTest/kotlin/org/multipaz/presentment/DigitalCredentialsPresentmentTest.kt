@@ -830,7 +830,7 @@ class DigitalCredentialsPresentmentTest {
                           "format": "dc+sd-jwt",
                           "meta": { "vct_values": [ "urn:eudi:pid:1" ] },
                           "claims": [
-                            { "path": ["age_equal_or_over", "18"] },
+                            { "path": ["place_of_birth", "country"] },
                             { "path": ["given_name"] },
                             { "path": ["family_name"] }
                     ]}]}                
@@ -843,8 +843,8 @@ class DigitalCredentialsPresentmentTest {
                       "vct": "urn:eudi:pid:1",
                       "family_name": "Mustermann",
                       "given_name": "Erika",
-                      "age_equal_or_over": {
-                        "18": true
+                      "place_of_birth": {
+                        "country": "ZZ"
                       }
                     }
                 """.trimIndent().trim(),
@@ -975,7 +975,7 @@ class DigitalCredentialsPresentmentTest {
                           "format": "dc+sd-jwt",
                           "meta": { "vct_values": [ "urn:eudi:pid:1" ] },
                           "claims": [
-                            { "path": ["age_equal_or_over", "18"] },
+                            { "path": ["place_of_birth", "country"] },
                             { "path": ["given_name"] },
                             { "path": ["family_name"] }
                     ]}]}                
@@ -993,8 +993,8 @@ class DigitalCredentialsPresentmentTest {
                       "vct": "urn:eudi:pid:1",
                       "family_name": "Mustermann",
                       "given_name": "Erika",
-                      "age_equal_or_over": {
-                        "18": true
+                      "place_of_birth": {
+                        "country": "ZZ"
                       }
                     }
                 """.trimIndent().trim(),
@@ -1040,7 +1040,7 @@ class DigitalCredentialsPresentmentTest {
                           "format": "dc+sd-jwt",
                           "meta": { "vct_values": [ "urn:eudi:pid:1" ] },
                           "claims": [
-                            { "path": ["age_equal_or_over", "18"] },
+                            { "path": ["place_of_birth", "country"] },
                             { "path": ["given_name"] },
                             { "path": ["family_name"] }
                     ]}]}                
@@ -1076,7 +1076,7 @@ class DigitalCredentialsPresentmentTest {
                           "format": "dc+sd-jwt",
                           "meta": { "vct_values": [ "urn:eudi:pid:1" ] },
                           "claims": [
-                            { "path": ["age_equal_or_over", "18"] },
+                            { "path": ["place_of_birth", "country"] },
                             { "path": ["given_name"] },
                             { "path": ["family_name"] }
                     ]}]}                

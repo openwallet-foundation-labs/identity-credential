@@ -254,8 +254,8 @@ function rawDcqlReset_sdjwt1() {
       "claims": [
         {
           "path": [
-            "age_equal_or_over",
-            "18"
+            "place_of_birth",
+            "country"
           ]
         },
         {
@@ -275,15 +275,15 @@ function rawDcqlReset_age_mdocs() {
   textArea.value = `{
   "credentials": [
     {
-      "id": "pid",
+      "id": "av",
       "format": "mso_mdoc",
       "meta": {
-        "doctype_value": "eu.europa.ec.eudi.pid.1"
+        "doctype_value": "eu.europa.ec.av.1"
       },
       "claims": [
         {
           "path": [
-            "eu.europa.ec.eudi.pid.1",
+            "eu.europa.ec.av.1",
             "age_over_18"
           ],
           "values": [
@@ -333,7 +333,7 @@ function rawDcqlReset_age_mdocs() {
     {
       "options": [
         [
-          "pid"
+          "av"
         ],
         [
           "mdl"
@@ -773,7 +773,7 @@ function rawDcqlReset_mdl_pid_photoid_mandatory() {
         { "path": ["eu.europa.ec.eudi.pid.1", "family_name" ] },
         { "path": ["eu.europa.ec.eudi.pid.1", "given_name" ] },
         { "path": ["eu.europa.ec.eudi.pid.1", "birth_date" ] },
-        { "path": ["eu.europa.ec.eudi.pid.1", "birth_place" ] },
+        { "path": ["eu.europa.ec.eudi.pid.1", "place_of_birth" ] },
         { "path": ["eu.europa.ec.eudi.pid.1", "nationality" ] },
         { "path": ["eu.europa.ec.eudi.pid.1", "expiry_date" ] },
         { "path": ["eu.europa.ec.eudi.pid.1", "issuing_authority" ] },

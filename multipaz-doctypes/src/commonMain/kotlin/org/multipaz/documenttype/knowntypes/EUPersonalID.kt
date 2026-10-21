@@ -27,6 +27,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.doctypes.localization.LocalizedStrings
 import org.multipaz.doctypes.localization.GeneratedStringKeys
 import org.multipaz.documenttype.DocumentAttributeSensitivity
@@ -35,7 +36,7 @@ import org.multipaz.documenttype.PortraitEquivalenceRequest
 /**
  * Object containing the metadata of the EU Personal ID Document Type.
  *
- * Source: https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/blob/main/docs/annexes/annex-06-pid-rulebook.md
+ * Source: https://github.com/eu-digital-identity-wallet/eudi-doc-attestation-rulebooks-catalog/blob/main/rulebooks/pid/pid-rulebook.md
  */
 object EUPersonalID {
     const val EUPID_DOCTYPE = "eu.europa.ec.eudi.pid.1"
@@ -87,68 +88,6 @@ object EUPersonalID {
                 sampleValueJson = JsonPrimitive(SampleData.BIRTH_DATE)
             )
             .addAttribute(
-                type = DocumentAttributeType.Number,
-                identifier = "age_in_years",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_AGE_IN_YEARS),
-                description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_AGE_IN_YEARS),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
-                sensitivity = DocumentAttributeSensitivity.AGE_INFORMATION,
-                icon = Icon.TODAY,
-                sampleValueMdoc = SampleData.AGE_IN_YEARS.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.AGE_IN_YEARS)
-            )
-            .addAttribute(
-                type = DocumentAttributeType.Number,
-                identifier = "age_birth_year",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_YEAR_OF_BIRTH),
-                description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_YEAR_OF_BIRTH),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
-                sensitivity = DocumentAttributeSensitivity.AGE_INFORMATION,
-                icon = Icon.TODAY,
-                sampleValueMdoc = SampleData.AGE_BIRTH_YEAR.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.AGE_BIRTH_YEAR)
-            )
-            .addJsonAttribute(
-                type = DocumentAttributeType.ComplexType,
-                identifier = "age_equal_or_over",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_OLDER_THAN_AGE_ATTESTATIONS),
-                description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_OLDER_THAN_AGE_ATTESTATIONS),
-                sensitivity = DocumentAttributeSensitivity.AGE_INFORMATION,
-                icon = Icon.TODAY,
-                sampleValue = buildJsonObject {
-                    put("18", JsonPrimitive(SampleData.AGE_OVER_18))
-                    put("21", JsonPrimitive(SampleData.AGE_OVER_21))
-                }
-            )
-            .addAttribute(
-                type = DocumentAttributeType.Boolean,
-                mdocIdentifier = "age_over_18",
-                jsonIdentifier = "age_equal_or_over.18",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_OLDER_THAN_18),
-                description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_OLDER_THAN_18),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
-                sensitivity = DocumentAttributeSensitivity.AGE_INFORMATION,
-                icon = Icon.TODAY,
-                sampleValueMdoc = SampleData.AGE_OVER_18.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.AGE_OVER_18)
-            )
-            .addAttribute(
-                type = DocumentAttributeType.Boolean,
-                mdocIdentifier = "age_over_21",
-                jsonIdentifier = "age_equal_or_over.21",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_OLDER_THAN_21),
-                description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_OLDER_THAN_21),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
-                sensitivity = DocumentAttributeSensitivity.AGE_INFORMATION,
-                icon = Icon.TODAY,
-                sampleValueMdoc = SampleData.AGE_OVER_21.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.AGE_OVER_21)
-            )
-            .addAttribute(
                 type = DocumentAttributeType.String,
                 mdocIdentifier = "family_name_birth",
                 jsonIdentifier = "birth_family_name",
@@ -172,63 +111,48 @@ object EUPersonalID {
                 sampleValueMdoc = SampleData.GIVEN_NAME_BIRTH.toDataItem(),
                 sampleValueJson = JsonPrimitive(SampleData.GIVEN_NAME_BIRTH)
             )
-            .addMdocAttribute(
-                type = DocumentAttributeType.String,
-                identifier = "birth_place",
+            .addAttribute(
+                type = DocumentAttributeType.ComplexType,
+                identifier = "place_of_birth",
                 displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_PLACE_OF_BIRTH),
                 description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_PLACE_OF_BIRTH),
                 mandatory = true,
                 mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
-                sampleValue = SampleData.BIRTH_PLACE.toDataItem(),
-            )
-            .addJsonAttribute(
-                type = DocumentAttributeType.ComplexType,
-                identifier = "place_of_birth",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_PLACE_OF_BIRTH),
-                description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_PLACE_OF_BIRTH),
-                icon = Icon.PLACE,
-                sampleValue = buildJsonObject {
+                sampleValueMdoc = buildCborMap {
+                    put("country", SampleData.BIRTH_COUNTRY)
+                    put("region", SampleData.BIRTH_STATE)
+                    put("locality", SampleData.BIRTH_CITY)
+                },
+                sampleValueJson = buildJsonObject {
                     put("country", JsonPrimitive(SampleData.BIRTH_COUNTRY))
                     put("region", JsonPrimitive(SampleData.BIRTH_STATE))
                     put("locality", JsonPrimitive(SampleData.BIRTH_CITY))
                 }
             )
-            .addAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
-                mdocIdentifier = "birth_country",
-                jsonIdentifier = "place_of_birth.country",
+                identifier = "place_of_birth.country",
                 displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_COUNTRY_OF_BIRTH),
                 description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_COUNTRY_OF_BIRTH),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
-                sampleValueMdoc = SampleData.BIRTH_COUNTRY.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.BIRTH_COUNTRY)
+                sampleValue = JsonPrimitive(SampleData.BIRTH_COUNTRY)
             )
-            .addAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.String,
-                mdocIdentifier = "birth_state",
-                jsonIdentifier = "place_of_birth.region",
+                identifier = "place_of_birth.region",
                 displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_STATE_OF_BIRTH),
                 description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_STATE_OF_BIRTH),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
-                sampleValueMdoc = SampleData.BIRTH_STATE.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.BIRTH_STATE)
+                sampleValue = JsonPrimitive(SampleData.BIRTH_STATE)
             )
-            .addAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.String,
-                mdocIdentifier = "birth_city",
-                jsonIdentifier = "place_of_birth.locality",
+                identifier = "place_of_birth.locality",
                 displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_CITY_OF_BIRTH),
                 description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_CITY_OF_BIRTH),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
-                sampleValueMdoc = SampleData.BIRTH_CITY.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.BIRTH_CITY)
+                sampleValue = JsonPrimitive(SampleData.BIRTH_CITY)
             )
             .addJsonAttribute(
                 type = DocumentAttributeType.ComplexType,
@@ -318,17 +242,13 @@ object EUPersonalID {
                 sampleValueMdoc = SampleData.RESIDENT_STREET.toDataItem(),
                 sampleValueJson = JsonPrimitive(SampleData.RESIDENT_STREET)
             )
-            .addAttribute(
+            .addJsonAttribute(
                 type = DocumentAttributeType.String,
-                mdocIdentifier = "resident_house_number",
-                jsonIdentifier = "address.house_number",
+                identifier = "address.house_number",
                 displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_ATTRIBUTE_RESIDENT_HOUSE_NUMBER),
                 description = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_DESCRIPTION_RESIDENT_HOUSE_NUMBER),
-                mandatory = false,
-                mdocNamespace = EUPID_NAMESPACE,
                 icon = Icon.PLACE,
-                sampleValueMdoc = SampleData.RESIDENT_HOUSE_NUMBER.toDataItem(),
-                sampleValueJson = JsonPrimitive(SampleData.RESIDENT_HOUSE_NUMBER)
+                sampleValue = JsonPrimitive(SampleData.RESIDENT_HOUSE_NUMBER)
             )
             .addAttribute(
                 type = DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -481,52 +401,35 @@ object EUPersonalID {
                 sampleValueJson = JsonPrimitive(SampleData.MOBILE_PHONE_NUMBER)
             )
             .addSampleRequest(
-                id = "age_over_18",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_AGE_OVER_18),
+                id = "name_and_portrait",
+                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_NAME_AND_PORTRAIT),
                 mdocDataElements = mapOf(
                     EUPID_NAMESPACE to mapOf(
-                        "age_over_18" to false,
-                    )
-                ),
-                jsonClaims = listOf("age_equal_or_over.18")
-            )
-            .addSampleRequest(
-                id = "age_over_18_zkp",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_AGE_OVER_18_ZKP),
-                mdocDataElements = mapOf(
-                    EUPID_NAMESPACE to mapOf(
-                        "age_over_18" to false,
-                    )
-                ),
-                mdocUseZkp = true
-            )
-            .addSampleRequest(
-                id = "age_over_18_and_portrait",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_AGE_OVER_18_AND_PORTRAIT),
-                mdocDataElements = mapOf(
-                    EUPID_NAMESPACE to mapOf(
-                        "age_over_18" to false,
+                        "family_name" to false,
+                        "given_name" to false,
                         "portrait" to false,
                     )
                 ),
-                jsonClaims = listOf("age_equal_or_over.18", "picture")
+                jsonClaims = listOf("family_name", "given_name", "picture")
             )
             .addSampleRequest(
-                id = "age_over_18_and_portrait_equivalence",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_AGE_OVER_18_AND_PORTRAIT_EQUIVALENCE),
+                id = "name_and_portrait_equivalence",
+                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_NAME_AND_PORTRAIT_EQUIVALENCE),
                 mdocDataElements = mapOf(
                     EUPID_NAMESPACE to mapOf(
-                        "age_over_18" to false,
+                        "family_name" to false,
+                        "given_name" to false,
                     )
                 ),
                 portraitEquivalenceRequest = PortraitEquivalenceRequest()
             )
             .addSampleRequest(
-                id = "age_over_18_and_portrait_or_portrait_equivalence",
-                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_AGE_OVER_18_AND_PORTRAIT_OR_PORTRAIT_EQUIVALENCE),
+                id = "name_and_portrait_or_portrait_equivalence",
+                displayName = getLocalizedString(GeneratedStringKeys.EU_PERSONAL_ID_REQUEST_NAME_AND_PORTRAIT_OR_PORTRAIT_EQUIVALENCE),
                 mdocDataElements = mapOf(
                     EUPID_NAMESPACE to mapOf(
-                        "age_over_18" to false,
+                        "family_name" to false,
+                        "given_name" to false,
                     )
                 ),
                 portraitEquivalenceRequest = PortraitEquivalenceRequest(
@@ -541,7 +444,7 @@ object EUPersonalID {
                         "family_name" to false,
                         "given_name" to false,
                         "birth_date" to false,
-                        "birth_place" to false,
+                        "place_of_birth" to false,
                         "nationality" to false,
                         "expiry_date" to false,
                         "issuing_authority" to false,

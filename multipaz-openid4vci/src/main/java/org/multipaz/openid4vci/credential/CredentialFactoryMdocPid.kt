@@ -13,16 +13,8 @@ import org.multipaz.crypto.EcPublicKey
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.util.toBase64Url
 import kotlin.time.Clock
-import kotlinx.datetime.DateTimeUnit
 import kotlin.time.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.yearsUntil
 import org.multipaz.cbor.RawCbor
-import org.multipaz.cbor.Simple
-import org.multipaz.cbor.Uint
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItemFullDate
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
@@ -98,12 +90,6 @@ class CredentialFactoryMdocPid : CredentialFactory {
         val mdocType = EUPersonalID.getDocumentType()
             .mdocDocumentType!!.namespaces[EUPersonalID.EUPID_NAMESPACE]!!
 
-        val timeZone = TimeZone.currentSystemDefault()
-        val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
-        // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
-        val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
-        val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
-
         val issuerNamespaces = buildIssuerNamespaces {
             addNamespace(EUPersonalID.EUPID_NAMESPACE) {
 
@@ -135,13 +121,6 @@ class CredentialFactoryMdocPid : CredentialFactory {
                     )
                     added.add("portrait")
                 }
-
-                // Values derived from the birth_date
-                addDataElement("age_in_years",
-                    Uint(dateOfBirth.yearsUntil(now.toLocalDateTime(timeZone).date).toULong()))
-                addDataElement("age_birth_year", Uint(dateOfBirth.year.toULong()))
-                addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
-                addDataElement( "age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
 
                 // Add all mandatory elements for completeness. This will come from the System of
                 // Record in the future

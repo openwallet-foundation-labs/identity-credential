@@ -452,8 +452,8 @@ class MatcherTest {
                           "claims": [
                             {
                               "path": [
-                                "age_equal_or_over",
-                                "18"
+                                "place_of_birth",
+                                "locality"
                               ]
                             },
                             {
@@ -473,11 +473,11 @@ class MatcherTest {
                   set_id 0 openid4vp-v1-signed
                   SetEntry set_index 0
                     cred_id 0 openid4vp-v1-signed __EU PID__
-                    Older than 18: true
+                    City of birth: "Sample City"
                     Photo of holder: Image (5318 bytes)
                   SetEntry set_index 0
                     cred_id 0 openid4vp-v1-signed __EU PID 2__
-                    Older than 18: true
+                    City of birth: "Sample City"
                     Photo of holder: Image (5318 bytes)
             """.trimIndent().trim() + "\n",
             matcherResult
@@ -730,12 +730,6 @@ class MatcherTest {
             """
                 Set
                   set_id 0 openid4vp-v1-signed
-                  SetEntry set_index 0
-                    cred_id 0 openid4vp-v1-signed __EU PID__
-                    Older than 18: true
-                  SetEntry set_index 0
-                    cred_id 0 openid4vp-v1-signed __EU PID 2__
-                    Older than 18: true
                   SetEntry set_index 0
                     cred_id 0 openid4vp-v1-signed __mDL__
                     Older than 18 years: true
@@ -1808,7 +1802,7 @@ class MatcherTest {
                   SetEntry set_index 0
                     cred_id 0 openid4vp-v1-signed __EU PID Max__
                     Given names: Max
-                    Older than 18: true
+                    18: true
             """.trimIndent().trim() + "\n",
             matcherResult
         )
@@ -1851,7 +1845,7 @@ class MatcherTest {
                   SetEntry set_index 0
                     cred_id 0 openid4vp-v1-signed __EU PID Erika__
                     Given names: Erika
-                    Older than 18: false
+                    18: false
             """.trimIndent().trim() + "\n",
             matcherResult
         )
@@ -2129,12 +2123,6 @@ class MatcherTest {
                 Set
                   set_id 0 org-iso-mdoc
                   SetEntry set_index 0
-                    cred_id 0 org-iso-mdoc __EU PID__
-                    Older than 18: true
-                  SetEntry set_index 0
-                    cred_id 0 org-iso-mdoc __EU PID 2__
-                    Older than 18: true
-                  SetEntry set_index 0
                     cred_id 0 org-iso-mdoc __mDL__
                     Older than 18 years: true
                   SetEntry set_index 0
@@ -2250,8 +2238,8 @@ class MatcherTest {
                           "claims": [
                             {
                               "path": [
-                                "age_equal_or_over",
-                                "18"
+                                "place_of_birth",
+                                "locality"
                               ]
                             },
                             {
@@ -2271,11 +2259,11 @@ class MatcherTest {
                   set_id 0 org-iso-mdoc
                   SetEntry set_index 0
                     cred_id 0 org-iso-mdoc __EU PID__
-                    Older than 18: true
+                    City of birth: "Sample City"
                     Photo of holder: Image (5318 bytes)
                   SetEntry set_index 0
                     cred_id 0 org-iso-mdoc __EU PID 2__
-                    Older than 18: true
+                    City of birth: "Sample City"
                     Photo of holder: Image (5318 bytes)
             """.trimIndent().trim() + "\n",
             matcherResult
@@ -5561,8 +5549,8 @@ class MatcherTest {
                         displayNames["address.street_address"].asTstr
                     )
                     Assert.assertEquals(
-                        "Older than 18",
-                        displayNames["age_equal_or_over.18"].asTstr
+                        "City of birth",
+                        displayNames["place_of_birth.locality"].asTstr
                     )
                 }
             }
@@ -5691,7 +5679,7 @@ class MatcherTest {
                           "claims": [
                             {"path": ["given_name"]},
                             {"path": ["address", "street_address"]},
-                            {"path": ["age_equal_or_over", "18"], "values": [true]},
+                            {"path": ["place_of_birth", "locality"], "values": ["Sample City"]},
                             {"path": ["nationalities", null]},
                             {"path": ["nationalities", 0], "values": ["DK"]},
                             {"path": ["degrees", null, "type"]},
@@ -5711,7 +5699,7 @@ class MatcherTest {
                     cred_id 0 openid4vp-v1-signed __EU PID Erika__
                     Given names
                     Resident street
-                    Older than 18
+                    City of birth
                     Nationality
                     Nationality
                     type
@@ -5720,7 +5708,7 @@ class MatcherTest {
                     cred_id 0 openid4vp-v1-signed __EU PID Max__
                     Given names
                     Resident street
-                    Older than 18
+                    City of birth
                     Nationality
                     Nationality
                     type
