@@ -28,6 +28,7 @@ import org.multipaz.securearea.SecureArea
 import org.multipaz.storage.StorageTableSpec
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.buildCborMap
@@ -341,7 +342,7 @@ abstract class Credential {
      */
     open suspend fun validate(
         issuerProvidedAuthenticationData: ByteString,
-        now: Instant? = null
+        now: Instant? = Clock.System.now()
     ): ValidationResult = ValidationResult.SUCCESS
 
     /**
@@ -350,7 +351,7 @@ abstract class Credential {
      * @param now reference time for checking expiration and validity intervals, or `null` to skip.
      * @return a [ValidationResult] containing any errors or warnings found.
      */
-    open suspend fun validate(now: Instant? = null): ValidationResult {
+    open suspend fun validate(now: Instant? = Clock.System.now()): ValidationResult {
         if (!isCertified) {
             return ValidationResult(
                 listOf(ValidationFinding(ValidationSeverity.ERROR, "Credential is not certified"))

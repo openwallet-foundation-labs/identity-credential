@@ -149,7 +149,7 @@ class SdJwt private constructor(
      * @throws SignatureVerificationException if the issuer signature or key-binding signature failed to validate.
      */
     suspend fun verify(
-        issuerKey: PublicKey? = null,
+        issuerKey: PublicKey?,
     ): JsonObject {
         // TODO: make sure we perform all checks in Section 7.1
         if (issuerKey != null) {
@@ -171,10 +171,10 @@ class SdJwt private constructor(
     /**
      * Validates this [SdJwt] according to RFC 9901.
      *
-     * @param now reference time to check expiration and validity windows, or `null`.
+     * @param now reference time to check expiration and validity windows, or `null` to skip.
      * @return a [ValidationResult] containing any errors or warnings.
      */
-    suspend fun validate(now: Instant? = null): ValidationResult = buildValidationResult {
+    suspend fun validate(now: Instant? = Clock.System.now()): ValidationResult = buildValidationResult {
         // 1. Header validation
         val typ = jwtHeader["typ"]?.jsonPrimitive?.content
         val recognizedTypes = listOf(
@@ -353,12 +353,12 @@ class SdJwt private constructor(
      * - The 'status' claim (if present) must be a valid status list claim.
      *
      * @param expectedVct the expected Verifiable Credential Type, or `null` to only check that 'vct' is present.
-     * @param now reference time to check expiration and validity windows, or `null`.
+     * @param now reference time to check expiration and validity windows, or `null` to skip.
      * @return a [ValidationResult] containing any errors or warnings.
      */
     suspend fun validateVc(
         expectedVct: String? = null,
-        now: Instant? = null
+        now: Instant? = Clock.System.now()
     ): ValidationResult = buildValidationResult {
         addAll(validate(now))
 
@@ -728,12 +728,12 @@ class SdJwt private constructor(
          * Defensively validates a compact serialization string for an SD-JWT according to RFC 9901.
          *
          * @param compactSerialization the compact serialization string.
-         * @param now reference time to check expiration and validity windows, or `null`.
+         * @param now reference time to check expiration and validity windows, or `null` to skip.
          * @return a [ValidationResult] containing any errors or warnings.
          */
         suspend fun validate(
             compactSerialization: String,
-            now: Instant? = null
+            now: Instant? = Clock.System.now()
         ): ValidationResult = buildValidationResult {
             val sdJwt = validateCompactSerializationStructure(this, compactSerialization)
             if (sdJwt != null) {
@@ -747,13 +747,13 @@ class SdJwt private constructor(
          *
          * @param compactSerialization the compact serialization string.
          * @param expectedVct the expected Verifiable Credential Type, or `null`.
-         * @param now reference time to check expiration and validity windows, or `null`.
+         * @param now reference time to check expiration and validity windows, or `null` to skip.
          * @return a [ValidationResult] containing any errors or warnings.
          */
         suspend fun validateVc(
             compactSerialization: String,
             expectedVct: String? = null,
-            now: Instant? = null
+            now: Instant? = Clock.System.now()
         ): ValidationResult = buildValidationResult {
             val sdJwt = validateCompactSerializationStructure(this, compactSerialization)
             if (sdJwt != null) {

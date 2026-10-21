@@ -76,17 +76,17 @@ class MobileSecurityObjectValidationTest {
     @Test
     fun testVersionValidation() {
         val mso11 = createValidMso().copy(version = "1.1")
-        assertFalse(mso11.validate().hasErrors)
-        assertFalse(mso11.validate().hasWarnings)
+        assertFalse(mso11.validate(now = validDate + 5.days).hasErrors)
+        assertFalse(mso11.validate(now = validDate + 5.days).hasWarnings)
 
         val msoEmpty = createValidMso().copy(version = "")
-        assertTrue(msoEmpty.validate().hasErrors)
-        assertTrue(msoEmpty.validate().errors.any { it.message.contains("version cannot be empty") })
+        assertTrue(msoEmpty.validate(now = validDate + 5.days).hasErrors)
+        assertTrue(msoEmpty.validate(now = validDate + 5.days).errors.any { it.message.contains("version cannot be empty") })
 
         val msoUnknown = createValidMso().copy(version = "2.0")
-        assertFalse(msoUnknown.validate().hasErrors)
-        assertTrue(msoUnknown.validate().hasWarnings)
-        assertTrue(msoUnknown.validate().warnings.any { it.message.contains("unrecognized") })
+        assertFalse(msoUnknown.validate(now = validDate + 5.days).hasErrors)
+        assertTrue(msoUnknown.validate(now = validDate + 5.days).hasWarnings)
+        assertTrue(msoUnknown.validate(now = validDate + 5.days).warnings.any { it.message.contains("unrecognized") })
     }
 
     @Test
@@ -95,17 +95,17 @@ class MobileSecurityObjectValidationTest {
             digestAlgorithm = Algorithm.SHA384,
             valueDigests = mapOf("ns" to mapOf(0L to ByteString(ByteArray(48))))
         )
-        assertFalse(msoSha384.validate().hasErrors)
+        assertFalse(msoSha384.validate(now = validDate + 5.days).hasErrors)
 
         val msoSha512 = createValidMso().copy(
             digestAlgorithm = Algorithm.SHA512,
             valueDigests = mapOf("ns" to mapOf(0L to ByteString(ByteArray(64))))
         )
-        assertFalse(msoSha512.validate().hasErrors)
+        assertFalse(msoSha512.validate(now = validDate + 5.days).hasErrors)
 
         val msoUnsupported = createValidMso().copy(digestAlgorithm = Algorithm.ES256)
-        assertTrue(msoUnsupported.validate().hasErrors)
-        assertTrue(msoUnsupported.validate().errors.any { it.message.contains("Unsupported digest algorithm") })
+        assertTrue(msoUnsupported.validate(now = validDate + 5.days).hasErrors)
+        assertTrue(msoUnsupported.validate(now = validDate + 5.days).errors.any { it.message.contains("Unsupported digest algorithm") })
     }
 
     @Test
@@ -114,7 +114,7 @@ class MobileSecurityObjectValidationTest {
         val msoWrongLength = createValidMso().copy(
             valueDigests = mapOf("ns" to mapOf(0L to ByteString(ByteArray(20))))
         )
-        val result = msoWrongLength.validate()
+        val result = msoWrongLength.validate(now = validDate + 5.days)
         assertTrue(result.hasErrors)
         assertTrue(result.errors.any { it.message.contains("expected 32 bytes") })
     }
@@ -127,7 +127,7 @@ class MobileSecurityObjectValidationTest {
                 "ns2" to mapOf(0L to ByteString(ByteArray(32))) // digestID 0 in both ns1 and ns2 is allowed
             )
         )
-        val result = mso.validate()
+        val result = mso.validate(now = validDate + 5.days)
         assertFalse(result.hasErrors)
     }
 
@@ -136,7 +136,7 @@ class MobileSecurityObjectValidationTest {
         val msoWithFraction = createValidMso().copy(
             signedAt = validDate + 100.nanoseconds
         )
-        val result = msoWithFraction.validate()
+        val result = msoWithFraction.validate(now = validDate + 5.days)
         assertTrue(result.hasErrors)
         assertTrue(result.errors.any { it.message.contains("fractional seconds") })
     }
@@ -148,24 +148,24 @@ class MobileSecurityObjectValidationTest {
             signedAt = validDate + 10.seconds,
             validFrom = validDate
         )
-        assertTrue(msoEarlyValidFrom.validate().hasErrors)
-        assertTrue(msoEarlyValidFrom.validate().errors.any { it.message.contains("equal to or later than signed") })
+        assertTrue(msoEarlyValidFrom.validate(now = validDate + 5.days).hasErrors)
+        assertTrue(msoEarlyValidFrom.validate(now = validDate + 5.days).errors.any { it.message.contains("equal to or later than signed") })
 
         // validUntil before validFrom
         val msoExpired = createValidMso().copy(
             validFrom = validDate + 10.days,
             validUntil = validDate
         )
-        assertTrue(msoExpired.validate().hasErrors)
-        assertTrue(msoExpired.validate().errors.any { it.message.contains("must be later than validFrom") })
+        assertTrue(msoExpired.validate(now = validDate + 5.days).hasErrors)
+        assertTrue(msoExpired.validate(now = validDate + 5.days).errors.any { it.message.contains("must be later than validFrom") })
 
         // expectedUpdate after validUntil
         val msoLateUpdate = createValidMso().copy(
             validUntil = validDate + 10.days,
             expectedUpdate = validDate + 20.days
         )
-        assertTrue(msoLateUpdate.validate().hasWarnings)
-        assertTrue(msoLateUpdate.validate().warnings.any { it.message.contains("expectedUpdate") })
+        assertTrue(msoLateUpdate.validate(now = validDate + 5.days).hasWarnings)
+        assertTrue(msoLateUpdate.validate(now = validDate + 5.days).warnings.any { it.message.contains("expectedUpdate") })
     }
 
     @Test
@@ -187,14 +187,14 @@ class MobileSecurityObjectValidationTest {
     @Test
     fun testValidateDataItem() {
         val validMso = createValidMso()
-        val validResult = MobileSecurityObject.validate(validMso.toDataItem())
+        val validResult = MobileSecurityObject.validate(validMso.toDataItem(), now = validDate + 5.days)
         assertFalse(validResult.hasErrors)
 
         // Missing required keys
         val missingKeysCbor = buildCborMap {
             put("version", "1.0")
         }
-        val invalidResult = MobileSecurityObject.validate(missingKeysCbor)
+        val invalidResult = MobileSecurityObject.validate(missingKeysCbor, now = validDate + 5.days)
         assertTrue(invalidResult.hasErrors)
         assertTrue(invalidResult.errors.any { it.message.contains("missing required key") })
     }

@@ -17,6 +17,7 @@ import org.multipaz.revocation.RevocationStatus
 import org.multipaz.util.Logger
 import org.multipaz.validation.ValidationResult
 import org.multipaz.validation.buildValidationResult
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
@@ -138,7 +139,7 @@ data class MobileSecurityObject(
      * current time validity checks.
      * @return a [ValidationResult] containing any errors or warnings.
      */
-    fun validate(now: Instant? = null): ValidationResult = buildValidationResult {
+    fun validate(now: Instant? = Clock.System.now()): ValidationResult = buildValidationResult {
         if (version !in listOf("1.0", "1.1")) {
             if (version.isEmpty()) {
                 addError("MSO version cannot be empty")
@@ -245,10 +246,10 @@ data class MobileSecurityObject(
          * Validates the CBOR structure of `MobileSecurityObject` according to ISO/IEC 18013-5:2021.
          *
          * @param dataItem a [DataItem] containing CBOR for `MobileSecurityObject`.
-         * @param now the reference time to check for expiration or validity interval, or `null`.
+         * @param now the reference time to check for expiration or validity interval, or `null` to skip.
          * @return a [ValidationResult] containing any errors or warnings.
          */
-        fun validate(dataItem: DataItem, now: Instant? = null): ValidationResult = buildValidationResult {
+        fun validate(dataItem: DataItem, now: Instant? = Clock.System.now()): ValidationResult = buildValidationResult {
             if (dataItem !is CborMap) {
                 addError("MobileSecurityObject dataItem is not a CBOR map")
                 return@buildValidationResult

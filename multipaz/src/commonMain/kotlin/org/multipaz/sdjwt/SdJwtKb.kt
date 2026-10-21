@@ -70,10 +70,10 @@ class SdJwtKb private constructor(
      * @throws IllegalStateException if [checkNonce], [checkAudience], or [checkCreationTime] returns false.
      */
     suspend fun verify(
-        issuerKey: PublicKey? = null,
-        checkNonce: (nonce: String) -> Boolean = { true },
-        checkAudience: (audience: String) -> Boolean = { true },
-        checkCreationTime: (creationTime: Instant) -> Boolean = { true },
+        issuerKey: PublicKey?,
+        checkNonce: (nonce: String) -> Boolean,
+        checkAudience: (audience: String) -> Boolean,
+        checkCreationTime: (creationTime: Instant) -> Boolean,
         transactionData: List<TransactionData<*>> = listOf()
     ): JsonObject {
         try {

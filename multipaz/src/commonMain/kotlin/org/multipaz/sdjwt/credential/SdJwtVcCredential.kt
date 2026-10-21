@@ -95,12 +95,12 @@ interface SdJwtVcCredential {
      * credential according to RFC 9901 and the SD-JWT VC profile.
      *
      * @param issuerProvidedAuthenticationData candidate issuer-provided static authentication data.
-     * @param now reference time to check expiration and validity windows, or `null`.
+     * @param now reference time to check expiration and validity windows, or `null` to skip.
      * @return a [ValidationResult] containing any errors or warnings.
      */
     suspend fun validateSdJwtVc(
         issuerProvidedAuthenticationData: ByteString,
-        now: Instant? = null
+        now: Instant? = Clock.System.now()
     ): ValidationResult = buildValidationResult {
         val compactSerialization = try {
             issuerProvidedAuthenticationData.decodeToString()
@@ -164,20 +164,20 @@ interface SdJwtVcCredential {
  * Validates candidate issuer-provided static authentication data against this SD-JWT VC credential.
  *
  * @param issuerProvidedAuthenticationData candidate issuer-provided static authentication data.
- * @param now reference time for checking expiration and validity intervals, or `null`.
+ * @param now reference time for checking expiration and validity intervals, or `null` to skip.
  * @return a [ValidationResult] containing any errors or warnings.
  */
 suspend fun SdJwtVcCredential.validate(
     issuerProvidedAuthenticationData: ByteString,
-    now: Instant? = null
+    now: Instant? = Clock.System.now()
 ): ValidationResult = (this as Credential).validate(issuerProvidedAuthenticationData, now)
 
 /**
  * Validates this certified SD-JWT VC credential against its current issuer-provided data.
  *
- * @param now reference time for checking expiration and validity intervals, or `null`.
+ * @param now reference time for checking expiration and validity intervals, or `null` to skip.
  * @return a [ValidationResult] containing any errors or warnings.
  */
 suspend fun SdJwtVcCredential.validate(
-    now: Instant? = null
+    now: Instant? = Clock.System.now()
 ): ValidationResult = (this as Credential).validate(now)
