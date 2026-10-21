@@ -1545,7 +1545,10 @@ class App private constructor (val promptModel: PromptModel) {
                 }
                 composable<SecureEnclaveSecureAreaDestination> { backStackEntry ->
                     WithAppBar(navController, "Secure Enclave Secure Area") {
-                        SecureEnclaveSecureAreaScreen(showToast = { message -> showToast(message) })
+                        SecureEnclaveSecureAreaScreen(
+                            promptModel = promptModel,
+                            showToast = { message -> showToast(message) }
+                        )
                     }
                 }
                 composable<CloudSecureAreaDestination> { backStackEntry ->

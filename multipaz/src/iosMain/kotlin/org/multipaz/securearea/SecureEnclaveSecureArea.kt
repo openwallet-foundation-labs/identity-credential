@@ -1,5 +1,12 @@
 package org.multipaz.securearea
 
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
@@ -19,6 +26,12 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Logger
 import org.multipaz.util.isRunningOnSimulator
+import org.multipaz.util.toByteArray
+import platform.Foundation.NSError
+import platform.LocalAuthentication.LAContext
+import platform.LocalAuthentication.LAErrorBiometryNotEnrolled
+import platform.LocalAuthentication.LAErrorPasscodeNotSet
+import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthenticationWithBiometrics
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -44,10 +57,17 @@ import kotlin.coroutines.coroutineContext
  * As the Secure Enclave does not current support key attestation, the base [KeyAttestation]
  * object is used.
  */
-class SecureEnclaveSecureArea private constructor(
+class SecureEnclaveSecureArea internal constructor(
     private val storageTable: StorageTable,
-    private val partitionId: String
+    private val partitionId: String,
+    private val getBiometryState: () -> BiometryState = ::defaultGetBiometryState
 ): SecureArea {
+
+    internal sealed class BiometryState {
+        data class Enrolled(val domainState: ByteString) : BiometryState()
+        data object NotEnrolled : BiometryState()
+        data object Unavailable : BiometryState()
+    }
 
     companion object {
         private val TAG = "SecureEnclaveSecureArea"
@@ -65,11 +85,35 @@ class SecureEnclaveSecureArea private constructor(
             return SecureEnclaveSecureArea(storage.getTable(tableSpec), partitionId)
         }
 
-        private val tableSpec = StorageTableSpec(
+        internal val tableSpec = StorageTableSpec(
             name = "SecureEnclaveSecureArea",
             supportPartitions = true,
             supportExpiration = false
         )
+
+        @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+        internal fun defaultGetBiometryState(): BiometryState {
+            if (isRunningOnSimulator()) {
+                return BiometryState.Unavailable
+            }
+            return memScoped {
+                val context = LAContext()
+                val errorPtr = alloc<ObjCObjectVar<NSError?>>()
+                if (context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, errorPtr.ptr)) {
+                    val domainState = context.evaluatedPolicyDomainState?.let { ByteString(it.toByteArray()) }
+                    if (domainState != null) {
+                        BiometryState.Enrolled(domainState)
+                    } else {
+                        BiometryState.NotEnrolled
+                    }
+                } else {
+                    when (errorPtr.value?.code) {
+                        LAErrorBiometryNotEnrolled, LAErrorPasscodeNotSet -> BiometryState.NotEnrolled
+                        else -> BiometryState.Unavailable
+                    }
+                }
+            }
+        }
     }
 
     override val identifier: String
@@ -157,23 +201,50 @@ class SecureEnclaveSecureArea private constructor(
         return getKeyInfo(newAlias)
     }
 
-    private suspend fun insertKey(
+    internal suspend fun insertKey(
         alias: String?,
         settings: SecureEnclaveCreateKeySettings,
         keyBlob: ByteArray,
         publicKey: PublicKey,
     ): String {
+        val biometryDomainState = if (
+            settings.userAuthenticationRequired &&
+            SecureEnclaveUserAuthType.BIOMETRY_CURRENT_SET in settings.userAuthenticationTypes
+        ) {
+            when (val state = getBiometryState()) {
+                is BiometryState.Enrolled -> state.domainState
+                is BiometryState.NotEnrolled -> ByteString()
+                is BiometryState.Unavailable -> null
+            }
+        } else {
+            null
+        }
         val keyMetadata = SecureEnclaveAreaKeyMetadata(
             algorithm = settings.algorithm,
             userAuthenticationRequired = settings.userAuthenticationRequired,
             userAuthenticationTypes = SecureEnclaveUserAuthType.encodeSet(settings.userAuthenticationTypes),
             publicKey = publicKey,
-            keyBlob = ByteString(keyBlob)
+            keyBlob = ByteString(keyBlob),
+            biometryDomainState = biometryDomainState
         )
         return storageTable.insert(alias, ByteString(keyMetadata.toCbor()), partitionId)
     }
 
-    private suspend fun loadKey(alias: String): Pair<ByteArray, SecureEnclaveKeyInfo> {
+    private fun isKeyInvalidated(keyMetadata: SecureEnclaveAreaKeyMetadata): Boolean {
+        val recordedDomainState = keyMetadata.biometryDomainState ?: return false
+        if (recordedDomainState.size == 0) {
+            return true
+        }
+        return when (val currentState = getBiometryState()) {
+            is BiometryState.Enrolled -> currentState.domainState != recordedDomainState
+            is BiometryState.NotEnrolled -> true
+            is BiometryState.Unavailable -> false
+        }
+    }
+
+    private suspend fun loadKeyIgnoreKeyInvalidated(
+        alias: String
+    ): Triple<ByteArray, SecureEnclaveKeyInfo, SecureEnclaveAreaKeyMetadata> {
         val data = storageTable.get(alias, partitionId)
             ?: throw IllegalArgumentException("No key with given alias")
 
@@ -189,7 +260,15 @@ class SecureEnclaveSecureArea private constructor(
             userAuthenticationTypes
         )
 
-        return Pair(keyMetadata.keyBlob.toByteArray(), keyInfo)
+        return Triple(keyMetadata.keyBlob.toByteArray(), keyInfo, keyMetadata)
+    }
+
+    private suspend fun loadKey(alias: String): Pair<ByteArray, SecureEnclaveKeyInfo> {
+        val (keyBlob, keyInfo, keyMetadata) = loadKeyIgnoreKeyInvalidated(alias)
+        if (isKeyInvalidated(keyMetadata)) {
+            throw KeyInvalidatedException("Key is no longer usable")
+        }
+        return Pair(keyBlob, keyInfo)
     }
 
     override suspend fun deleteKey(alias: String) {
@@ -205,14 +284,11 @@ class SecureEnclaveSecureArea private constructor(
         check(keyInfo.algorithm.isSigning)
         val unlockDataProvider = coroutineContext[KeyUnlockDataProvider.Key]
             ?: SecureEnclaveDefaultKeyUnlockDataProvider
-        // TODO: implement default KeyUnlockDataProvider by converting
-        //  OperationReason to OperationReason.HumanReadable using PromptModel
-        //  and the creating LAContext with title/subtitle from OperationReason.HumanReadable
         val unlockData = if (keyInfo.isUserAuthenticationRequired) {
             unlockDataProvider.getKeyUnlockData(
                 secureArea = this,
                 alias = alias,
-                algorithm = getKeyInfo(alias).algorithm,
+                algorithm = keyInfo.algorithm,
                 unlockReason = unlockReason
             )
         } else {
@@ -238,14 +314,11 @@ class SecureEnclaveSecureArea private constructor(
         check(keyInfo.algorithm.isKeyAgreement)
         val unlockDataProvider = coroutineContext[KeyUnlockDataProvider.Key]
             ?: SecureEnclaveDefaultKeyUnlockDataProvider
-        // TODO: implement default KeyUnlockDataProvider by converting
-        //  OperationReason to OperationReason.HumanReadable using PromptModel
-        //  and the creating LAContext with title/subtitle from OperationReason.HumanReadable
         val unlockData = if (keyInfo.isUserAuthenticationRequired) {
             unlockDataProvider.getKeyUnlockData(
                 secureArea = this,
                 alias = alias,
-                algorithm = getKeyInfo(alias).algorithm,
+                algorithm = keyInfo.algorithm,
                 unlockReason = unlockReason
             )
         } else {
@@ -268,7 +341,7 @@ class SecureEnclaveSecureArea private constructor(
             unlockDataProvider.getKeyUnlockData(
                 secureArea = this,
                 alias = alias,
-                algorithm = getKeyInfo(alias).algorithm,
+                algorithm = keyInfo.algorithm,
                 unlockReason = unlockReason
             )
         } else {
@@ -284,12 +357,13 @@ class SecureEnclaveSecureArea private constructor(
     }
 
     override suspend fun getKeyInfo(alias: String): SecureEnclaveKeyInfo {
-        val (_, keyInfo) = loadKey(alias)
+        val (_, keyInfo, _) = loadKeyIgnoreKeyInvalidated(alias)
         return keyInfo
     }
 
     override suspend fun getKeyInvalidated(alias: String): Boolean {
-        return false
+        val (_, _, keyMetadata) = loadKeyIgnoreKeyInvalidated(alias)
+        return isKeyInvalidated(keyMetadata)
     }
 
     override suspend fun unlockKey(

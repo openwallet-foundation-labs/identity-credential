@@ -169,6 +169,9 @@ import AuthenticationServices
         if (accessControlCreateFlags & ACCESS_CONTROL_BIOMETRY_CURRENT_SET != 0) {
             flags.insert(.biometryCurrentSet)
         }
+        if (accessControlCreateFlags & ACCESS_CONTROL_BIOMETRY_ANY != 0) {
+            flags.insert(.biometryAny)
+        }
         if (accessControlCreateFlags & ACCESS_CONTROL_USER_PRESENCE != 0) {
             flags.insert(.userPresence)
         }
