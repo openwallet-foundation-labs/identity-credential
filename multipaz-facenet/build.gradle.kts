@@ -34,7 +34,7 @@ val unpackTensorFlowLiteCDesktop by tasks.registering(Sync::class) {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")

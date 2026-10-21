@@ -15,7 +15,7 @@ repositories {
 val dokkaVersion = "2.1.0"
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 dependencies {

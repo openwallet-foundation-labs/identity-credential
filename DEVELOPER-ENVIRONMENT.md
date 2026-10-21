@@ -3,6 +3,14 @@
 We use Android Studio for development which can be downloaded from
 https://developer.android.com/studio.
 
+## JDK 21
+
+Building Multipaz requires **JDK 21** (configured via `jvmToolchain(21)` in Gradle).
+
+- **JVM Targets (`jvmMain`, server modules, and `multipazctl`)** compile for **JVM 21**. This is required by server-side dependencies such as `com.android.keyattestation:keyattestation`, which is published as Java 21 bytecode (`org.gradle.jvm.version=21`).
+- **Android Targets (`androidTarget` and `android { compileOptions }`)** explicitly target **Java 17** (`JvmTarget.JVM_17` / `JavaVersion.VERSION_17`) so that published Multipaz Android AARs remain drop-in compatible with consuming Android applications that still target Java 17.
+- In Android Studio, ensure **Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JDK** is set to a JDK 21 distribution (such as the bundled JetBrains Runtime 21).
+
 # Mac OS
 
 The preferred developer environment is Mac OS since this also allows building the iOS variant

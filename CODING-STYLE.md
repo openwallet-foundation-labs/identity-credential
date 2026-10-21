@@ -143,3 +143,18 @@ with the following changes
   while unit and integration tests can inject a deterministically seeded `Random(seed)` instance to
   make cryptographic operations and protocol test vectors completely reproducible.
 
+## Java / JVM Target Versions
+
+* **JDK 21 Toolchain for JVM, Java 17 for Android:** The build uses `jvmToolchain(21)` across all
+  Gradle modules so `jvmMain` and all JVM server/CLI modules target **JVM 21** (required by
+  JVM-only server dependencies such as `com.android.keyattestation:keyattestation`). However, all
+  Android library and application targets (`androidTarget` and `android { compileOptions }`) must
+  explicitly remain at **`JvmTarget.JVM_17`** and **`JavaVersion.VERSION_17`** so that published
+  Android AARs remain drop-in compatible with Android applications targeting Java 17.
+
+* **Avoid Java 21-only APIs in Android-shared source sets:** Because Gradle compiles with JDK 21,
+  code in `commonMain`, `javaSharedMain`, and `androidMain` must not invoke JDK 21-only APIs that
+  are absent on Android / Java 17 (for example `java.util.SequencedCollection` methods such as
+  `getFirst()` / `getLast()` on Java collections—use Kotlin's `.first()` / `.last()` extensions
+  instead).
+

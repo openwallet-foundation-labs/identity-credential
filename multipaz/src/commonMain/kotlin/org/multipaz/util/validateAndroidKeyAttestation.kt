@@ -14,7 +14,10 @@ private const val TAG = "validateAndroidKeyAttestation"
 /**
  * Checks if Android key attestation is valid according to the given criteria.
  *
- * // TODO: use revocation list from https://android.googleapis.com/attestation/status
+ * On JVM platforms, this uses the `com.android.keyattestation:keyattestation` library to
+ * validate the certificate chain and attestation extension, which accounts for various
+ * device-specific KeyMint/Keymaster quirks and distinguishes between factory-provisioned
+ * and remotely-provisioned (RKP) certificate chains.
  *
  * @param chain Android key attestation
  * @param challenge challenge/nonce used during key creation (if needs to be checked)
@@ -25,6 +28,12 @@ private const val TAG = "validateAndroidKeyAttestation"
  * @param requireAppPackages identifies trusted app package names
  * @param validateAt time instant used to validate certificate validity intervals
  * @param validateCaValidity whether to validate validity intervals for CA certificates in the chain
+ *   (ignored on JVM where CA validity rules are determined by the provisioning method of the chain)
+ * @param checkRevocation whether to fetch and check Google's certificate revocation status list
+ *   from `https://android.googleapis.com/attestation/status` (only supported on JVM when
+ *   [revokedSerials] is `null`)
+ * @param revokedSerials optional explicit set of lowercase hexadecimal serial numbers of revoked
+ *   certificates to reject, or `null` to defer to [checkRevocation]
  * @return challenge/nonce used during key creation
  *
  * @throws IllegalStateException if Android key attestation is not valid
@@ -38,8 +47,59 @@ suspend fun validateAndroidKeyAttestation(
     requireAppSignatureCertificateDigests: Set<ByteString>,
     requireAppPackages: Set<String>,
     validateAt: Instant = Clock.System.now(),
-    validateCaValidity: Boolean = false
+    validateCaValidity: Boolean = false,
+    checkRevocation: Boolean = false,
+    revokedSerials: Set<String>? = null
+): ByteString = validateAndroidKeyAttestationPlatform(
+    chain = chain,
+    challenge = challenge,
+    requireGmsAttestation = requireGmsAttestation,
+    requireVerifiedBootGreen = requireVerifiedBootGreen,
+    requireKeyMintSecurityLevel = requireKeyMintSecurityLevel,
+    requireAppSignatureCertificateDigests = requireAppSignatureCertificateDigests,
+    requireAppPackages = requireAppPackages,
+    validateAt = validateAt,
+    validateCaValidity = validateCaValidity,
+    checkRevocation = checkRevocation,
+    revokedSerials = revokedSerials
+)
+
+internal expect suspend fun validateAndroidKeyAttestationPlatform(
+    chain: X509CertChain,
+    challenge: ByteString?,
+    requireGmsAttestation: Boolean,
+    requireVerifiedBootGreen: Boolean,
+    requireKeyMintSecurityLevel: AndroidKeystoreSecurityLevel,
+    requireAppSignatureCertificateDigests: Set<ByteString>,
+    requireAppPackages: Set<String>,
+    validateAt: Instant,
+    validateCaValidity: Boolean,
+    checkRevocation: Boolean,
+    revokedSerials: Set<String>?
+): ByteString
+
+internal suspend fun validateAndroidKeyAttestationCommon(
+    chain: X509CertChain,
+    challenge: ByteString?,
+    requireGmsAttestation: Boolean,
+    requireVerifiedBootGreen: Boolean,
+    requireKeyMintSecurityLevel: AndroidKeystoreSecurityLevel,
+    requireAppSignatureCertificateDigests: Set<ByteString>,
+    requireAppPackages: Set<String>,
+    validateAt: Instant = Clock.System.now(),
+    validateCaValidity: Boolean = false,
+    revokedSerials: Set<String>? = null
 ): ByteString {
+    if (revokedSerials != null && revokedSerials.isNotEmpty()) {
+        val normalizedRevoked = revokedSerials.map { it.lowercase() }.toSet()
+        for (cert in chain.certificates) {
+            val serialHex = cert.serialNumber.value.toHex().lowercase().trimStart('0').ifEmpty { "0" }
+            check(!normalizedRevoked.contains(serialHex)) {
+                "Certificate has been revoked: $serialHex"
+            }
+        }
+    }
+
     try {
         if (requireGmsAttestation) {
             // Google root certificate uses RSA private key (and not EC key that we currently support
@@ -53,7 +113,7 @@ suspend fun validateAndroidKeyAttestation(
             }
             val trustedRoot =
                 GOOGLE_ATTESTATION_ROOT_CERTIFICATES[rootlessChain.last().issuer]
-                    ?: throw IllegalArgumentException(
+                    ?: throw IllegalStateException(
                         "No trusted root in Android Key Attestation: ${rootlessChain.last().subject.name}")
             val chainToVerify = rootlessChain + listOf(trustedRoot)
             X509CertChain(chainToVerify).validate(
@@ -75,7 +135,7 @@ suspend fun validateAndroidKeyAttestation(
         AndroidAttestationExtensionParser(chain.certificates.first())
     } catch (e: Exception) {
         if (e is CancellationException) throw e
-        throw IllegalArgumentException("Error parsing Android Attestation Extension", e)
+        throw IllegalStateException("Error parsing Android Attestation Extension", e)
     }
 
     // Challenge must match...

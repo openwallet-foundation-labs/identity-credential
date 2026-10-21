@@ -1,7 +1,7 @@
 # Multipaz Server Bundle
 # Single image containing all reference servers and web frontend
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 # Install nginx for reverse proxy
 RUN apt-get update && apt-get install -y --no-install-recommends \

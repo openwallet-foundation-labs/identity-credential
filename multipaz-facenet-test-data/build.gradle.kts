@@ -198,9 +198,14 @@ val generateTestData by tasks.registering(GenerateTestDataTask::class) {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
-    androidTarget()
+    androidTarget {
+        @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 
     jvm()
 
