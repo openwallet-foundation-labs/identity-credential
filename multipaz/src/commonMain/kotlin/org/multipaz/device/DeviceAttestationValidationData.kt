@@ -14,20 +14,20 @@ data class DeviceAttestationValidationData(
     /**
      * If `true`, [DeviceAttestationSoftware] is accepted.
      */
-    val softwareAccepted: Boolean,
+    val softwareAccepted: Boolean = false,
 
     /**
      * List of allowed secrets when [DeviceAttestationSoftware] is accepted.
      *
      * If empty allow any secret or the secret to be absent
      */
-    val softwareSecrets: Set<String>,
+    val softwareSecrets: Set<String> = emptySet(),
 
     /**
      * Whether a release build is required on iOS. When `false`, both debug and release builds
      * are accepted.
      */
-    val iosReleaseBuild: Boolean,
+    val iosReleaseBuild: Boolean = true,
 
     /**
      * List of allowed iOS app identifiers.
@@ -40,23 +40,24 @@ data class DeviceAttestationValidationData(
      *
      * It must not be empty if [iosReleaseBuild] is `true`
      */
-    val iosAppIdentifiers: Set<String>,
+    val iosAppIdentifiers: Set<String> = emptySet(),
 
     /**
      * Ensure that the private key in the Android attestation is certified as legitimate using the
      * Google root private key.
      */
-    val androidGmsAttestation: Boolean,
+    val androidGmsAttestation: Boolean = true,
 
     /**
      * Require Android clients to be in verified boot state "green".
      */
-    val androidVerifiedBootGreen: Boolean,
+    val androidVerifiedBootGreen: Boolean = true,
 
     /**
      * Minimally acceptable security level on Android.
      */
-    val androidRequiredKeyMintSecurityLevel: AndroidKeystoreSecurityLevel,
+    val androidRequiredKeyMintSecurityLevel: AndroidKeystoreSecurityLevel =
+        AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT,
 
     /**
      * Allowed list of Android applications signing certificates.
@@ -65,14 +66,14 @@ data class DeviceAttestationValidationData(
      * [Signature](https://developer.android.com/reference/android/content/pm/Signature) class in
      * the Android SDK for details. If empty, allow apps signed with any signature.
      */
-    val androidAppSignatureCertificateDigests: Set<ByteString>,
+    val androidAppSignatureCertificateDigests: Set<ByteString> = emptySet(),
 
     /**
      * Allowed list of Android application package names.
      *
      * If empty, allow any app.
      */
-    val androidAppPackageNames: Set<String>,
+    val androidAppPackageNames: Set<String> = emptySet(),
 ) {
     fun withChallenge(challenge: ByteString): DeviceAttestationValidationData {
         return DeviceAttestationValidationData(

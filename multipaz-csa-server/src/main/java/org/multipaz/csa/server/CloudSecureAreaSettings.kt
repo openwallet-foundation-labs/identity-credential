@@ -8,7 +8,7 @@ import org.multipaz.util.fromBase64Url
 class CloudSecureAreaSettings(private val conf: Configuration) {
 
     val iosReleaseBuild
-        get() = getBool("ios_require_release_build", false)
+        get() = getBool("ios_require_release_build", true)
 
     val iosAppIdentifiers
         get() = getStringList("ios_require_app_identifiers")

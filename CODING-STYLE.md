@@ -143,6 +143,23 @@ with the following changes
   while unit and integration tests can inject a deterministically seeded `Random(seed)` instance to
   make cryptographic operations and protocol test vectors completely reproducible.
 
+* **Secure default parameter and configuration values:** Default parameter values on functions,
+  constructors, and data classes, as well as fallback values when parsing configuration files or JSON
+  settings, must always be **secure by default**:
+  - Never default security checks, signature verifications, trust-root validations, hardware security
+    level requirements, or release-build checks to permissive or no-op values (such as `false`, `null`,
+    or `{ true }` predicates that skip validation).
+  - For validation and verification APIs where a caller-supplied key, predicate, or trust anchor is
+    required for security (e.g. `issuerKey` or `checkNonce` in `SdJwt.verify` / `SdJwtKb.verify`),
+    omit the default value entirely so callers must explicitly decide what to pass, rather than
+    silently skipping verification when omitted.
+  - For time-based expiration/validity checks (e.g. `now: Instant?`), default to `Clock.System.now()`
+    rather than `null` so expiration is enforced unless the caller explicitly passes `null` to disable it.
+  - For device attestation and hardware security parameters (e.g. `DeviceAttestationValidationData`,
+    `validateAndroidKeyAttestation`, `CloudSecureAreaServer`), default to enforcing hardware-backed
+    keys (`AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT`), verified boot (`GREEN`), GMS root CA
+    attestation (`true`), and iOS release builds (`true`), with software attestation disabled (`false`).
+
 ## Java / JVM Target Versions
 
 * **JDK 21 Toolchain for JVM, Java 17 for Android:** The build uses `jvmToolchain(21)` across all

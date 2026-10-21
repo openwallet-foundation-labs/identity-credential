@@ -1,5 +1,6 @@
 {
   "server_port": 8005,
+  "ios_require_release_build": false,
   "ca_trust_servers": [
     "*.multipaz.org/**",
     "sorotokin.com/**"

@@ -72,16 +72,19 @@ class ClientRegistrationImpl(
                     val android = requirements?.get("android") as JsonObject?
                     DeviceAttestationValidationData(
                         attestationChallenge = ByteString(),
-                        softwareAccepted = software.bool("accepted"),
+                        softwareAccepted = software.bool("accepted", false),
                         softwareSecrets = software.stringSet("secrets"),
-                        iosReleaseBuild = ios.bool("release_build"),
+                        iosReleaseBuild = ios.bool("release_build", true),
                         iosAppIdentifiers = ios.stringSet("app_identifiers"),
-                        androidGmsAttestation = android.bool("gms_attestation"),
+                        androidGmsAttestation = android.bool("gms_attestation", true),
                         androidVerifiedBootGreen = android.bool("verified_boot_green", true),
                         androidAppSignatureCertificateDigests =
                             android.byteStringSet("app_signature_certificate_digests"),
                         androidAppPackageNames = android.stringSet("app_packages"),
-                        androidRequiredKeyMintSecurityLevel = when (android.string("keystore_security_level", "tee")!!) {
+                        androidRequiredKeyMintSecurityLevel = when (
+                            android.string("keystore_security_level", null)
+                                ?: android.string("key_mint_security_level", "tee")!!
+                        ) {
                             "software" -> AndroidKeystoreSecurityLevel.SOFTWARE
                             "tee" -> AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT
                             "strong_box" -> AndroidKeystoreSecurityLevel.STRONG_BOX
