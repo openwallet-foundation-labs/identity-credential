@@ -124,8 +124,13 @@ suspend fun uriSchemePresentment(
         "get" -> httpClient.get(requestUri)
         else -> throw IllegalArgumentException("Unexpected method $requestUriMethod")
     }
-    check(httpResponse.status == HttpStatusCode.OK)
-    check(httpResponse.contentType()?.match(requestObjectMediaType) ?: false)
+    check(httpResponse.status == HttpStatusCode.OK) {
+        "Unexpected HTTP response ${httpResponse.status} from $requestUri"
+    }
+    val requestContentType = httpResponse.contentType()
+    check(requestContentType != null && requestContentType.match(requestObjectMediaType)) {
+        "Expected $requestObjectMediaType, got $requestContentType"
+    }
 
     val reqJwt = (httpResponse.body() as ByteArray).decodeToString()
     val info = JsonWebSignature.getInfo(reqJwt)
@@ -135,7 +140,9 @@ suspend fun uriSchemePresentment(
         clientId = requestObject["client_id"]!!.jsonPrimitive.content
     )
     JsonWebSignature.verify(reqJwt, requesterIdentity.certChain.certificates.first().publicKey)
-    check(info.type == "oauth-authz-req+jwt")
+    check(info.type == "oauth-authz-req+jwt") {
+        "Expected JWT type oauth-authz-req+jwt, got ${info.type}"
+    }
 
     val responseUri = requestObject["response_uri"]?.jsonPrimitive?.content
         ?: throw IllegalArgumentException("response_uri not set in request")
@@ -165,6 +172,7 @@ suspend fun uriSchemePresentment(
         else -> throw IllegalArgumentException("Unexpected response_mode")
     }
 
+    var redirectUri: String? = null
     val postResponseResponse = httpClient.post(responseUri) {
         contentType(ContentType.Application.FormUrlEncoded)
         setBody(
@@ -174,27 +182,32 @@ suspend fun uriSchemePresentment(
             }.formUrlEncode().encodeToByteArray()
         )
     }
-    check(postResponseResponse.status == HttpStatusCode.OK)
-    val contentType = postResponseResponse.contentType()
-    check(contentType != null && contentType.match(ContentType.Application.Json)) {
-        "Expected ${ContentType.Application.Json}, got $contentType"
-    }
-    val bodyText = (postResponseResponse.body() as ByteArray).decodeToString()
-    val postResponseBody = Json.decodeFromString<JsonObject>(bodyText)
-    val redirectUri = postResponseBody["redirect_uri"]?.jsonPrimitive?.content
-
-    source.eventLogger?.addEventAsync(
-        EventPresentmentUriSchemeOpenID4VP(
-            presentmentData = responseObject.eventData,
-            uri = uri,
-            appId = appId,
-            origin = origin,
-            requestJwt = reqJwt,
-            vpToken = Json.encodeToString(responseObject.vpToken),
-            redirectUri = redirectUri,
-            state = responseObject.state
+    try {
+        val bodyText = (postResponseResponse.body() as ByteArray).decodeToString()
+        check(postResponseResponse.status == HttpStatusCode.OK) {
+            val truncatedBody = bodyText.take(1024)
+            "Unexpected HTTP response ${postResponseResponse.status} from $responseUri: $truncatedBody"
+        }
+        val contentType = postResponseResponse.contentType()
+        check(contentType != null && contentType.match(ContentType.Application.Json)) {
+            "Expected ${ContentType.Application.Json}, got $contentType"
+        }
+        val postResponseBody = Json.decodeFromString<JsonObject>(bodyText)
+        redirectUri = postResponseBody["redirect_uri"]?.jsonPrimitive?.content
+    } finally {
+        source.eventLogger?.addEventAsync(
+            EventPresentmentUriSchemeOpenID4VP(
+                presentmentData = responseObject.eventData,
+                uri = uri,
+                appId = appId,
+                origin = origin,
+                requestJwt = reqJwt,
+                vpToken = Json.encodeToString(responseObject.vpToken),
+                redirectUri = redirectUri,
+                state = responseObject.state
+            )
         )
-    )
+    }
 
     return redirectUri
 }
