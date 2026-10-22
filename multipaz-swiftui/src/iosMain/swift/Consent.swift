@@ -245,9 +245,13 @@ private struct RequestedDocumentSection : View {
     let document: Document
     let retainedClaims: [Claim]
     let notRetainedClaims: [Claim]
+    let match: CredentialPresentmentSetOptionMemberMatch
+    let trustedRequesterIdentity: TrustedRequesterIdentity?
     let transactionData: [TransactionData<AnyObject>]
+    let transactionDataRendererRepository: TransactionDataRendererRepository?
     let transactionUserInput: [String: TransactionUserInput]
     let onTransactionUserInputChanged: (String, TransactionUserInput) -> Void
+    let onShowTransactionDetails: (TransactionDetailsTarget) -> Void
     let showOptionsButton: Bool
     let onOptionsTapped: () -> Void
 
@@ -325,17 +329,39 @@ private struct RequestedDocumentSection : View {
         }
 
         if !transactionData.isEmpty {
+            let blocks = transactionDataBlocks(transactionData, repository: transactionDataRendererRepository)
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(0..<transactionData.count, id: \.self) { idx in
-                    let data = transactionData[idx]
-                    DisplayTransactionData(
-                        transactionData: data,
-                        hasClaims: hasClaims,
-                        userInput: transactionUserInput[data.type.identifier],
-                        onUserInputChanged: { userInput in
-                            onTransactionUserInputChanged(data.type.identifier, userInput)
-                        }
-                    )
+                ForEach(0..<blocks.count, id: \.self) { idx in
+                    switch blocks[idx] {
+                    case .builtIn(let data):
+                        DisplayTransactionData(
+                            transactionData: data,
+                            hasClaims: hasClaims,
+                            userInput: transactionUserInput[data.type.identifier],
+                            onUserInputChanged: { userInput in
+                                onTransactionUserInputChanged(data.type.identifier, userInput)
+                            }
+                        )
+                    case .wallet(let identifier, let items, let renderer):
+                        let target = TransactionDetailsTarget(
+                            match: match,
+                            identifier: identifier,
+                            items: items,
+                            renderer: renderer,
+                            hasClaims: hasClaims
+                        )
+                        renderer.summary(TransactionDataContext(
+                            transactionData: items,
+                            requester: requester,
+                            trustedRequesterIdentity: trustedRequesterIdentity,
+                            hasClaims: hasClaims,
+                            userInput: transactionUserInput[identifier],
+                            onUserInputChanged: { userInput in
+                                onTransactionUserInputChanged(identifier, userInput)
+                            },
+                            showDetails: renderer.details == nil ? nil : { onShowTransactionDetails(target) }
+                        ))
+                    }
                 }
             }
         }
@@ -420,9 +446,53 @@ private struct InfoSection: View {
     }
 }
 
+/// The transaction data the details page shows: one application-drawn group of one credential.
+private struct TransactionDetailsTarget {
+    let match: CredentialPresentmentSetOptionMemberMatch
+    let identifier: String
+    let items: [TransactionData<AnyObject>]
+    let renderer: TransactionDataRendererSwiftUi
+    let hasClaims: Bool
+}
+
+/// A page inside the consent prompt showing the application's details view for one group of
+/// transaction data. It has no confirm button: the user goes back to the main page to decide.
+private struct TransactionDetailsView: View {
+    let maxHeight: CGFloat
+    let target: TransactionDetailsTarget
+    let requester: Requester
+    let trustedRequesterIdentity: TrustedRequesterIdentity?
+    let userInput: TransactionUserInput?
+    let onUserInputChanged: (TransactionUserInput) -> Void
+
+    var body: some View {
+        SmartSheet(maxHeight: maxHeight, updateDetents: false) {
+        } content: {
+            if let details = target.renderer.details {
+                details(TransactionDataContext(
+                    transactionData: target.items,
+                    requester: requester,
+                    trustedRequesterIdentity: trustedRequesterIdentity,
+                    hasClaims: target.hasClaims,
+                    userInput: userInput,
+                    onUserInputChanged: onUserInputChanged,
+                    showDetails: nil
+                ))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+        } footer: { _, _ in
+        }
+        .navigationTitle("Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarRole(.editor)
+    }
+}
+
 private enum ConsentDestinations: Hashable {
     case showRequesterInfo
     case pickSolution(useCaseIndex: Int)
+    case transactionDetails
 }
 
 /// A ``View`` which asks the user to approve sharing of credentials.
@@ -433,6 +503,8 @@ private enum ConsentDestinations: Hashable {
 ///   - trustedRequesterIdentity: the identity of the trusted requester, if any.
 ///   - preselectedDocuments: list of documents that should be preselected.
 ///   - maxHeight: the maximum height of the view.
+///   - transactionDataRendererRepository: the ``TransactionDataRendererRepository`` to find renderers for
+///     transaction data in, or `nil` to use only the built-in rendering.
 ///   - onDocumentsInFocus: callback invoked with the list of documents currently in focus as the user changes selections.
 ///   - onConfirm: callback when the user presses the Share button with the credentials that were selected.
 ///   - onCancel: callback when the user presses the Cancel button.
@@ -442,6 +514,7 @@ public struct Consent: View {
     let requester: Requester
     let trustedRequesterIdentity: TrustedRequesterIdentity?
     let preselectedDocuments: [Document]
+    let transactionDataRendererRepository: TransactionDataRendererRepository?
     let onDocumentsInFocus: ((_ documents: [Document]) -> Void)?
     let onConfirm: (_: CredentialSelection) -> Void
     let onCancel: () -> Void
@@ -452,6 +525,7 @@ public struct Consent: View {
         trustedRequesterIdentity: TrustedRequesterIdentity?,
         preselectedDocuments: [Document] = [],
         maxHeight: CGFloat = .infinity,
+        transactionDataRendererRepository: TransactionDataRendererRepository? = nil,
         onDocumentsInFocus: ((_ documents: [Document]) -> Void)? = nil,
         onConfirm: @escaping (_: CredentialSelection) -> Void,
         onCancel: @escaping () -> Void
@@ -461,6 +535,7 @@ public struct Consent: View {
         self.trustedRequesterIdentity = trustedRequesterIdentity
         self.preselectedDocuments = preselectedDocuments
         self.maxHeight = maxHeight
+        self.transactionDataRendererRepository = transactionDataRendererRepository
         self.onDocumentsInFocus = onDocumentsInFocus
         self.onConfirm = onConfirm
         self.onCancel = onCancel
@@ -470,6 +545,7 @@ public struct Consent: View {
     @State private var selections: [Int] = []
     @State private var transactionUserInput: [CredentialPresentmentSetOptionMemberMatch: [String: TransactionUserInput]] = [:]
     @State private var sheetHeight: CGFloat = 450
+    @State private var transactionDetails: TransactionDetailsTarget? = nil
 
     private func getDocumentsForSelections(_ selections: [Int]) -> [Document] {
         var documents: [Document] = []
@@ -544,7 +620,8 @@ public struct Consent: View {
                         consentData: consentData,
                         rpName: rpName,
                         requester: requester,
-                        trustMetadata: trustedRequesterIdentity?.trustMetadata,
+                        trustedRequesterIdentity: trustedRequesterIdentity,
+                        transactionDataRendererRepository: transactionDataRendererRepository,
                         selections: selections,
                         transactionUserInput: $transactionUserInput,
                         sheetHeight: $sheetHeight,
@@ -556,6 +633,10 @@ public struct Consent: View {
                         },
                         onNavigateToPickSolution: { idx in
                             path.append(ConsentDestinations.pickSolution(useCaseIndex: idx))
+                        },
+                        onShowTransactionDetails: { target in
+                            transactionDetails = target
+                            path.append(ConsentDestinations.transactionDetails)
                         },
                         onConfirm: onConfirm,
                         onCancel: onCancel
@@ -596,6 +677,21 @@ public struct Consent: View {
                             path.removeLast()
                         }
                     )
+                case .transactionDetails:
+                    if let target = transactionDetails {
+                        TransactionDetailsView(
+                            maxHeight: maxHeight,
+                            target: target,
+                            requester: requester,
+                            trustedRequesterIdentity: trustedRequesterIdentity,
+                            userInput: transactionUserInput[target.match]?[target.identifier],
+                            onUserInputChanged: { input in
+                                var current = transactionUserInput[target.match] ?? [:]
+                                current[target.identifier] = input
+                                transactionUserInput[target.match] = current
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -691,15 +787,19 @@ private struct ConsentMain: View {
     let consentData: ConsentData
     let rpName: String
     let requester: Requester
-    let trustMetadata: TrustMetadata?
+    let trustedRequesterIdentity: TrustedRequesterIdentity?
+    let transactionDataRendererRepository: TransactionDataRendererRepository?
     let selections: [Int]
     @Binding var transactionUserInput: [CredentialPresentmentSetOptionMemberMatch: [String: TransactionUserInput]]
     @Binding var sheetHeight: CGFloat
     let isActive: Bool
     let onRequesterClicked: () -> Void
     let onNavigateToPickSolution: (Int) -> Void
+    let onShowTransactionDetails: (TransactionDetailsTarget) -> Void
     let onConfirm: (_: CredentialSelection) -> Void
     let onCancel: () -> Void
+
+    private var trustMetadata: TrustMetadata? { trustedRequesterIdentity?.trustMetadata }
 
     var body: some View {
         SmartSheet(maxHeight: maxHeight, updateDetents: false, heightBinding: isActive ? $sheetHeight : nil) {
@@ -720,6 +820,8 @@ private struct ConsentMain: View {
                                 rpName: rpName,
                                 requester: requester,
                                 trustMetadata: trustMetadata,
+                                trustedRequesterIdentity: trustedRequesterIdentity,
+                                transactionDataRendererRepository: transactionDataRendererRepository,
                                 useCase: consentData.useCases[idx],
                                 selectionIndex: selections[idx],
                                 transactionUserInput: transactionUserInput,
@@ -728,6 +830,7 @@ private struct ConsentMain: View {
                                     current[typeId] = input
                                     transactionUserInput[match] = current
                                 },
+                                onShowTransactionDetails: onShowTransactionDetails,
                                 onNavigateToPickSolution: {
                                     onNavigateToPickSolution(idx)
                                 }
@@ -799,10 +902,13 @@ private struct UseCaseSection: View {
     let rpName: String
     let requester: Requester
     let trustMetadata: TrustMetadata?
+    let trustedRequesterIdentity: TrustedRequesterIdentity?
+    let transactionDataRendererRepository: TransactionDataRendererRepository?
     let useCase: ConsentUseCase
     let selectionIndex: Int
     let transactionUserInput: [CredentialPresentmentSetOptionMemberMatch: [String: TransactionUserInput]]
     let onTransactionUserInputChanged: (CredentialPresentmentSetOptionMemberMatch, String, TransactionUserInput) -> Void
+    let onShowTransactionDetails: (TransactionDetailsTarget) -> Void
     let onNavigateToPickSolution: () -> Void
 
     var body: some View {
@@ -883,11 +989,15 @@ private struct UseCaseSection: View {
                                     document: match.credential.document,
                                     retainedClaims: retainedClaims,
                                     notRetainedClaims: notRetainedClaims,
+                                    match: match,
+                                    trustedRequesterIdentity: trustedRequesterIdentity,
                                     transactionData: match.transactionData,
+                                    transactionDataRendererRepository: transactionDataRendererRepository,
                                     transactionUserInput: transactionUserInput[match] ?? [:],
                                     onTransactionUserInputChanged: { typeId, input in
                                         onTransactionUserInputChanged(match, typeId, input)
                                     },
+                                    onShowTransactionDetails: onShowTransactionDetails,
                                     showOptionsButton: showChevron && (credIdx == 0),
                                     onOptionsTapped: onNavigateToPickSolution
                                 )

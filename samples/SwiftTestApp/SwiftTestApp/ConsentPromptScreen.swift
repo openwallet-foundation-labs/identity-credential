@@ -80,6 +80,14 @@ struct ConsentPromptScreen: View {
                     selection: $selectedVerifierOriginString,
                     placeholder: "Pick one..."
                 )
+
+                Toggle(
+                    "Use app-provided transaction data renderers",
+                    isOn: Binding(
+                        get: { viewModel.useTransactionDataRenderers },
+                        set: { viewModel.useTransactionDataRenderers = $0 }
+                    )
+                )
             
                 VStack {
                     Button(action: {
@@ -96,7 +104,7 @@ struct ConsentPromptScreen: View {
                                 consentData: requestData.consentData,
                                 preselectedDocuments: [],
                                 onDocumentsInFocus: { documents in },
-                                transactionDataRendererRepository: nil
+                                transactionDataRendererRepository: viewModel.transactionDataRendererRepository
                             )
                             if selection != nil {
                                 print("Selection: \(selection!)")
