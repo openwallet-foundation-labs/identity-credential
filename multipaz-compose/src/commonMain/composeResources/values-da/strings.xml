@@ -4,7 +4,7 @@
     <string name="passphrase_entry_field_passphrase_is_weak">Adgangssætning er svag, vælg en anden</string>
     <string name="credential_presentment_button_cancel">Annuller</string>
     <string name="credential_presentment_button_more">Mere</string>
-    <string name="credential_presentment_button_share">Del</string>
+    <string name="credential_presentment_button_continue">Fortsæt</string>
     <string name="credential_presentment_headline_share_with_unknown_requester">Ukendt anmoder</string>
     <string name="credential_presentment_headline_share_with_unknown_website">Ukendt websted</string>
     <string name="credential_presentment_share_with_known_requester">Disse data deles med %1$s:</string>
@@ -25,6 +25,7 @@
     <string name="credential_presentment_warning_icon_description">Advarselsikon</string>
     <string name="credential_presentment_select_document">Vælg dokument</string>
     <string name="credential_presentment_requester_information">Anmoders information</string>
+    <string name="credential_presentment_details">Detaljer</string>
     <string name="certificate_viewer_sub_basic_info">Grundlæggende information</string>
     <string name="certificate_viewer_k_type">Type</string>
     <string name="certificate_viewer_k_serial_number">Serienummer</string>

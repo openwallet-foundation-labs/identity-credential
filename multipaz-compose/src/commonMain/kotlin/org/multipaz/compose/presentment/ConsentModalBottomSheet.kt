@@ -35,7 +35,7 @@ import org.multipaz.request.TrustedRequesterIdentity
  *   transaction data in, or `null` to use only the built-in rendering.
  * @param onDocumentsInFocus called with the documents currently selected for the user, including when
  *   first shown. If the user selects a different set of documents in the prompt, this will be called again.
- * @param onConfirm called when the user presses the "Share" button, returns the user's selection.
+ * @param onConfirm called when the user presses the "Continue" button, returns the user's selection.
  * @param onCancel called when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class)

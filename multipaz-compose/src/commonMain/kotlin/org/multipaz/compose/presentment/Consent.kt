@@ -100,10 +100,11 @@ import org.multipaz.documenttype.knowntypes.PaymentTransaction
 import org.multipaz.multipaz_compose.generated.resources.Res
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_cancel
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_more
-import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_share
+import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_continue
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_select_option
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_dont_return_any_document
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_data_element_icon_description
+import org.multipaz.multipaz_compose.generated.resources.credential_presentment_details
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_headline_share_with_unknown_requester
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_headline_share_with_unknown_website
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_info_verifier_in_trust_list
@@ -168,7 +169,7 @@ private const val TAG = "Consent"
  *   transaction data in, or `null` to use only the built-in rendering.
  * @param onDocumentsInFocus called with the documents currently selected for the user, including when
  * first shown. If the user selects a different set of documents in the prompt, this will be called again.
- * @param onConfirm called when the user presses the "Share" button, returns the user's selection.
+ * @param onConfirm called when the user presses the "Continue" button, returns the user's selection.
  * @param onCancel called when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -511,7 +512,7 @@ private fun TransactionDetailsPage(
                 )
             }
             Text(
-                text = "Details",
+                text = stringResource(Res.string.credential_presentment_details),
                 style = MaterialTheme.typography.titleLarge,
             )
         }
@@ -1471,7 +1472,7 @@ private fun ButtonSection(
                 text = if (scrollState.canScrollForward) {
                     stringResource(Res.string.credential_presentment_button_more)
                 } else {
-                    stringResource(Res.string.credential_presentment_button_share)
+                    stringResource(Res.string.credential_presentment_button_continue)
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold

@@ -4,7 +4,7 @@
     <string name="passphrase_entry_field_passphrase_is_weak">Парольна фраза слабка, оберіть іншу</string>
     <string name="credential_presentment_button_cancel">Скасувати</string>
     <string name="credential_presentment_button_more">Більше</string>
-    <string name="credential_presentment_button_share">Поділитися</string>
+    <string name="credential_presentment_button_continue">Продовжити</string>
     <string name="credential_presentment_headline_share_with_unknown_requester">Невідомий запитувач</string>
     <string name="credential_presentment_share_with_known_requester">Ці дані будуть передані %1$s:</string>
     <string name="credential_presentment_share_with_unknown_requester">Ці дані будуть передані:</string>
@@ -24,6 +24,7 @@
     <string name="credential_presentment_warning_icon_description">Значок попередження</string>
     <string name="credential_presentment_select_document">Виберіть документ</string>
     <string name="credential_presentment_requester_information">Інформація про запитувача</string>
+    <string name="credential_presentment_details">Подробиці</string>
     <string name="certificate_viewer_sub_basic_info">Основна інформація</string>
     <string name="certificate_viewer_k_type">Тип</string>
     <string name="certificate_viewer_k_serial_number">Серійний номер</string>
