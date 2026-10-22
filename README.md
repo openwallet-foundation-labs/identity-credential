@@ -158,7 +158,7 @@ To upgrade the locked package versions (e.g., to address Dependabot vulnerabilit
 
 4. **Persist the updated lockfiles to the repository store:**
    ```shell
-   $ ./gradlew kotlinUpgradeYarnLock kotlinWasmUpgradeYarnLock
+   $ ./gradlew kotlinUpgradeYarnLock kotlinWasmUpgradeYarnLock -x kotlinRestoreYarnLock -x kotlinWasmRestoreYarnLock
    ```
 
 ## Regenerating Translation Sources
