@@ -107,6 +107,7 @@ import org.multipaz.facenet.FaceNetModelConfig
 import org.multipaz.facematch.FaceMatcherRepository
 import org.multipaz.facematch.FacePose
 import org.multipaz.prompt.PromptModel
+import org.multipaz.prompt.TransactionDataRendererRepository
 import org.multipaz.prompt.promptModelRequestConsent
 import org.multipaz.prompt.promptModelSilentConsent
 import org.multipaz.provisioning.DocumentProvisioningHandler
@@ -128,6 +129,7 @@ import org.multipaz.testapp.ui.AndroidKeystoreSecureAreaScreen
 import org.multipaz.testapp.ui.CertificateScreen
 import org.multipaz.testapp.ui.CertificateViewerExamplesScreen
 import org.multipaz.testapp.ui.ConsentPromptScreen
+import org.multipaz.testapp.ui.testAppTransactionDataRenderers
 import org.multipaz.testapp.ui.FaceMatcherPromptScreen
 import org.multipaz.testapp.ui.FakeIssuerApprovalScreen
 import org.multipaz.testapp.ui.saveFaceMatcherReferencePortrait
@@ -248,8 +250,17 @@ class App private constructor (val promptModel: PromptModel) {
     var initialized = false
         private set
 
+    /**
+     * Gets the renderers the consent prompt uses for transaction data.
+     *
+     * @return the app's renderers if enabled in the settings, otherwise `null` for the built-in rendering.
+     */
+    fun getTransactionDataRendererRepository(): TransactionDataRendererRepository? =
+        if (settingsModel.presentmentUseTransactionDataRenderers.value) testAppTransactionDataRenderers else null
+
     fun getPresentmentSource(): PresentmentSource {
         val useAuth = settingsModel.presentmentRequireAuthentication.value
+        val transactionDataRendererRepository = getTransactionDataRendererRepository()
         return SimplePresentmentSource(
             documentStore = documentStore,
             documentTypeRepository = documentTypeRepository,
@@ -267,7 +278,16 @@ class App private constructor (val promptModel: PromptModel) {
             },
             resolveTrustFn = ::resolveTrust,
             showConsentPromptFn = if (settingsModel.presentmentShowConsentPrompt.value) {
-                ::promptModelRequestConsent
+                { requester, trustedRequesterIdentity, consentData, preselectedDocuments, onDocumentsInFocus ->
+                    promptModelRequestConsent(
+                        requester = requester,
+                        trustedRequesterIdentity = trustedRequesterIdentity,
+                        consentData = consentData,
+                        preselectedDocuments = preselectedDocuments,
+                        onDocumentsInFocus = onDocumentsInFocus,
+                        transactionDataRendererRepository = transactionDataRendererRepository,
+                    )
+                }
             } else {
                 ::promptModelSilentConsent
             },
@@ -1578,11 +1598,15 @@ class App private constructor (val promptModel: PromptModel) {
                 }
                 composable<ConsentPromptDestination> { backStackEntry ->
                     WithAppBar(navController, "Consent Prompt use-cases") {
+                        val useTransactionDataRenderers =
+                            settingsModel.presentmentUseTransactionDataRenderers.collectAsState().value
                         ConsentPromptScreen(
                             secureAreaRepository = secureAreaRepository,
                             faceMatcherRepository = faceMatcherRepository,
                             promptModel = promptModel,
                             showToast = { message -> showToast(message) },
+                            transactionDataRendererRepository =
+                                if (useTransactionDataRenderers) testAppTransactionDataRenderers else null,
                         )
                     }
                 }

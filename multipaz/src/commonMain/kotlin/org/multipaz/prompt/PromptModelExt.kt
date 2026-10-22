@@ -75,6 +75,8 @@ suspend fun PromptModel.requestPassphrase(
  *   if the user didn't preselect.
  * @param onDocumentsInFocus called with the documents currently selected for the user, including when
  *   first shown. If the user selects a different set of documents in the prompt, this will be called again.
+ * @param transactionDataRendererRepository the [TransactionDataRendererRepository] the prompt uses to
+ *   find renderers for transaction data, or `null` to use only the built-in rendering.
  * @return a [CredentialSelection] object conveying which credentials the user selected, if multiple
  *   options are available.
  * @throws PromptDismissedException if the user dismissed the prompt.
@@ -93,7 +95,8 @@ suspend fun PromptModel.requestConsent(
     trustedRequesterIdentity: TrustedRequesterIdentity?,
     consentData: ConsentData,
     preselectedDocuments: List<Document>,
-    onDocumentsInFocus: (documents: List<Document>) -> Unit
+    onDocumentsInFocus: (documents: List<Document>) -> Unit,
+    transactionDataRendererRepository: TransactionDataRendererRepository? = null
 ): CredentialSelection {
     return getDialogModel(ConsentPromptDialogModel.DialogType).displayPrompt(
         parameters = ConsentPromptDialogModel.ConsentPromptRequest(
@@ -102,6 +105,7 @@ suspend fun PromptModel.requestConsent(
             consentData = consentData,
             preselectedDocuments = preselectedDocuments,
             onDocumentsInFocus = onDocumentsInFocus,
+            transactionDataRendererRepository = transactionDataRendererRepository,
         )
     )
 }

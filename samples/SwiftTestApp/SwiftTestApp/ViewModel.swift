@@ -415,7 +415,8 @@ class ViewModel {
                     trustedRequesterIdentity: trustedRequesterIdentity,
                     consentData: consentData,
                     preselectedDocuments: preselectedDocuments,
-                    onDocumentsInFocus: { documents in onDocumentsInFocus(documents) }
+                    onDocumentsInFocus: { documents in onDocumentsInFocus(documents) },
+                    transactionDataRendererRepository: nil
                 )
             },
             preferSignatureToKeyAgreement: false,
