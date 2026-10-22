@@ -216,4 +216,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Chưa đặt</string>
     <string name="presentment_activity_removed_too_fast">Thiết bị đã bị di chuyển đi trước khi chia sẻ hoàn tất</string>
     <string name="presentment_activity_nfc_only_tip">Giữ gần đầu đọc cho đến khi toàn bộ dữ liệu được chuyển</string>
+    <string name="face_matcher_prompt_default_title">Xác minh là bạn</string>
+    <string name="face_matcher_prompt_default_subtitle">Nhìn vào camera để xác minh danh tính của bạn</string>
+    <string name="face_matcher_liveness_prompt_default_title">Xác minh sự sống</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Nhìn vào camera và làm theo hướng dẫn</string>
+    <string name="face_matcher_prompt_permission_required">Cần có quyền truy cập camera để xác minh danh tính của bạn</string>
+    <string name="face_matcher_prompt_grant_permission">Cấp quyền</string>
+    <string name="face_matcher_prompt_cancel">Hủy bỏ</string>
+    <string name="face_matcher_prompt_confirm">Xác nhận</string>
 </resources>

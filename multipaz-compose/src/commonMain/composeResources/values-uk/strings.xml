@@ -236,4 +236,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Не встановлено</string>
     <string name="presentment_activity_removed_too_fast">Пристрій було прибрано до завершення обміну</string>
     <string name="presentment_activity_nfc_only_tip">Тримайте близько до зчитувача, доки всі дані не будуть передані</string>
+    <string name="face_matcher_prompt_default_title">Підтвердьте, що це ви</string>
+    <string name="face_matcher_prompt_default_subtitle">Подивіться в камеру, щоб підтвердити свою особу</string>
+    <string name="face_matcher_liveness_prompt_default_title">Перевірити живучість</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Подивіться в камеру і дотримуйтесь інструкцій</string>
+    <string name="face_matcher_prompt_permission_required">Для підтвердження особи потрібен дозвіл на використання камери</string>
+    <string name="face_matcher_prompt_grant_permission">Надати дозвіл</string>
+    <string name="face_matcher_prompt_cancel">Скасувати</string>
+    <string name="face_matcher_prompt_confirm">Підтвердити</string>
 </resources>

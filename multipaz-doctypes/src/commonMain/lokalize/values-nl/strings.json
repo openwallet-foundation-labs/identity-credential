@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "Ouder dan {age} jaar",
   "age_verification_description_older_than_years": "Aanduiding of de mDL-houder {age} jaar of ouder is",
   "multi_request_payment_and_age_over_18": "Betaling en leeftijd ouder dan 18",
-  "multi_request_age_over_18_mdl_or_pid": "Leeftijd ouder dan 18 via mDL of PID + transactie"
+  "multi_request_age_over_18_mdl_or_pid": "Leeftijd ouder dan 18 via mDL of PID + transactie",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "Leeftijd boven 18 + portretgelijkwaardigheid",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "Leeftijd boven 18 + (portret OF portretgelijkwaardigheid)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "Leeftijd boven 18 + portretgelijkwaardigheid",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Leeftijd boven 18 + (portret OF portretgelijkwaardigheid)",
+  "eu_personal_id_request_name_and_portrait": "Naam + portret",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Naam + portretgelijkwaardigheid",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Naam + (portret OF portretgelijkwaardigheid)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "Leeftijd boven 18 + portretgelijkwaardigheid",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Leeftijd boven 18 + (portret OF portretgelijkwaardigheid)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "Leeftijd boven 18 + portretgelijkwaardigheid",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "Leeftijd van 18+ + (portret OF portret-equivalent)"
 }

@@ -52,7 +52,7 @@ lokalize {
     // Optional: Configure AI translation.
     // Note there is no API key setting here - see "Set up your API key" below.
     llmProvider.set(LLMProvider.GOOGLE)  // GOOGLE, OPENAI, or ANTHROPIC
-    llModel.set(LLmModel.GEMINI2_5_FLASH)
+    llModel.set(LLmModel.GEMINI2_5_FLASH_LITE)
     
     // Optional: Custom resources directory.
     // For Kotlin Multiplatform JSON projects, prefer a path that is NOT a

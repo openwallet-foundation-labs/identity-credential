@@ -236,4 +236,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Не задано</string>
     <string name="presentment_activity_removed_too_fast">Устройство было убрано до завершения передачи</string>
     <string name="presentment_activity_nfc_only_tip">Держите рядом со считывателем, пока все данные не будут переданы</string>
+    <string name="face_matcher_prompt_default_title">Подтвердите, что это вы</string>
+    <string name="face_matcher_prompt_default_subtitle">Посмотрите в камеру, чтобы подтвердить свою личность</string>
+    <string name="face_matcher_liveness_prompt_default_title">Подтвердите активность</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Посмотрите в камеру и следуйте инструкциям</string>
+    <string name="face_matcher_prompt_permission_required">Необходимо разрешение на использование камеры для подтверждения вашей личности</string>
+    <string name="face_matcher_prompt_grant_permission">Предоставить разрешение</string>
+    <string name="face_matcher_prompt_cancel">Отмена</string>
+    <string name="face_matcher_prompt_confirm">Подтвердить</string>
 </resources>

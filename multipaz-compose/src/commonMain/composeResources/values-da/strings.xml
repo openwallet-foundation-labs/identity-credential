@@ -214,4 +214,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Ikke angivet</string>
     <string name="presentment_activity_removed_too_fast">Enheden blev fjernet, før delingen blev afsluttet</string>
     <string name="presentment_activity_nfc_only_tip">Hold tæt på læseren, indtil alle data er overført</string>
+    <string name="face_matcher_prompt_default_title">Bekræft, at det er dig</string>
+    <string name="face_matcher_prompt_default_subtitle">Kig ind i kameraet for at bekræfte din identitet</string>
+    <string name="face_matcher_liveness_prompt_default_title">Bekræft livlighed</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Kig ind i kameraet og følg instruktionerne</string>
+    <string name="face_matcher_prompt_permission_required">Kameratilladelse kræves for at bekræfte din identitet</string>
+    <string name="face_matcher_prompt_grant_permission">Giv tilladelse</string>
+    <string name="face_matcher_prompt_cancel">Annuller</string>
+    <string name="face_matcher_prompt_confirm">Bekræft</string>
 </resources>

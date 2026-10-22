@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "Lebih dari {age} tahun",
   "age_verification_description_older_than_years": "Indikasi apakah pemegang mDL berusia {age} tahun atau lebih",
   "multi_request_payment_and_age_over_18": "Pembayaran dan usia di atas 18",
-  "multi_request_age_over_18_mdl_or_pid": "Usia di atas 18 melalui mDL atau PID + transaksi"
+  "multi_request_age_over_18_mdl_or_pid": "Usia di atas 18 melalui mDL atau PID + transaksi",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "Usia di atas 18 + kesetaraan potret",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "Usia di atas 18 + (potret ATAU kesetaraan potret)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "Usia di atas 18 + kesetaraan potret",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Usia di atas 18 + (potret ATAU kesetaraan potret)",
+  "eu_personal_id_request_name_and_portrait": "Nama + potret",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Nama + kesetaraan potret",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Nama + (potret ATAU kesetaraan potret)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "Usia di atas 18 + kesetaraan potret",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Usia di atas 18 + (potret ATAU kesetaraan potret)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "Usia di atas 18 + kesetaraan potret",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "Usia di atas 18 + (potret ATAU kesetaraan potret)"
 }

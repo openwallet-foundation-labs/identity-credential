@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "{age} yaşından büyük",
   "age_verification_description_older_than_years": "mDL sahibinin {age} yaş ve üzeri olup olmadığı bilgisi",
   "multi_request_payment_and_age_over_18": "Ödeme ve 18 yaş üzeri",
-  "multi_request_age_over_18_mdl_or_pid": "mDL veya PID ile 18 yaş üzeri ve işlem"
+  "multi_request_age_over_18_mdl_or_pid": "mDL veya PID ile 18 yaş üzeri ve işlem",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "18 yaşından büyük + portre denkliği",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "18 yaşından büyük + (portre VEYA portre denkliği)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "18 yaşından büyük + portre denkliği",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "18 yaşından büyük + (portre VEYA portre denkliği)",
+  "eu_personal_id_request_name_and_portrait": "Ad + portre",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Ad + portre denkliği",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Ad + (portre VEYA portre denkliği)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "18 yaşından büyük + portre denkliği",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "18 yaşından büyük + (portre VEYA portre denkliği)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "18 yaşından büyük + portre denkliği",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "18 yaşından büyük olma + (portre veya portre eşdeğeri)"
 }

@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "{age}歳以上",
   "age_verification_description_older_than_years": "mDL保持者が{age}歳以上であるかを示す情報",
   "multi_request_payment_and_age_over_18": "支払いと18歳以上",
-  "multi_request_age_over_18_mdl_or_pid": "mDLまたはPIDによる18歳以上の確認 + 取引"
+  "multi_request_age_over_18_mdl_or_pid": "mDLまたはPIDによる18歳以上の確認 + 取引",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "18歳以上 + 顔写真同等物",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "18歳以上 + (顔写真 または 顔写真同等物)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "18歳以上 + 顔写真同等物",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "18歳以上 + (顔写真 または 顔写真同等物)",
+  "eu_personal_id_request_name_and_portrait": "氏名 + 顔写真",
+  "eu_personal_id_request_name_and_portrait_equivalence": "氏名 + 顔写真同等物",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "氏名 + (顔写真 または 顔写真同等物)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "18歳以上 + 顔写真同等物",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "18歳以上 + (顔写真 または 顔写真同等物)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "18歳以上 + 顔写真同等物",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "18歳以上＋（顔写真または顔写真に相当するもの）"
 }

@@ -216,4 +216,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Δεν έχει οριστεί</string>
     <string name="presentment_activity_removed_too_fast">Η συσκευή απομακρύνθηκε πριν ολοκληρωθεί η κοινοποίηση</string>
     <string name="presentment_activity_nfc_only_tip">Κρατήστε το κοντά στον αναγνώστη μέχρι να μεταφερθούν όλα τα δεδομένα</string>
+    <string name="face_matcher_prompt_default_title">Επαληθεύστε ότι είστε εσείς</string>
+    <string name="face_matcher_prompt_default_subtitle">Κοιτάξτε την κάμερα για να επαληθεύσετε την ταυτότητά σας</string>
+    <string name="face_matcher_liveness_prompt_default_title">Επαληθεύστε τη ζωντάνια</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Κοιτάξτε την κάμερα και ακολουθήστε τις οδηγίες</string>
+    <string name="face_matcher_prompt_permission_required">Απαιτείται άδεια κάμερας για την επαλήθευση της ταυτότητάς σας</string>
+    <string name="face_matcher_prompt_grant_permission">Εκχώρηση Άδειας</string>
+    <string name="face_matcher_prompt_cancel">Άκυρο</string>
+    <string name="face_matcher_prompt_confirm">Επιβεβαίωση</string>
 </resources>

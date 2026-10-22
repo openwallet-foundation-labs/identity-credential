@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "年满 {age} 岁",
   "age_verification_description_older_than_years": "指示mDL持有人是否年满{age}周岁或以上",
   "multi_request_payment_and_age_over_18": "支付和年满18岁",
-  "multi_request_age_over_18_mdl_or_pid": "通过mDL或PID及交易验证年满18岁"
+  "multi_request_age_over_18_mdl_or_pid": "通过mDL或PID及交易验证年满18岁",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "年满18周岁 + 照片一致性",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "年满18周岁 + (照片 或 照片一致性)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "年满18周岁 + 照片一致性",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "年满18周岁 + (照片 或 照片一致性)",
+  "eu_personal_id_request_name_and_portrait": "姓名 + 照片",
+  "eu_personal_id_request_name_and_portrait_equivalence": "姓名 + 照片一致性",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "姓名 + (照片 或 照片一致性)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "年满18周岁 + 照片一致性",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "年满18周岁 + (照片 或 照片一致性)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "年满18周岁 + 照片一致性",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "年满18周岁 + (人像或人像等效)"
 }

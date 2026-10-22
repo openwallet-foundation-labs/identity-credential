@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "Άνω των {age} ετών",
   "age_verification_description_older_than_years": "Ένδειξη αν ο κάτοχος της mDL είναι {age} ετών ή μεγαλύτερος",
   "multi_request_payment_and_age_over_18": "Πληρωμή και άνω των 18 ετών",
-  "multi_request_age_over_18_mdl_or_pid": "Ηλικία άνω των 18 μέσω mDL ή PID + συναλλαγή"
+  "multi_request_age_over_18_mdl_or_pid": "Ηλικία άνω των 18 μέσω mDL ή PID + συναλλαγή",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "Ηλικία άνω των 18 + ισοδυναμία πορτρέτου",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "Ηλικία άνω των 18 + (πορτρέτο Ή ισοδυναμία πορτρέτου)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "Ηλικία άνω των 18 + ισοδυναμία πορτρέτου",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Ηλικία άνω των 18 + (πορτρέτο Ή ισοδυναμία πορτρέτου)",
+  "eu_personal_id_request_name_and_portrait": "Όνομα + πορτρέτο",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Όνομα + ισοδυναμία πορτρέτου",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Όνομα + (πορτρέτο Ή ισοδυναμία πορτρέτου)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "Ηλικία άνω των 18 + ισοδυναμία πορτρέτου",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Ηλικία άνω των 18 + (πορτρέτο Ή ισοδυναμία πορτρέτου)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "Ηλικία άνω των 18 + ισοδυναμία πορτρέτου",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "Ηλικία άνω των 18 + (πορτρέτο Ή ισοδύναμο πορτρέτου)"
 }
