@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "Powyżej {age} lat",
   "age_verification_description_older_than_years": "Wskazanie, czy posiadacz mDL ma co najmniej {age} lat",
   "multi_request_payment_and_age_over_18": "Płatność i wiek powyżej 18 lat",
-  "multi_request_age_over_18_mdl_or_pid": "Wiek powyżej 18 lat za pośrednictwem mDL lub PID + transakcja"
+  "multi_request_age_over_18_mdl_or_pid": "Wiek powyżej 18 lat za pośrednictwem mDL lub PID + transakcja",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "Wiek powyżej 18 lat + portretowa równoważność",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "Wiek powyżej 18 lat + (portret LUB portretowa równoważność)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "Wiek powyżej 18 lat + portretowa równoważność",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Wiek powyżej 18 lat + (portret LUB portretowa równoważność)",
+  "eu_personal_id_request_name_and_portrait": "Nazwisko + portret",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Nazwisko + portretowa równoważność",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Nazwisko + (portret LUB portretowa równoważność)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "Wiek powyżej 18 lat + portretowa równoważność",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Wiek powyżej 18 lat + (portret LUB portretowa równoważność)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "Wiek powyżej 18 lat + portretowa równoważność",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "Wiek powyżej 18 lat + (portret LUB równoważny portret)"
 }

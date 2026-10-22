@@ -220,6 +220,7 @@ class LokalizePlugin : Plugin<Project> {
             "lokalizeCheckGenerated",
             LokalizeVerifyGeneratedTask::class.java
         ) { task ->
+            task.mustRunAfter("generateMultipazStrings")
             task.defaultLocale.convention(ext.defaultLocale)
             task.outputFormat.convention(ext.outputFormat)
             task.packageName.convention(ext.generatedTranslationsPackageName)

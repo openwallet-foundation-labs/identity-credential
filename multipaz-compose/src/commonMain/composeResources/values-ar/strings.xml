@@ -256,4 +256,12 @@
     <string name="floating_item_heading_and_date_time_not_set">غير محدد</string>
     <string name="presentment_activity_removed_too_fast">تمت إزالة الجهاز قبل اكتمال المشاركة</string>
     <string name="presentment_activity_nfc_only_tip">اجعل الجهاز قريبًا من القارئ حتى يتم نقل جميع البيانات</string>
+    <string name="face_matcher_prompt_default_title">تأكد من أنك أنت</string>
+    <string name="face_matcher_prompt_default_subtitle">انظر إلى الكاميرا لتأكيد هويتك</string>
+    <string name="face_matcher_liveness_prompt_default_title">التحقق من الحيوية</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">انظر إلى الكاميرا واتبع التعليمات</string>
+    <string name="face_matcher_prompt_permission_required">يلزم إذن الكاميرا للتحقق من هويتك</string>
+    <string name="face_matcher_prompt_grant_permission">منح الإذن</string>
+    <string name="face_matcher_prompt_cancel">إلغاء</string>
+    <string name="face_matcher_prompt_confirm">تأكيد</string>
 </resources>

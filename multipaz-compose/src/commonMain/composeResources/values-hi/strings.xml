@@ -216,4 +216,12 @@
     <string name="floating_item_heading_and_date_time_not_set">सेट नहीं</string>
     <string name="presentment_activity_removed_too_fast">साझाकरण पूर्ण होने से पहले डिवाइस हटा दिया गया था</string>
     <string name="presentment_activity_nfc_only_tip">सारा डेटा ट्रांसफर होने तक रीडर के पास रखें</string>
+    <string name="face_matcher_prompt_default_title">पुष्टि करें कि यह आप हैं</string>
+    <string name="face_matcher_prompt_default_subtitle">अपनी पहचान सत्यापित करने के लिए कैमरे में देखें</string>
+    <string name="face_matcher_liveness_prompt_default_title">जीवंतता की पुष्टि करें</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">कैमरे में देखें और निर्देशों का पालन करें</string>
+    <string name="face_matcher_prompt_permission_required">आपकी पहचान सत्यापित करने के लिए कैमरा अनुमति आवश्यक है</string>
+    <string name="face_matcher_prompt_grant_permission">अनुमति दें</string>
+    <string name="face_matcher_prompt_cancel">रद्द करें</string>
+    <string name="face_matcher_prompt_confirm">पुष्टि करें</string>
 </resources>

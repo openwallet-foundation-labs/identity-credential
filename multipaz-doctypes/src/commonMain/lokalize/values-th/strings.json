@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "อายุมากกว่า {age} ปี",
   "age_verification_description_older_than_years": "ระบุว่าผู้ถือ mDL มีอายุ {age} ปีขึ้นไป",
   "multi_request_payment_and_age_over_18": "ชำระเงินและอายุ 18 ปีขึ้นไป",
-  "multi_request_age_over_18_mdl_or_pid": "อายุ 18 ปีขึ้นไป โดย mDL หรือ PID และธุรกรรม"
+  "multi_request_age_over_18_mdl_or_pid": "อายุ 18 ปีขึ้นไป โดย mDL หรือ PID และธุรกรรม",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "อายุ 18 ปีขึ้นไป + การยืนยันใบหน้า",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "อายุ 18 ปีขึ้นไป + (ใบหน้า หรือ การยืนยันใบหน้า)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "อายุ 18 ปีขึ้นไป + การยืนยันใบหน้า",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "อายุ 18 ปีขึ้นไป + (ใบหน้า หรือ การยืนยันใบหน้า)",
+  "eu_personal_id_request_name_and_portrait": "ชื่อ + ใบหน้า",
+  "eu_personal_id_request_name_and_portrait_equivalence": "ชื่อ + การยืนยันใบหน้า",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "ชื่อ + (ใบหน้า หรือ การยืนยันใบหน้า)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "อายุ 18 ปีขึ้นไป + การยืนยันใบหน้า",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "อายุ 18 ปีขึ้นไป + (ใบหน้า หรือ การยืนยันใบหน้า)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "อายุ 18 ปีขึ้นไป + การยืนยันใบหน้า",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "อายุ 18 ปีขึ้นไป + (ภาพเหมือน หรือ ภาพเหมือนที่เทียบเท่า)"
 }

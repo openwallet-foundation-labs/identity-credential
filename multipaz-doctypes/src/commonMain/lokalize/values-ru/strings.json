@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "Старше {age} лет",
   "age_verification_description_older_than_years": "Признак того, что владелец mDL достиг {age} лет или старше",
   "multi_request_payment_and_age_over_18": "Оплата и 18+",
-  "multi_request_age_over_18_mdl_or_pid": "18+ через mDL или PID + транзакция"
+  "multi_request_age_over_18_mdl_or_pid": "18+ через mDL или PID + транзакция",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "Возраст старше 18 лет + портрет или его эквивалент",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "Возраст старше 18 лет + (портрет ИЛИ эквивалент портрета)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "Возраст старше 18 лет + портрет или его эквивалент",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Возраст старше 18 лет + (портрет ИЛИ эквивалент портрета)",
+  "eu_personal_id_request_name_and_portrait": "Имя + портрет",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Имя + эквивалент портрета",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Имя + (портрет ИЛИ эквивалент портрета)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "Возраст старше 18 лет + портрет или его эквивалент",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Возраст старше 18 лет + (портрет ИЛИ эквивалент портрета)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "Возраст старше 18 лет + портрет или его эквивалент",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "Возраст старше 18 лет + (портрет ИЛИ эквивалент портрета)"
 }

@@ -208,4 +208,12 @@
     <string name="floating_item_heading_and_date_time_not_set">ไม่ได้ตั้งค่า</string>
     <string name="presentment_activity_removed_too_fast">อุปกรณ์ถูกนำออกก่อนการแชร์เสร็จสมบูรณ์</string>
     <string name="presentment_activity_nfc_only_tip">ถือให้อยู่ใกล้กับเครื่องอ่านจนกว่าข้อมูลทั้งหมดจะถูกถ่ายโอน</string>
+    <string name="face_matcher_prompt_default_title">ยืนยันว่าเป็นคุณ</string>
+    <string name="face_matcher_prompt_default_subtitle">มองกล้องเพื่อยืนยันตัวตนของคุณ</string>
+    <string name="face_matcher_liveness_prompt_default_title">ตรวจสอบความมีชีวิตชีวา</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">มองกล้องและทำตามคำแนะนำ</string>
+    <string name="face_matcher_prompt_permission_required">จำเป็นต้องได้รับอนุญาตใช้กล้องเพื่อยืนยันตัวตนของคุณ</string>
+    <string name="face_matcher_prompt_grant_permission">อนุญาต</string>
+    <string name="face_matcher_prompt_cancel">ยกเลิก</string>
+    <string name="face_matcher_prompt_confirm">ยืนยัน</string>
 </resources>

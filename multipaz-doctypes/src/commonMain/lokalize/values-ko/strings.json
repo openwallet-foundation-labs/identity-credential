@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "만 {age}세 초과",
   "age_verification_description_older_than_years": "mDL 소지자의 {age}세 이상 여부",
   "multi_request_payment_and_age_over_18": "결제 및 18세 이상",
-  "multi_request_age_over_18_mdl_or_pid": "mDL 또는 PID를 통한 18세 이상 및 거래"
+  "multi_request_age_over_18_mdl_or_pid": "mDL 또는 PID를 통한 18세 이상 및 거래",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "만 18세 이상 + 본인 사진 확인",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "만 18세 이상 + (본인 사진 또는 본인 사진 확인)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "만 18세 이상 + 본인 사진 확인",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "만 18세 이상 + (본인 사진 또는 본인 사진 확인)",
+  "eu_personal_id_request_name_and_portrait": "이름 + 본인 사진",
+  "eu_personal_id_request_name_and_portrait_equivalence": "이름 + 본인 사진 확인",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "이름 + (본인 사진 또는 본인 사진 확인)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "만 18세 이상 + 본인 사진 확인",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "만 18세 이상 + (본인 사진 또는 본인 사진 확인)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "만 18세 이상 + 본인 사진 확인",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "만 18세 이상 + (증명사진 또는 그에 상응하는 사진)"
 }

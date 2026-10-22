@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "أكبر من {age} سنة",
   "age_verification_description_older_than_years": "إشارة إلى ما إذا كان حامل mDL يبلغ {age} عامًا أو أكبر",
   "multi_request_payment_and_age_over_18": "الدفع والعمر فوق 18",
-  "multi_request_age_over_18_mdl_or_pid": "العمر فوق 18 عبر mDL أو PID + معاملة"
+  "multi_request_age_over_18_mdl_or_pid": "العمر فوق 18 عبر mDL أو PID + معاملة",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "العمر فوق 18 + معادلة صورة شخصية",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "العمر فوق 18 + (صورة شخصية أو معادلة صورة شخصية)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "العمر فوق 18 + معادلة صورة شخصية",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "العمر فوق 18 + (صورة شخصية أو معادلة صورة شخصية)",
+  "eu_personal_id_request_name_and_portrait": "الاسم + صورة شخصية",
+  "eu_personal_id_request_name_and_portrait_equivalence": "الاسم + معادلة صورة شخصية",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "الاسم + (صورة شخصية أو معادلة صورة شخصية)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "العمر فوق 18 + معادلة صورة شخصية",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "العمر فوق 18 + (صورة شخصية أو معادلة صورة شخصية)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "العمر فوق 18 + معادلة صورة شخصية",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "العمر فوق 18 + (صورة شخصية أو ما يعادلها)"
 }

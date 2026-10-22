@@ -232,4 +232,12 @@
     <string name="floating_item_heading_and_date_time_not_set">לא מוגדר</string>
     <string name="presentment_activity_removed_too_fast">ההתקן הוסר לפני שהשיתוף הושלם.</string>
     <string name="presentment_activity_nfc_only_tip">החזק צמוד לקורא עד שכל הנתונים יועברו.</string>
+    <string name="face_matcher_prompt_default_title">ודא שזה אתה</string>
+    <string name="face_matcher_prompt_default_subtitle">הסתכל אל המצלמה כדי לאמת את זהותך</string>
+    <string name="face_matcher_liveness_prompt_default_title">ודא חיות</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">הסתכל אל המצלמה ופעל לפי ההוראות</string>
+    <string name="face_matcher_prompt_permission_required">נדרשת הרשאת מצלמה כדי לאמת את זהותך</string>
+    <string name="face_matcher_prompt_grant_permission">הענק הרשאה</string>
+    <string name="face_matcher_prompt_cancel">ביטול</string>
+    <string name="face_matcher_prompt_confirm">אשר</string>
 </resources>

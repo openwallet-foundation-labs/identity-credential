@@ -2,6 +2,7 @@ package org.multipaz.lokalize.service
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.singleRunStrategy
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import org.multipaz.lokalize.llm.strategy.ProviderStrategyFactory
 import org.multipaz.lokalize.util.LLMProvider
@@ -122,28 +123,40 @@ private class BatchTranslator(
         batchIndex: Int,
         totalBatches: Int
     ): TranslationResult {
-        return try {
-            val agent = AIAgent(
-                promptExecutor = executor,
-                llmModel = koogModel,
-                systemPrompt = PromptBuilder.build(
-                    sourceLocale,
-                    targetLocale,
-                    batch.texts,
-                    batch.keys
-                ),
-                strategy = singleRunStrategy()
-            )
+        val maxAttempts = 4
+        var lastException: Exception? = null
+        for (attempt in 1..maxAttempts) {
+            try {
+                val agent = AIAgent(
+                    promptExecutor = executor,
+                    llmModel = koogModel,
+                    systemPrompt = PromptBuilder.build(
+                        sourceLocale,
+                        targetLocale,
+                        batch.texts,
+                        batch.keys
+                    ),
+                    strategy = singleRunStrategy()
+                )
 
-            val response = agent.run("").trim()
-            val translations = ResultParser.parse(response, batch.keys, batch.texts)
+                val response = agent.run("").trim()
+                val translations = ResultParser.parse(response, batch.keys, batch.texts)
 
-            addDelayIfNeeded(batchIndex, totalBatches)
+                addDelayIfNeeded(batchIndex, totalBatches)
 
-            TranslationResult.Success(translations)
-        } catch (e: Exception) {
-            handleError(e, batch)
+                return TranslationResult.Success(translations)
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < maxAttempts && isTransientServerError(e)) {
+                    val backoff = (attempt * 3).seconds
+                    println("[Worker] Transient server error on attempt $attempt/$maxAttempts, retrying in $backoff...")
+                    delay(backoff)
+                } else {
+                    break
+                }
+            }
         }
+        return handleError(lastException!!, batch)
     }
 
     private fun handleError(e: Exception, batch: TranslationBatch): TranslationResult {
@@ -152,6 +165,15 @@ private class BatchTranslator(
             else -> TranslationResult.Failed(batch.fallback(), e)
         }
     }
+
+    private fun isTransientServerError(e: Throwable): Boolean =
+        e.causeChain().any { throwable ->
+            val msg = throwable.message ?: return@any false
+            msg.contains("Status code: 503") ||
+                    msg.contains("Status code: 502") ||
+                    msg.contains("Status code: 504") ||
+                    msg.contains("UNAVAILABLE")
+        }
 
     /**
      * Detects quota/rate-limit errors anywhere in the exception chain.
@@ -171,8 +193,7 @@ private class BatchTranslator(
     private suspend fun addDelayIfNeeded(currentIndex: Int, totalBatches: Int) {
         if (currentIndex >= totalBatches - 1) return
 
-        val delayMs = 3000L
-        delay(delayMs)
+        delay(3.seconds)
     }
 }
 

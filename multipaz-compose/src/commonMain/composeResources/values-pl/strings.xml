@@ -236,4 +236,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Nie ustawiono</string>
     <string name="presentment_activity_removed_too_fast">Urządzenie zostało odłączone przed zakończeniem udostępniania</string>
     <string name="presentment_activity_nfc_only_tip">Trzymaj blisko czytnika, aż wszystkie dane zostaną przesłane</string>
+    <string name="face_matcher_prompt_default_title">Zweryfikuj, że to Ty</string>
+    <string name="face_matcher_prompt_default_subtitle">Spójrz w kamerę, aby potwierdzić swoją tożsamość</string>
+    <string name="face_matcher_liveness_prompt_default_title">Zweryfikuj żywotność</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Spójrz w kamerę i postępuj zgodnie z instrukcjami</string>
+    <string name="face_matcher_prompt_permission_required">Wymagane jest pozwolenie na użycie aparatu, aby potwierdzić Twoją tożsamość</string>
+    <string name="face_matcher_prompt_grant_permission">Udziel pozwolenia</string>
+    <string name="face_matcher_prompt_cancel">Anuluj</string>
+    <string name="face_matcher_prompt_confirm">Potwierdź</string>
 </resources>

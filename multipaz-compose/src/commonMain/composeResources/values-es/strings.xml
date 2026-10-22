@@ -216,4 +216,12 @@
     <string name="floating_item_heading_and_date_time_not_set">No establecido</string>
     <string name="presentment_activity_removed_too_fast">El dispositivo se retiró antes de que se completara el uso compartido</string>
     <string name="presentment_activity_nfc_only_tip">Mantén cerca del lector hasta que se transfieran todos los datos</string>
+    <string name="face_matcher_prompt_default_title">Verifícalo</string>
+    <string name="face_matcher_prompt_default_subtitle">Mira a la cámara para verificar tu identidad</string>
+    <string name="face_matcher_liveness_prompt_default_title">Verifica que estés vivo</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Mira a la cámara y sigue las instrucciones</string>
+    <string name="face_matcher_prompt_permission_required">Se requiere permiso de cámara para verificar tu identidad</string>
+    <string name="face_matcher_prompt_grant_permission">Otorgar permiso</string>
+    <string name="face_matcher_prompt_cancel">Cancelar</string>
+    <string name="face_matcher_prompt_confirm">Confirmar</string>
 </resources>

@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "מעל {age} שנים",
   "age_verification_description_older_than_years": "ציון אם בעל הרישיון הוא בן {age} או מבוגר יותר",
   "multi_request_payment_and_age_over_18": "תשלום וגיל מעל 18",
-  "multi_request_age_over_18_mdl_or_pid": "גיל מעל 18 באמצעות mDL או PID ועסקה"
+  "multi_request_age_over_18_mdl_or_pid": "גיל מעל 18 באמצעות mDL או PID ועסקה",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "גיל 18+ + שקילות דיוקן",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "גיל 18+ + (דיוקן או שקילות דיוקן)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "גיל 18+ + שקילות דיוקן",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "גיל 18+ + (דיוקן או שקילות דיוקן)",
+  "eu_personal_id_request_name_and_portrait": "שם + דיוקן",
+  "eu_personal_id_request_name_and_portrait_equivalence": "שם + שקילות דיוקן",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "שם + (דיוקן או שקילות דיוקן)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "גיל 18+ + שקילות דיוקן",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "גיל 18+ + (דיוקן או שקילות דיוקן)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "גיל 18+ + שקילות דיוקן",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "גיל 18+ (פורטרט או שווה ערך לפורטרט)"
 }

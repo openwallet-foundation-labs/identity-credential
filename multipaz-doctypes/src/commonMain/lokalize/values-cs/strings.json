@@ -393,5 +393,16 @@
   "age_verification_attribute_older_than_years": "Starší {age} let",
   "age_verification_description_older_than_years": "Údaj, zda je držitel mDL starý {age} let nebo starší",
   "multi_request_payment_and_age_over_18": "Platba a věk nad 18 let",
-  "multi_request_age_over_18_mdl_or_pid": "Věk nad 18 let přes mDL nebo PID + transakce"
+  "multi_request_age_over_18_mdl_or_pid": "Věk nad 18 let přes mDL nebo PID + transakce",
+  "driving_license_request_age_over_18_and_portrait_equivalence": "Věk nad 18 let + portrétní shoda",
+  "driving_license_request_age_over_18_and_portrait_or_portrait_equivalence": "Věk nad 18 let + (portrét NEBO portrétní shoda)",
+  "eu_personal_id_request_age_over_18_and_portrait_equivalence": "Věk nad 18 let + portrétní shoda",
+  "eu_personal_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Věk nad 18 let + (portrét NEBO portrétní shoda)",
+  "eu_personal_id_request_name_and_portrait": "Jméno + portrét",
+  "eu_personal_id_request_name_and_portrait_equivalence": "Jméno + portrétní shoda",
+  "eu_personal_id_request_name_and_portrait_or_portrait_equivalence": "Jméno + (portrét NEBO portrétní shoda)",
+  "photo_id_request_age_over_18_and_portrait_equivalence": "Věk nad 18 let + portrétní shoda",
+  "photo_id_request_age_over_18_and_portrait_or_portrait_equivalence": "Věk nad 18 let + (portrét NEBO portrétní shoda)",
+  "id_pass_request_age_over_18_and_portrait_equivalence": "Věk nad 18 let + portrétní shoda",
+  "id_pass_request_age_over_18_and_portrait_or_portrait_equivalence": "Věk nad 18 let + (portrét NEBO ekvivalent portrétu)"
 }

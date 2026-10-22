@@ -216,4 +216,12 @@
     <string name="floating_item_heading_and_date_time_not_set">Belum diatur</string>
     <string name="presentment_activity_removed_too_fast">Perangkat dilepaskan sebelum berbagi selesai</string>
     <string name="presentment_activity_nfc_only_tip">Dekatkan ke pembaca hingga semua data ditransfer</string>
+    <string name="face_matcher_prompt_default_title">Verifikasi Anda</string>
+    <string name="face_matcher_prompt_default_subtitle">Lihat ke kamera untuk memverifikasi identitas Anda</string>
+    <string name="face_matcher_liveness_prompt_default_title">Verifikasi kelangsungan hidup</string>
+    <string name="face_matcher_liveness_prompt_default_subtitle">Lihat ke kamera dan ikuti instruksinya</string>
+    <string name="face_matcher_prompt_permission_required">Izin kamera diperlukan untuk memverifikasi identitas Anda</string>
+    <string name="face_matcher_prompt_grant_permission">Berikan Izin</string>
+    <string name="face_matcher_prompt_cancel">Batal</string>
+    <string name="face_matcher_prompt_confirm">Konfirmasi</string>
 </resources>
