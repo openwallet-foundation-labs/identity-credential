@@ -88,19 +88,24 @@ final class RequestAuthorizationViewModel: ObservableObject {
 /// - Parameters
 ///   - requestContext: A ``ISO18013MobileDocumentRequestContext`` which includes the request.
 ///   - getPresentmentSource: a function to asynchronously return a ``PresentmentSource`` which is used as the source of truth for presentment.
+///   - transactionDataRendererRepository: the ``TransactionDataRendererRepository`` to find renderers for
+///     transaction data in, or `nil` to use only the built-in rendering.
 public struct RequestAuthorizationView : View {
 
     private let requestContext: ISO18013MobileDocumentRequestContext
     private let getPresentmentSource: () async -> PresentmentSource
+    private let transactionDataRendererRepository: TransactionDataRendererRepository?
 
     @StateObject private var viewModel = RequestAuthorizationViewModel()
     
     public init(
         requestContext: ISO18013MobileDocumentRequestContext,
-        getPresentmentSource: @escaping () async -> PresentmentSource
+        getPresentmentSource: @escaping () async -> PresentmentSource,
+        transactionDataRendererRepository: TransactionDataRendererRepository? = nil
     ) {
         self.requestContext = requestContext
         self.getPresentmentSource = getPresentmentSource
+        self.transactionDataRendererRepository = transactionDataRendererRepository
     }
 
     public var body: some View {
@@ -117,6 +122,7 @@ public struct RequestAuthorizationView : View {
                     requester: viewModel.requester,
                     trustedRequesterIdentity: viewModel.trustedRequesterIdentity,
                     maxHeight: .infinity,
+                    transactionDataRendererRepository: transactionDataRendererRepository,
                     onConfirm: { selection in
                         Task {
                             try await requestContext.sendResponse { rawRequest in

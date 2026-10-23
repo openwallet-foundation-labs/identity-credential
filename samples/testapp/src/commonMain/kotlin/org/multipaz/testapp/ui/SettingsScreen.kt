@@ -305,6 +305,13 @@ fun SettingsScreen(
         }
         item {
             SettingToggle(
+                title = "Use app-provided transaction data renderers",
+                isChecked = app.settingsModel.presentmentUseTransactionDataRenderers.collectAsState().value,
+                onCheckedChange = { app.settingsModel.presentmentUseTransactionDataRenderers.value = it },
+            )
+        }
+        item {
+            SettingToggle(
                 title = "Skip user authentication",
                 isChecked = !app.settingsModel.presentmentRequireAuthentication.collectAsState().value,
                 onCheckedChange = { app.settingsModel.presentmentRequireAuthentication.value = !it },

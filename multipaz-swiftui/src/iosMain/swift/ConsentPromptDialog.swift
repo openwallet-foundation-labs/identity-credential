@@ -36,6 +36,7 @@ struct ConsentPromptDialog: View {
                     requester: data.state.parameters!.requester,
                     trustedRequesterIdentity: data.state.parameters!.trustedRequesterIdentity,
                     preselectedDocuments: data.state.parameters!.preselectedDocuments,
+                    transactionDataRendererRepository: data.state.parameters!.transactionDataRendererRepository,
                     onDocumentsInFocus: { documents in
                         data.state.parameters!.onDocumentsInFocus(documents)
                     },

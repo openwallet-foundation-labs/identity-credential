@@ -9,6 +9,13 @@ import SwiftUI
 class ViewModel {
 
     var path: [Destination] = []
+    var useTransactionDataRenderers: Bool = false
+    private let swiftTestAppTransactionDataRenderers = makeSwiftTestAppTransactionDataRenderers()
+
+    /// The renderers the consent prompt uses for transaction data, or `nil` for the built-in rendering.
+    var transactionDataRendererRepository: TransactionDataRendererRepository? {
+        useTransactionDataRenderers ? swiftTestAppTransactionDataRenderers : nil
+    }
     var pendingToastMessage: String? = nil
 
     let verticalCardListState = VerticalCardListState()
@@ -415,7 +422,8 @@ class ViewModel {
                     trustedRequesterIdentity: trustedRequesterIdentity,
                     consentData: consentData,
                     preselectedDocuments: preselectedDocuments,
-                    onDocumentsInFocus: { documents in onDocumentsInFocus(documents) }
+                    onDocumentsInFocus: { documents in onDocumentsInFocus(documents) },
+                    transactionDataRendererRepository: self.transactionDataRendererRepository
                 )
             },
             preferSignatureToKeyAgreement: false,
