@@ -95,7 +95,8 @@ struct ConsentPromptScreen: View {
                                 trustedRequesterIdentity: requestData.trustedRequesterIdentity,
                                 consentData: requestData.consentData,
                                 preselectedDocuments: [],
-                                onDocumentsInFocus: { documents in }
+                                onDocumentsInFocus: { documents in },
+                                transactionDataRendererRepository: nil
                             )
                             if selection != nil {
                                 print("Selection: \(selection!)")

@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import org.multipaz.document.Document
 import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.ConsentData
+import org.multipaz.prompt.TransactionDataRendererRepository
 import org.multipaz.request.Requester
 import org.multipaz.request.TrustedRequesterIdentity
 
@@ -30,6 +31,8 @@ import org.multipaz.request.TrustedRequesterIdentity
  *   if the user didn't preselect.
  * @param imageLoader a [ImageLoader].
  * @param maxHeight the maximum height of the bottom sheet or `null` if no limit.
+ * @param transactionDataRendererRepository the [TransactionDataRendererRepository] to find renderers for
+ *   transaction data in, or `null` to use only the built-in rendering.
  * @param onDocumentsInFocus called with the documents currently selected for the user, including when
  *   first shown. If the user selects a different set of documents in the prompt, this will be called again.
  * @param onConfirm called when the user presses the "Share" button, returns the user's selection.
@@ -45,6 +48,7 @@ fun ConsentModalBottomSheet(
     preselectedDocuments: List<Document>,
     imageLoader: ImageLoader?,
     maxHeight: Dp? = null,
+    transactionDataRendererRepository: TransactionDataRendererRepository? = null,
     onDocumentsInFocus: (documents: List<Document>) -> Unit,
     onConfirm: (selection: CredentialSelection) -> Unit,
     onCancel: () -> Unit = {},
@@ -64,6 +68,7 @@ fun ConsentModalBottomSheet(
             consentData = consentData,
             preselectedDocuments = preselectedDocuments,
             imageLoader = imageLoader,
+            transactionDataRendererRepository = transactionDataRendererRepository,
             onDocumentsInFocus = onDocumentsInFocus,
             onConfirm = onConfirm,
             onCancel = {
