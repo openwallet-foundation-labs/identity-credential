@@ -434,7 +434,7 @@ private enum ConsentDestinations: Hashable {
 ///   - preselectedDocuments: list of documents that should be preselected.
 ///   - maxHeight: the maximum height of the view.
 ///   - onDocumentsInFocus: callback invoked with the list of documents currently in focus as the user changes selections.
-///   - onConfirm: callback when the user presses the Share button with the credentials that were selected.
+///   - onConfirm: callback when the user presses the Continue button with the credentials that were selected.
 ///   - onCancel: callback when the user presses the Cancel button.
 public struct Consent: View {
     let maxHeight: CGFloat
@@ -768,7 +768,7 @@ private struct ConsentMain: View {
                     .controlSize(.large)
                     
                     let buttonText = if (isAtBottom) {
-                        "Share"
+                        "Continue"
                     } else {
                         "More"
                     }

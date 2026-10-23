@@ -4,7 +4,7 @@
     <string name="passphrase_entry_field_passphrase_is_weak">عبارة المرور ضعيفة، يرجى اختيار عبارة أخرى</string>
     <string name="credential_presentment_button_cancel">إلغاء</string>
     <string name="credential_presentment_button_more">المزيد</string>
-    <string name="credential_presentment_button_share">مشاركة</string>
+    <string name="credential_presentment_button_continue">متابعة</string>
     <string name="credential_presentment_headline_share_with_unknown_requester">طالب غير معروف</string>
     <string name="credential_presentment_share_with_known_requester">ستتم مشاركة هذه البيانات مع %1$s:</string>
     <string name="credential_presentment_share_with_unknown_requester">ستتم مشاركة هذه البيانات:</string>
@@ -24,6 +24,7 @@
     <string name="credential_presentment_warning_icon_description">أيقونة التحذير</string>
     <string name="credential_presentment_select_document">اختيار المستند</string>
     <string name="credential_presentment_requester_information">معلومات الطالب</string>
+    <string name="credential_presentment_details">التفاصيل</string>
     <string name="certificate_viewer_sub_basic_info">المعلومات الأساسية</string>
     <string name="certificate_viewer_k_type">النوع</string>
     <string name="certificate_viewer_k_serial_number">الرقم التسلسلي</string>

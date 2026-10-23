@@ -58,6 +58,21 @@ data class ConsentData private constructor(
         return CredentialSelection(matches)
     }
 
+    /**
+     * Checks whether any credential this request can return carries transaction data of a given type.
+     *
+     * @param identifier the [org.multipaz.documenttype.TransactionType.identifier] to look for.
+     * @return `true` if at least one credential in any use-case carries transaction data of that type.
+     */
+    fun containsTransactionType(identifier: String): Boolean =
+        useCases.any { useCase ->
+            useCase.solutions.any { solution ->
+                solution.credentials.any { credential ->
+                    credential.match.transactionData.any { it.type.identifier == identifier }
+                }
+            }
+        }
+
     companion object {
         /**
          * Creates a [ConsentData] from a [CredentialQueryResult].

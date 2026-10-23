@@ -100,10 +100,11 @@ import org.multipaz.documenttype.knowntypes.PaymentTransaction
 import org.multipaz.multipaz_compose.generated.resources.Res
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_cancel
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_more
-import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_share
+import org.multipaz.multipaz_compose.generated.resources.credential_presentment_button_continue
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_select_option
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_dont_return_any_document
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_data_element_icon_description
+import org.multipaz.multipaz_compose.generated.resources.credential_presentment_details
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_headline_share_with_unknown_requester
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_headline_share_with_unknown_website
 import org.multipaz.multipaz_compose.generated.resources.credential_presentment_info_verifier_in_trust_list
@@ -134,6 +135,8 @@ import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.ConsentData
 import org.multipaz.presentment.ConsentUseCase
 import org.multipaz.presentment.TransactionData
+import org.multipaz.presentment.TransactionDataContext
+import org.multipaz.prompt.TransactionDataRendererRepository
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.request.TrustedRequesterIdentity
@@ -162,9 +165,11 @@ private const val TAG = "Consent"
  * example an OS-provided credential picker like Android's Credential Manager) or the empty list
  * if the user didn't preselect.
  * @param imageLoader a [ImageLoader].
+ * @param transactionDataRendererRepository the [TransactionDataRendererRepository] to find renderers for
+ *   transaction data in, or `null` to use only the built-in rendering.
  * @param onDocumentsInFocus called with the documents currently selected for the user, including when
  * first shown. If the user selects a different set of documents in the prompt, this will be called again.
- * @param onConfirm called when the user presses the "Share" button, returns the user's selection.
+ * @param onConfirm called when the user presses the "Continue" button, returns the user's selection.
  * @param onCancel called when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -176,6 +181,7 @@ fun Consent(
     consentData: ConsentData,
     preselectedDocuments: List<Document>,
     imageLoader: ImageLoader?,
+    transactionDataRendererRepository: TransactionDataRendererRepository? = null,
     onDocumentsInFocus: (documents: List<Document>) -> Unit,
     onConfirm: (selection: CredentialSelection) -> Unit,
     onCancel: () -> Unit = {},
@@ -222,6 +228,15 @@ fun Consent(
     }
     var activeUseCaseIndex by remember { mutableStateOf(0) }
     var isFlipped by remember { mutableStateOf(false) }
+    var transactionDetails by remember { mutableStateOf<TransactionDetailsTarget?>(null) }
+
+    val onTransactionUserInputChanged: (CredentialPresentmentSetOptionMemberMatch, String, TransactionUserInput) -> Unit =
+        { match, type, userInput ->
+            val current = transactionUserInput[match] ?: emptyMap()
+            transactionUserInput = transactionUserInput.plus(
+                match to current.plus(type to userInput)
+            )
+        }
 
     // TODO: it seems that we do not need to worry about transactionUserInput here; if we actually
     //  do, we should add it BOTH as key to remember and as a parameter to toCredentialSelection
@@ -290,19 +305,19 @@ fun Consent(
                             consentData = consentData,
                             selections = selections,
                             transactionUserInput = transactionUserInput,
+                            transactionDataRendererRepository = transactionDataRendererRepository,
                             onSelectionChanged = { index, value ->
                                 val newList = selections.toMutableList()
                                 newList[index] = value
                                 selections = newList
                             },
-                            onTransactionUserInputChanged = { match, type, userInput ->
-                                val current = transactionUserInput[match] ?: emptyMap()
-                                transactionUserInput = transactionUserInput.plus(
-                                    match to current.plus(type to userInput)
-                                )
-                            },
+                            onTransactionUserInputChanged = onTransactionUserInputChanged,
                             onShowRequesterInfo = {
                                 navController.navigate("showRequesterInfo")
+                            },
+                            onShowTransactionDetails = { target ->
+                                transactionDetails = target
+                                navController.navigate("transactionDetails")
                             },
                             onNavigateToPickSolution = { index ->
                                 activeUseCaseIndex = index
@@ -321,6 +336,23 @@ fun Consent(
                                 navController.navigateUp()
                             },
                         )
+                    }
+
+                    composable("transactionDetails") {
+                        transactionDetails?.let { target ->
+                            TransactionDetailsPage(
+                                target = target,
+                                requester = requester,
+                                trustedRequesterIdentity = trustedRequesterIdentity,
+                                userInput = transactionUserInput[target.match]?.get(target.block.identifier),
+                                onUserInputChanged = { userInput ->
+                                    onTransactionUserInputChanged(target.match, target.block.identifier, userInput)
+                                },
+                                onBackClicked = {
+                                    navController.navigateUp()
+                                },
+                            )
+                        }
                     }
                 }
             },
@@ -447,6 +479,63 @@ private data class RequesterDisplayData(
     val disclaimer: String? = null
 )
 
+/** The transaction data the details page shows: one application-drawn group of one credential. */
+private class TransactionDetailsTarget(
+    val match: CredentialPresentmentSetOptionMemberMatch,
+    val block: TransactionDataBlock.Wallet,
+    val hasClaims: Boolean,
+)
+
+/**
+ * A page inside the consent prompt showing the application's details view for one group of
+ * transaction data. It has no confirm button: the user goes back to the main page to decide.
+ */
+@Composable
+private fun TransactionDetailsPage(
+    target: TransactionDetailsTarget,
+    requester: Requester,
+    trustedRequesterIdentity: TrustedRequesterIdentity?,
+    userInput: TransactionUserInput?,
+    onUserInputChanged: (userInput: TransactionUserInput) -> Unit,
+    onBackClicked: () -> Unit,
+) {
+    val details = target.block.renderer.details ?: return
+    Column {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClicked) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null
+                )
+            }
+            Text(
+                text = stringResource(Res.string.credential_presentment_details),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 20.dp)
+        ) {
+            details(
+                TransactionDataContext(
+                    transactionData = target.block.items,
+                    requester = requester,
+                    trustedRequesterIdentity = trustedRequesterIdentity,
+                    hasClaims = target.hasClaims,
+                    userInput = userInput,
+                    onUserInputChanged = onUserInputChanged,
+                    showDetails = null,
+                )
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ConsentPage(
@@ -457,9 +546,11 @@ private fun ConsentPage(
     consentData: ConsentData,
     selections: List<Int>,
     transactionUserInput: Map<CredentialPresentmentSetOptionMemberMatch, Map<String, TransactionUserInput>>,
+    transactionDataRendererRepository: TransactionDataRendererRepository?,
     onSelectionChanged: (Int, Int) -> Unit,
     onTransactionUserInputChanged: (CredentialPresentmentSetOptionMemberMatch, String, TransactionUserInput) -> Unit,
     onShowRequesterInfo: () -> Unit,
+    onShowTransactionDetails: (TransactionDetailsTarget) -> Unit,
     onNavigateToPickSolution: (Int) -> Unit,
     onConfirm: (selection: CredentialSelection) -> Unit,
     onCancel: () -> Unit
@@ -517,14 +608,17 @@ private fun ConsentPage(
                             useCase = useCase,
                             selectionIndex = selections[index],
                             requester = requester,
+                            trustedRequesterIdentity = trustedRequesterIdentity,
                             requesterDisplayData = requesterDisplayData,
                             transactionUserInput = transactionUserInput,
+                            transactionDataRendererRepository = transactionDataRendererRepository,
                             trustMetadata = trustMetadata,
                             appInfo = appInfo,
                             onSelectionChanged = { value ->
                                 onSelectionChanged(index, value)
                             },
                             onTransactionUserInputChanged = onTransactionUserInputChanged,
+                            onShowTransactionDetails = onShowTransactionDetails,
                             onNavigateToPickSolution = {
                                 onNavigateToPickSolution(index)
                             }
@@ -577,12 +671,15 @@ private fun UseCaseViewer(
     useCase: ConsentUseCase,
     selectionIndex: Int,
     requester: Requester,
+    trustedRequesterIdentity: TrustedRequesterIdentity?,
     requesterDisplayData: RequesterDisplayData,
     transactionUserInput: Map<CredentialPresentmentSetOptionMemberMatch, Map<String, TransactionUserInput>>,
+    transactionDataRendererRepository: TransactionDataRendererRepository?,
     trustMetadata: TrustMetadata?,
     appInfo: ApplicationInfo?,
     onSelectionChanged: (Int) -> Unit,
     onTransactionUserInputChanged: (CredentialPresentmentSetOptionMemberMatch, String, TransactionUserInput) -> Unit,
+    onShowTransactionDetails: (TransactionDetailsTarget) -> Unit,
     onNavigateToPickSolution: () -> Unit
 ) {
     val isSelected = selectionIndex >= 0
@@ -670,19 +767,53 @@ private fun UseCaseViewer(
 
                             if (credential.match.transactionData.isNotEmpty()) {
                                 val hasClaims = storedClaims.isNotEmpty() || notStoredClaims.isNotEmpty()
-                                for (data in credential.match.transactionData) {
-                                    DisplayTransactionData(
-                                        transactionData = data,
-                                        hasClaims = hasClaims,
-                                        userInput = transactionUserInput[credential.match]?.get(data.type.identifier),
-                                        onUserInputChanged = { userInput ->
-                                            onTransactionUserInputChanged.invoke(
-                                                credential.match,
-                                                data.type.identifier,
-                                                userInput
+                                val blocks = transactionDataBlocks(
+                                    transactionData = credential.match.transactionData,
+                                    transactionDataRendererRepository = transactionDataRendererRepository,
+                                )
+                                for (block in blocks) {
+                                    when (block) {
+                                        is TransactionDataBlock.BuiltIn -> DisplayTransactionData(
+                                            transactionData = block.item,
+                                            hasClaims = hasClaims,
+                                            userInput = transactionUserInput[credential.match]
+                                                ?.get(block.item.type.identifier),
+                                            onUserInputChanged = { userInput ->
+                                                onTransactionUserInputChanged.invoke(
+                                                    credential.match,
+                                                    block.item.type.identifier,
+                                                    userInput
+                                                )
+                                            }
+                                        )
+                                        is TransactionDataBlock.Wallet -> {
+                                            val target = TransactionDetailsTarget(
+                                                match = credential.match,
+                                                block = block,
+                                                hasClaims = hasClaims,
+                                            )
+                                            block.renderer.summary(
+                                                TransactionDataContext(
+                                                    transactionData = block.items,
+                                                    requester = requester,
+                                                    trustedRequesterIdentity = trustedRequesterIdentity,
+                                                    hasClaims = hasClaims,
+                                                    userInput = transactionUserInput[credential.match]
+                                                        ?.get(block.identifier),
+                                                    onUserInputChanged = { userInput ->
+                                                        onTransactionUserInputChanged.invoke(
+                                                            credential.match,
+                                                            block.identifier,
+                                                            userInput
+                                                        )
+                                                    },
+                                                    showDetails = block.renderer.details?.let {
+                                                        { onShowTransactionDetails(target) }
+                                                    },
+                                                )
                                             )
                                         }
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -1341,7 +1472,7 @@ private fun ButtonSection(
                 text = if (scrollState.canScrollForward) {
                     stringResource(Res.string.credential_presentment_button_more)
                 } else {
-                    stringResource(Res.string.credential_presentment_button_share)
+                    stringResource(Res.string.credential_presentment_button_continue)
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold

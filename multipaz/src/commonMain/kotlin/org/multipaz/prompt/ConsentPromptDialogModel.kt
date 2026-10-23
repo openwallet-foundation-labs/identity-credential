@@ -24,12 +24,15 @@ class ConsentPromptDialogModel():
      *   if the user didn't preselect.
      * @param onDocumentsInFocus called with the documents currently selected for the user, including when
      *   first shown. If the user selects a different set of documents in the prompt, this will be called again.
+     * @param transactionDataRendererRepository the [TransactionDataRendererRepository] the prompt uses to
+     *   find renderers for transaction data, or `null` to use only the built-in rendering.
      */
     class ConsentPromptRequest(
         val requester: Requester,
         val trustedRequesterIdentity: TrustedRequesterIdentity?,
         val consentData: ConsentData,
         val preselectedDocuments: List<Document>,
-        val onDocumentsInFocus: (documents: List<Document>) -> Unit
+        val onDocumentsInFocus: (documents: List<Document>) -> Unit,
+        val transactionDataRendererRepository: TransactionDataRendererRepository?
     )
 }

@@ -27,7 +27,7 @@
     <!-- Consent.kt -->
     <string name="credential_presentment_button_cancel">Cancel</string>
     <string name="credential_presentment_button_more">More</string>
-    <string name="credential_presentment_button_share">Share</string>
+    <string name="credential_presentment_button_continue">Continue</string>
     <string name="credential_presentment_headline_share_with_unknown_requester">Unknown requester</string>
     <string name="credential_presentment_headline_share_with_unknown_website">Unknown website</string>
 
@@ -65,6 +65,7 @@
     <string name="credential_presentment_dont_return_any_document">Don't share anything</string>
     <string name="credential_presentment_no_document_returned">No document returned</string>
     <string name="credential_presentment_requester_information">Requester information</string>
+    <string name="credential_presentment_details">Details</string>
     <string name="credential_presentment_transaction_data">Includes transaction data:</string>
 
     <!-- X509CertViewer.kt -->
